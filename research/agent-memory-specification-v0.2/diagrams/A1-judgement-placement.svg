@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+<title id="title">Shared semantic judgement in the harness</title><desc id="desc">Four peer memory processes apply shared policy and use structured computation, semantic judgement and generative investigation. Scoped reads supply selected source contents. The main task receives bounded findings and events. The host enforces access, disclosure, budgets and authorised effects.</desc>
+<rect width="1200" height="800" fill="white"/>
+<defs>
+<marker id="line" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#718090"/></marker>
+<marker id="teal" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#176D61"/></marker>
+<marker id="blue" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#315B86"/></marker>
+<marker id="purple" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#745A93"/></marker>
+<marker id="gold" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#9A6B25"/></marker>
+</defs>
+<rect x="310" y="15" width="580" height="95" rx="12" fill="#EAF4EF" stroke="#176D61" stroke-width="2"/>
+<text x="600" y="50" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="middle" fill="#176D61">Main task workspace</text>
+<text x="600" y="82" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="middle" fill="#243447">Task context and current findings</text>
+<path d="M430,110 L430,170" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#line)"/>
+<text x="407" y="148" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="end" fill="#586778">requests + experience</text>
+<path d="M790,170 L790,110" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#line)"/>
+<text x="813" y="148" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="start" fill="#586778">bounded findings + events</text>
+<rect x="20" y="170" width="1160" height="140" rx="12" fill="white" stroke="#CED7DD" stroke-width="2"/>
+<text x="600" y="202" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="700" text-anchor="middle" fill="#586778">MEMORY PROCESSES APPLY SHARED POLICY</text>
+<rect x="42" y="222" width="246" height="62" rx="12" fill="white" stroke="#176D61" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="165" y="262" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="middle" fill="#176D61">Formation</text>
+<rect x="332" y="222" width="246" height="62" rx="12" fill="white" stroke="#315B86" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="455" y="262" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="middle" fill="#315B86">Activation</text>
+<rect x="622" y="222" width="246" height="62" rx="12" fill="white" stroke="#745A93" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="745" y="262" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="middle" fill="#745A93">Consolidation</text>
+<rect x="912" y="222" width="246" height="62" rx="12" fill="white" stroke="#9A6B25" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="1035" y="262" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="middle" fill="#9A6B25">Maintenance</text>
+<path d="M430,310 L430,370" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#line)"/>
+<text x="407" y="348" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="end" fill="#586778">scoped work</text>
+<path d="M790,370 L790,310" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#line)"/>
+<text x="813" y="348" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="start" fill="#586778">assessments + results</text>
+<rect x="20" y="370" width="1160" height="238" rx="12" fill="#F4F6F8" stroke="#CED7DD" stroke-width="2"/>
+<text x="42" y="403" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="700" text-anchor="start" fill="#586778">HOST HARNESS / SHARED CAPABILITIES</text>
+<rect x="42" y="427" width="332" height="126" rx="12" fill="#EFF3FA" stroke="#315B86" stroke-width="2"/>
+<text x="208" y="460" font-family="Lato, Arial, sans-serif" font-size="24" font-weight="700" text-anchor="middle" fill="#315B86">Structured computation</text>
+<text x="208" y="498" font-family="Lato, Arial, sans-serif" font-size="21" font-weight="400" text-anchor="middle" fill="#243447">Queries, joins and exact checks</text>
+<text x="208" y="528" font-family="Lato, Arial, sans-serif" font-size="21" font-weight="400" text-anchor="middle" fill="#243447">Identity, scope and versions</text>
+<rect x="434" y="427" width="332" height="126" rx="12" fill="#EAF4EF" stroke="#176D61" stroke-width="2"/>
+<text x="600" y="460" font-family="Lato, Arial, sans-serif" font-size="24" font-weight="700" text-anchor="middle" fill="#176D61">Semantic judgement</text>
+<text x="600" y="498" font-family="Lato, Arial, sans-serif" font-size="21" font-weight="400" text-anchor="middle" fill="#243447">Jev: bounded questions</text>
+<text x="600" y="528" font-family="Lato, Arial, sans-serif" font-size="21" font-weight="400" text-anchor="middle" fill="#243447">Typed answers and uncertainty</text>
+<rect x="826" y="427" width="332" height="126" rx="12" fill="#F1ECF7" stroke="#745A93" stroke-width="2"/>
+<text x="992" y="460" font-family="Lato, Arial, sans-serif" font-size="24" font-weight="700" text-anchor="middle" fill="#745A93">Generative investigation</text>
+<text x="992" y="498" font-family="Lato, Arial, sans-serif" font-size="21" font-weight="400" text-anchor="middle" fill="#243447">Acquire evidence and explain</text>
+<text x="992" y="528" font-family="Lato, Arial, sans-serif" font-size="21" font-weight="400" text-anchor="middle" fill="#243447">Develop and repair findings</text>
+<text x="600" y="586" font-family="Lato, Arial, sans-serif" font-size="21" font-weight="400" text-anchor="middle" fill="#586778">Available to memory operations, main-task agents and scoped workers</text>
+<path d="M460,669 L460,608" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#line)"/>
+<text x="437" y="646" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="end" fill="#586778">selected evidence</text>
+<path d="M750,608 L750,669" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#line)"/>
+<text x="773" y="646" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="start" fill="#586778">scoped reads</text>
+<rect x="130" y="669" width="940" height="58" rx="12" fill="#EAF4EF" stroke="#176D61" stroke-width="2"/>
+<text x="600" y="706" font-family="Lato, Arial, sans-serif" font-size="25" font-weight="700" text-anchor="middle" fill="#176D61">Memory collection, sources and working artifacts</text>
+<rect x="20" y="750" width="1160" height="38" rx="12" fill="#F4F6F8" stroke="#CED7DD" stroke-width="2"/>
+<text x="600" y="776" font-family="Lato, Arial, sans-serif" font-size="21" font-weight="400" text-anchor="middle" fill="#586778">The host enforces access, disclosure, budgets and authorised effects.</text>
+</svg>

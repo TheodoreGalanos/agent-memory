@@ -1,0 +1,50 @@
+{
+  "name": "agent-memory",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "workspaces": [
+    "packages/pi-worker",
+    ".upstream/pi/packages/chord",
+    ".upstream/pi/packages/telemetry",
+    ".upstream/pi/packages/ai",
+    ".upstream/pi/packages/agent",
+    ".upstream/pi/packages/session-backends/sqlite-node"
+  ],
+  "scripts": {
+    "setup": "node scripts/fetch-pi.mjs && npm ci --ignore-scripts && npm run hydrate-model-data -w @earendil-works/pi-ai",
+    "build:pi": "npm run build -w @earendil-works/chord && npm run build -w @earendil-works/pi-telemetry && npm run build:offline -w @earendil-works/pi-ai && npm run build -w @earendil-works/pi-agent-core && npm run build -w @earendil-works/pi-session-backend-sqlite-node",
+    "generate": "cargo run --quiet --bin export-schema && node scripts/generate-types.mjs",
+    "build": "npm run generate && cargo build -p memory-host && npm run build:pi && tsc -p packages/pi-worker/tsconfig.json",
+    "test": "cargo test --workspace && vitest run && npm run test:bridge",
+    "test:upstream": "npm run test:session:conformance -w @earendil-works/pi-agent-core && npm test -w @earendil-works/pi-session-backend-sqlite-node",
+    "check": "cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && npm run build && npm test && npm run test:upstream",
+    "test:store": "python3 scripts/test-store.py",
+    "check:all": "npm run check && npm run test:store",
+    "test:bridge": "python3 -m unittest discover -s services/harbor-bridge -p 'test_*.py'",
+    "test:asp": "MEMORY_TEST_SSH=1 vitest run packages/pi-worker/test/asp.test.ts",
+    "test:docker": "python3 scripts/test-docker.py",
+    "test:daytona": "python3 scripts/test-daytona.py",
+    "embeddings": "node --experimental-strip-types scripts/embeddings.ts",
+    "memory": "node --experimental-strip-types packages/cli/src/main.ts",
+    "live": "node --import ./scripts/ts-loader.mjs examples/live-walkthrough.ts",
+    "pool": "node --import ./scripts/ts-loader.mjs packages/supervisor/src/main.ts"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19",
+    "@types/pg": "^8.23.1",
+    "@typescript/native-preview": "7.0.0-dev.20260120.1",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "json-schema-to-typescript": "15.0.4",
+    "shx": "0.4.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  },
+  "overrides": {
+    "vitest": "4.1.11",
+    "@vitest/coverage-v8": "4.1.11"
+  }
+}

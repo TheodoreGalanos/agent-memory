@@ -1,0 +1,4 @@
+# ABOUTME: TLS termination in front of the loopback-only Host (§20.2). Replace the hostname.
+memory.example.internal {
+	reverse_proxy host:7331
+}

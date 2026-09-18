@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CommandResponse",
+  "type": "object",
+  "properties": {
+    "coverage": {
+      "$ref": "#/$defs/Coverage"
+    },
+    "job_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid"
+    },
+    "known_effects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/KnownEffect"
+      }
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ContractError"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "request_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "result_ref": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid"
+    },
+    "schema_version": {
+      "$ref": "#/$defs/WireVersion"
+    },
+    "status": {
+      "$ref": "#/$defs/ResponseStatus"
+    },
+    "usage": {
+      "$ref": "#/$defs/Usage"
+    }
+  },
+  "required": [
+    "schema_version",
+    "request_id",
+    "status",
+    "known_effects",
+    "coverage",
+    "usage"
+  ],
+  "$defs": {
+    "ContractError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ReasonCode"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ]
+    },
+    "Coverage": {
+      "type": "object",
+      "properties": {
+        "examined": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unexamined": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "examined",
+        "unexamined"
+      ]
+    },
+    "EffectStatus": {
+      "type": "string",
+      "enum": [
+        "confirmed",
+        "not_performed",
+        "unknown"
+      ]
+    },
+    "KnownEffect": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "effect_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "status": {
+          "$ref": "#/$defs/EffectStatus"
+        }
+      },
+      "required": [
+        "effect_id",
+        "status",
+        "description"
+      ]
+    },
+    "Money": {
+      "type": "object",
+      "properties": {
+        "currency": {
+          "type": "string"
+        },
+        "minor_units": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "currency",
+        "minor_units"
+      ]
+    },
+    "ReasonCode": {
+      "type": "string",
+      "enum": [
+        "invalid_payload",
+        "unauthenticated",
+        "forbidden_scope",
+        "stale_revision",
+        "request_conflict",
+        "deadline_exceeded",
+        "budget_exhausted",
+        "insufficient_evidence",
+        "source_unavailable",
+        "provider_unavailable",
+        "cancelled",
+        "unknown_effect",
+        "internal_error"
+      ]
+    },
+    "ResponseStatus": {
+      "type": "string",
+      "enum": [
+        "accepted",
+        "completed",
+        "partial",
+        "blocked",
+        "conflict",
+        "unavailable",
+        "failed"
+      ]
+    },
+    "Usage": {
+      "type": "object",
+      "properties": {
+        "cost": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "input_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "status": {
+          "$ref": "#/$defs/UsageStatus"
+        }
+      },
+      "required": [
+        "status"
+      ]
+    },
+    "UsageStatus": {
+      "type": "string",
+      "enum": [
+        "known",
+        "partial",
+        "unknown"
+      ]
+    },
+    "WireVersion": {
+      "type": "string",
+      "enum": [
+        "1"
+      ]
+    }
+  }
+}

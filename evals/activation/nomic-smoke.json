@@ -1,0 +1,27 @@
+{
+  "model": {
+    "model": "nomic-ai/nomic-embed-text-v1.5",
+    "revision": "e9b6763023c676ca8431644204f50c2b100d9aab:q8:mean:layernorm:l2",
+    "dimensions": 768,
+    "representation": "memory-content-v1"
+  },
+  "runtime": "Transformers.js 4.3.0 / CPU",
+  "indexed": 3,
+  "loadedMs": 238,
+  "totalMs": 3343,
+  "checks": [
+    {
+      "question": "Depressurise rotating equipment",
+      "lexicalMatches": 0,
+      "expectedRetrieved": true,
+      "queryAndRetrievalMs": 48
+    },
+    {
+      "question": "Compute torsional force",
+      "lexicalMatches": 0,
+      "expectedRetrieved": true,
+      "queryAndRetrievalMs": 41
+    }
+  ],
+  "scope": "Two authored paraphrase smoke cases, not a held-out retrieval benchmark. No semantic judgement provider called."
+}

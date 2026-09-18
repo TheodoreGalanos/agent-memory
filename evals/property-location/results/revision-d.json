@@ -1,0 +1,52 @@
+{
+  "schema_version": "1",
+  "status": "blocked",
+  "examined_scope": {
+    "user_id": "01995600-0000-7000-8000-000000000003",
+    "project_id": "01995600-0000-7000-8000-000000000004",
+    "task_id": "01995600-0000-7000-8000-000000000005",
+    "entity_ids": [
+      "01995600-0000-7000-8000-000000000006"
+    ],
+    "source_versions": [
+      {
+        "source_id": "01995600-0000-7000-8000-000000000007",
+        "revision": "D"
+      }
+    ]
+  },
+  "inputs": {
+    "sources": [],
+    "memories": [
+      {
+        "memory_id": "01995600-0000-7000-8000-000000000012",
+        "revision": 1,
+        "label": "Fire resistance is on the type in revision C"
+      }
+    ],
+    "artifacts": []
+  },
+  "findings": [],
+  "coverage": {
+    "examined": [],
+    "unexamined": [
+      "revision D properties"
+    ]
+  },
+  "unresolved_work": [
+    "Inspect revision D; the C finding does not establish its location in D."
+  ],
+  "proposed_changes": [],
+  "child_outputs": [],
+  "result_artifact": null,
+  "known_effects": [],
+  "usage": {
+    "status": "known",
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost": {
+      "currency": "USD",
+      "minor_units": 0
+    }
+  }
+}

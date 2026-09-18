@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/memory-domain", "crates/memory-store", "crates/memory-host"]
+resolver = "3"

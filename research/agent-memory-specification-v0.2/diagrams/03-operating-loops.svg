@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="887" viewBox="0 0 1200 887" role="img" aria-labelledby="title desc">
+<title id="title">Three interacting operating loops</title><desc id="desc">The action loop uses a bounded workspace and can return findings from a scoped investigation. The learning loop separates formation and scoped consolidation, with maintenance receiving feedback and committed change events passing through activation. The intention loop records state in memory and uses host events and result evidence.</desc>
+<rect width="1200" height="887" fill="white"/>
+<defs>
+<marker id="line" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#718090"/></marker>
+<marker id="green" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#176D61"/></marker>
+<marker id="blue" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#315B86"/></marker>
+<marker id="purple" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#745A93"/></marker>
+<marker id="gold" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#9A6B25"/></marker>
+<marker id="red" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#A34F4F"/></marker>
+</defs>
+<rect x="8" y="4" width="1184" height="340" rx="16" fill="#EAF4EF" stroke="#CED7DD" stroke-width="2"/>
+<text x="27" y="34.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="700" text-anchor="start" fill="#176D61">ACTION / PRESENT TASK</text>
+<rect x="25" y="57" width="170" height="89" rx="10" fill="white" stroke="#176D61" stroke-width="2"/>
+<text x="110.0" y="88.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#176D61">Observe</text>
+<text x="110.0" y="117.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">fresh evidence</text>
+<rect x="270" y="57" width="170" height="89" rx="10" fill="white" stroke="#176D61" stroke-width="2"/>
+<text x="355.0" y="88.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#176D61">Activate</text>
+<text x="355.0" y="117.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">candidate context</text>
+<rect x="515" y="57" width="170" height="89" rx="10" fill="white" stroke="#176D61" stroke-width="2"/>
+<text x="600.0" y="88.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#176D61">Workspace</text>
+<text x="600.0" y="117.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">render to budget</text>
+<rect x="760" y="57" width="170" height="89" rx="10" fill="white" stroke="#176D61" stroke-width="2"/>
+<text x="845.0" y="88.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#176D61">Agent + host</text>
+<text x="845.0" y="117.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">cite and act</text>
+<rect x="1005" y="57" width="170" height="89" rx="10" fill="white" stroke="#176D61" stroke-width="2"/>
+<text x="1090.0" y="88.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#176D61">Outcome</text>
+<text x="1090.0" y="117.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">result + cost</text>
+<path d="M195,102 L270,102" fill="none" stroke="#176D61" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#green)"/>
+<path d="M440,102 L515,102" fill="none" stroke="#176D61" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#green)"/>
+<path d="M685,102 L760,102" fill="none" stroke="#176D61" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#green)"/>
+<path d="M930,102 L1005,102" fill="none" stroke="#176D61" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#green)"/>
+<path d="M1090,146 L1090,312 L110,312 L110,146" fill="none" stroke="#176D61" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#green)"/>
+<rect x="650" y="205" width="380" height="77" rx="10" fill="white" stroke="#176D61" stroke-width="2"/>
+<text x="840" y="235" font-family="Lato, Arial, sans-serif" font-size="23" font-weight="700" text-anchor="middle" fill="#176D61">Scoped investigation</text>
+<text x="840" y="262" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">Inspect references; retain working detail</text>
+<path d="M845,146 L845,205" fill="none" stroke="#315B86" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#blue)"/>
+<text x="864" y="180" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="start" fill="#586778">work brief + references</text>
+<path d="M650,243 L600,243 L600,146" fill="none" stroke="#176D61" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#green)"/>
+<text x="574" y="226" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="end" fill="#586778">bounded task finding</text>
+<text x="574" y="252" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="end" fill="#586778">+ result reference</text>
+<g transform="translate(0 146)">
+<rect x="8" y="219" width="1184" height="280" rx="16" fill="#F3EEF7" stroke="#CED7DD" stroke-width="2"/>
+<text x="27" y="250.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="700" text-anchor="start" fill="#745A93">LEARNING / ACCUMULATED EXPERIENCE</text>
+<rect x="25" y="274" width="170" height="89" rx="10" fill="white" stroke="#745A93" stroke-width="2"/>
+<text x="110.0" y="305.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#745A93">Experience</text>
+<text x="110.0" y="334.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">events + results</text>
+<rect x="270" y="274" width="170" height="89" rx="10" fill="white" stroke="#745A93" stroke-width="2"/>
+<text x="355.0" y="305.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#745A93">Formation</text>
+<text x="355.0" y="334.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">capture + link</text>
+<rect x="515" y="274" width="170" height="89" rx="10" fill="white" stroke="#745A93" stroke-width="2"/>
+<text x="600.0" y="305.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#745A93">Collection</text>
+<text x="600.0" y="334.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">retained records</text>
+<rect x="760" y="274" width="170" height="89" rx="10" fill="white" stroke="#745A93" stroke-width="2"/>
+<text x="845.0" y="305.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#745A93">Consolidation</text>
+<text x="845.0" y="334.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">scoped synthesis</text>
+<rect x="1005" y="274" width="170" height="89" rx="10" fill="white" stroke="#745A93" stroke-width="2"/>
+<text x="1090.0" y="305.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#745A93">Later use</text>
+<text x="1090.0" y="334.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">citations + results</text>
+<path d="M195,319 L270,319" fill="none" stroke="#745A93" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#purple)"/>
+<path d="M440,319 L515,319" fill="none" stroke="#745A93" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#purple)"/>
+<path d="M685,319 L760,319" fill="none" stroke="#745A93" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#purple)"/>
+<path d="M930,319 L1005,319" fill="none" stroke="#745A93" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#purple)"/>
+<rect x="505" y="391" width="310" height="48" rx="9" fill="white" stroke="#9A6B25" stroke-width="2"/>
+<text x="660" y="422.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="700" text-anchor="middle" fill="#9A6B25">Maintenance + policy review</text>
+<path d="M1090,363 L1090,415 L815,415" fill="none" stroke="#9A6B25" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#gold)"/>
+<text x="959" y="398.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">feedback</text>
+<text x="959" y="398.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="#9A6B25">feedback</text>
+<path d="M505,415 L465,415 L465,375 L590,375 L590,363" fill="none" stroke="#9A6B25" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#gold)"/>
+<text x="428" y="402.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">revise</text>
+<text x="428" y="402.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="#9A6B25">revise</text>
+<rect x="25" y="384" width="250" height="76" rx="10" fill="white" stroke="#315B86" stroke-width="2"/>
+<text x="150" y="414" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#315B86">Activation</text>
+<text x="150" y="442" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">route scoped events</text>
+<path d="M505,428 L275,428" fill="none" stroke="#9A6B25" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#gold)"/>
+<text x="383" y="460" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="#9A6B25">committed change event</text>
+</g>
+<g transform="translate(0 182)">
+<rect x="8" y="484" width="1184" height="208" rx="16" fill="#EFF3FA" stroke="#CED7DD" stroke-width="2"/>
+<text x="27" y="517.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="700" text-anchor="start" fill="#315B86">INTENTION / FUTURE COMMITMENT</text>
+<rect x="25" y="541" width="170" height="89" rx="10" fill="white" stroke="#315B86" stroke-width="2"/>
+<text x="110.0" y="572.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#315B86">Commitment</text>
+<text x="110.0" y="601.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">purpose + owner</text>
+<rect x="270" y="541" width="170" height="89" rx="10" fill="white" stroke="#315B86" stroke-width="2"/>
+<text x="355.0" y="572.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#315B86">Arm</text>
+<text x="355.0" y="601.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">memory state</text>
+<rect x="515" y="541" width="170" height="89" rx="10" fill="white" stroke="#315B86" stroke-width="2"/>
+<text x="600.0" y="572.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#315B86">Trigger + fire</text>
+<text x="600.0" y="601.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">host cue</text>
+<rect x="760" y="541" width="170" height="89" rx="10" fill="white" stroke="#315B86" stroke-width="2"/>
+<text x="845.0" y="572.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#315B86">Act + verify</text>
+<text x="845.0" y="601.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">host result</text>
+<rect x="1005" y="541" width="170" height="89" rx="10" fill="white" stroke="#315B86" stroke-width="2"/>
+<text x="1090.0" y="572.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#315B86">Close</text>
+<text x="1090.0" y="601.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">memory decision</text>
+<path d="M195,586 L270,586" fill="none" stroke="#315B86" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#blue)"/>
+<path d="M440,586 L515,586" fill="none" stroke="#315B86" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#blue)"/>
+<path d="M685,586 L760,586" fill="none" stroke="#315B86" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#blue)"/>
+<path d="M930,586 L1005,586" fill="none" stroke="#315B86" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#blue)"/>
+<text x="600" y="669.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#586778">Open intentions also reach expiry or authorised cancellation; results remain linked to their occurrence.</text>
+</g>
+</svg>

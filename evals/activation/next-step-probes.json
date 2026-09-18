@@ -1,0 +1,8 @@
+{
+  "purpose": "Authored fixed-checkpoint functional continuations. Scripted judgements test activation delivery; these are not model accuracy or held-out live qualification results.",
+  "cases": [
+    { "id": "A1", "task_context": {"power": "off", "bypass": "unknown"}, "expected_next_step": "inspect_prerequisites" },
+    { "id": "A2", "task_context": {"power": "off", "bypass": "closed"}, "expected_next_step": "review_candidate_method" },
+    { "id": "A3", "task_context": {"power": "on", "bypass": "closed"}, "expected_next_step": "avoid_method" }
+  ]
+}

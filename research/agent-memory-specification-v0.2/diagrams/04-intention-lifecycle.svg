@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="385" viewBox="0 0 1200 385" role="img" aria-labelledby="title desc">
+<title id="title">Memory-owned intention lifecycle</title><desc id="desc">Pending progresses to armed, then fired, then completed on checked evidence. Pending, armed and fired form the non-terminal group. Any non-terminal state can expire or be cancelled. The host emits events; memory owns the transitions.</desc>
+<rect width="1200" height="385" fill="white"/>
+<defs>
+<marker id="line" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#718090"/></marker>
+<marker id="green" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#176D61"/></marker>
+<marker id="blue" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#315B86"/></marker>
+<marker id="purple" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#745A93"/></marker>
+<marker id="gold" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#9A6B25"/></marker>
+<marker id="red" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#A34F4F"/></marker>
+</defs>
+<rect x="10" y="10" width="875" height="194" rx="16" fill="#F4F6F8" stroke="#CED7DD" stroke-width="2"/>
+<text x="28" y="38.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="700" text-anchor="start" fill="#586778">OPEN INTENTION / STATE OWNED BY MEMORY</text>
+<rect x="28" y="78" width="235" height="90" rx="12" fill="#EAF4EF" stroke="#176D61" stroke-width="2"/>
+<text x="46" y="111.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#176D61">pending</text>
+<text x="46" y="142.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="start" fill="#243447">definition / readiness</text>
+<rect x="328" y="78" width="235" height="90" rx="12" fill="#EAF4EF" stroke="#176D61" stroke-width="2"/>
+<text x="346" y="111.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#176D61">armed</text>
+<text x="346" y="142.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="start" fill="#243447">monitor eligible cues</text>
+<rect x="628" y="78" width="235" height="90" rx="12" fill="#EAF4EF" stroke="#176D61" stroke-width="2"/>
+<text x="646" y="111.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#176D61">fired</text>
+<text x="646" y="142.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="start" fill="#243447">work / verification</text>
+<rect x="940" y="78" width="235" height="90" rx="12" fill="#EAF4EF" stroke="#176D61" stroke-width="2"/>
+<text x="958" y="111.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#176D61">completed</text>
+<text x="958" y="142.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="start" fill="#243447">checked completion</text>
+<path d="M263,125 L328,125" fill="none" stroke="#176D61" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#green)"/>
+<text x="295" y="69.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">ready</text>
+<text x="295" y="69.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="#586778">ready</text>
+<path d="M563,125 L628,125" fill="none" stroke="#315B86" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#blue)"/>
+<text x="593" y="69.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">cue</text>
+<text x="593" y="69.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="#586778">cue</text>
+<path d="M863,125 L940,125" fill="none" stroke="#176D61" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#green)"/>
+<text x="903" y="52.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">verified</text>
+<text x="903" y="52.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="#586778">verified</text>
+<text x="903" y="73.96000000000001" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">evidence</text>
+<text x="903" y="73.96000000000001" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="#586778">evidence</text>
+<rect x="240" y="280" width="285" height="88" rx="12" fill="#F4F6F8" stroke="#9A6B25" stroke-width="2"/>
+<text x="258" y="313.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#9A6B25">expired</text>
+<text x="258" y="344.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="start" fill="#243447">deadline / lifecycle boundary</text>
+<rect x="625" y="280" width="285" height="88" rx="12" fill="#F4F6F8" stroke="#9A6B25" stroke-width="2"/>
+<text x="643" y="313.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#9A6B25">cancelled</text>
+<text x="643" y="344.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="start" fill="#243447">authorised cancellation</text>
+<path d="M450,204 L450,235 L380,235 L380,280" fill="none" stroke="#9A6B25" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#gold)"/>
+<path d="M450,235 L770,235 L770,280" fill="none" stroke="#9A6B25" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#gold)"/>
+<text x="707" y="220.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">from any open state</text>
+<text x="707" y="220.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#9A6B25">from any open state</text>
+</svg>

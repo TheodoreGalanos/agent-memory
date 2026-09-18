@@ -1,0 +1,119 @@
+{
+  "command": {
+    "request_id": "01995600-0000-7000-8000-000000000020",
+    "command_version": "1",
+    "tenant_id": "01995600-0000-7000-8000-000000000001",
+    "actor_id": "01995600-0000-7000-8000-000000000002",
+    "scope": {
+      "user_id": "01995600-0000-7000-8000-000000000003",
+      "project_id": "01995600-0000-7000-8000-000000000004",
+      "task_id": "01995600-0000-7000-8000-000000000005",
+      "entity_ids": [
+        "01995600-0000-7000-8000-000000000006"
+      ],
+      "source_versions": [
+        {
+          "source_id": "01995600-0000-7000-8000-000000000007",
+          "revision": "C"
+        }
+      ]
+    },
+    "job_id": null,
+    "session_id": null,
+    "lane_id": null,
+    "operation_id": null,
+    "invocation_id": null,
+    "expected_revisions": [],
+    "deadline": "2026-09-19T00:00:00Z",
+    "budget_id": "01995600-0000-7000-8000-000000000008",
+    "lease_epoch": null,
+    "payload": {
+      "schema_version": "1",
+      "purpose": "Locate the fire-resistance property for wall W-101 in the specified revision.",
+      "process": "investigation",
+      "task_id": "01995600-0000-7000-8000-000000000005",
+      "frame_ref": null,
+      "definitions": [
+        "An empty instance query says nothing about unexamined type properties."
+      ],
+      "scope": {
+        "user_id": "01995600-0000-7000-8000-000000000003",
+        "project_id": "01995600-0000-7000-8000-000000000004",
+        "task_id": "01995600-0000-7000-8000-000000000005",
+        "entity_ids": [
+          "01995600-0000-7000-8000-000000000006"
+        ],
+        "source_versions": [
+          {
+            "source_id": "01995600-0000-7000-8000-000000000007",
+            "revision": "C"
+          }
+        ]
+      },
+      "inputs": {
+        "sources": [
+          {
+            "source_id": "01995600-0000-7000-8000-000000000007",
+            "revision": "C"
+          }
+        ],
+        "memories": [],
+        "artifacts": []
+      },
+      "capabilities": {
+        "sources": [
+          {
+            "source_id": "01995600-0000-7000-8000-000000000007",
+            "revision": "C"
+          }
+        ],
+        "queries": [
+          "properties.instance",
+          "schema.inspect",
+          "properties.type"
+        ],
+        "tools": [
+          "read"
+        ]
+      },
+      "known_conflicts": [],
+      "evidence_cutoff": "2026-09-17T00:01:00Z",
+      "freshness_requirement": "Use only evidence available at the checkpoint, scoped to its source revision.",
+      "output_criteria": [
+        "Name the inspected property location or explain the remaining inspection."
+      ],
+      "limits": {
+        "root_budget_id": "01995600-0000-7000-8000-000000000008",
+        "max_provider_attempts": 2,
+        "max_tokens": 4096,
+        "max_output_bytes": 8192,
+        "max_child_depth": 0,
+        "max_child_concurrency": 0
+      },
+      "policy": {
+        "id": "01995600-0000-7000-8000-000000000009",
+        "revision": 1,
+        "label": "Reference fixture policy"
+      },
+      "profile": {
+        "id": "01995600-0000-7000-8000-000000000010",
+        "revision": 1,
+        "label": "Scripted provider fixture"
+      },
+      "retention_policy": "evaluation",
+      "disclosure_policy": "local-test-only"
+    }
+  },
+  "evidence": [
+    {
+      "id": "instance-empty",
+      "observed_at": "2026-09-17T00:01:00Z",
+      "source": {
+        "source_id": "01995600-0000-7000-8000-000000000007",
+        "revision": "C"
+      },
+      "query": "properties.instance(W-101, FireResistance)",
+      "rows": []
+    }
+  ]
+}

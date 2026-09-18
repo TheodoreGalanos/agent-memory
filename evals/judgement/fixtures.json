@@ -1,0 +1,405 @@
+[
+  {
+    "family": "J01",
+    "subject": "A note says \"I infer the wall is fire rated\"; the source contains no observed rating.",
+    "fields": {
+      "candidate": "A note says \"I infer the wall is fire rated\"; the source contains no observed rating.",
+      "evidence": "A note says \"I infer the wall is fire rated\"; the source contains no observed rating."
+    },
+    "answers": {
+      "assessment": "inference",
+      "faithfulness": "yes"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "qualify"
+  },
+  {
+    "family": "J02",
+    "subject": "A claimed 3 metre clearance is supported by one drawing; a later site observation records 2 metres.",
+    "fields": {
+      "claim": "A claimed 3 metre clearance is supported by one drawing; a later site observation records 2 metres.",
+      "evidence": "A claimed 3 metre clearance is supported by one drawing; a later site observation records 2 metres."
+    },
+    "answers": {
+      "assessment": "both"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "investigate"
+  },
+  {
+    "family": "J03",
+    "subject": "A site visit corrects the previous location measurement during the same inspection.",
+    "fields": {
+      "events": "A site visit corrects the previous location measurement during the same inspection.",
+      "context": "A site visit corrects the previous location measurement during the same inspection."
+    },
+    "answers": {
+      "assessment": "correction"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "qualify"
+  },
+  {
+    "family": "J04",
+    "subject": "The workaround applies only while the primary sensor is offline.",
+    "fields": {
+      "lesson": "The workaround applies only while the primary sensor is offline.",
+      "cases": "The workaround applies only while the primary sensor is offline."
+    },
+    "answers": {
+      "assessment": "temporary_workaround"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "qualify"
+  },
+  {
+    "family": "J05",
+    "subject": "The user says \"I will send the revised drawing tomorrow\".",
+    "fields": {
+      "statement": "The user says \"I will send the revised drawing tomorrow\".",
+      "context": "The user says \"I will send the revised drawing tomorrow\"."
+    },
+    "answers": {
+      "assessment": "commitment"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "qualify"
+  },
+  {
+    "family": "J06",
+    "subject": "The candidate records an exception to the current access-clearance rule.",
+    "fields": {
+      "candidate": "The candidate records an exception to the current access-clearance rule.",
+      "current_question": "The candidate records an exception to the current access-clearance rule."
+    },
+    "answers": {
+      "direct": "no",
+      "background": "yes",
+      "exception": "yes",
+      "contradiction": "no"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "qualify"
+  },
+  {
+    "family": "J07",
+    "subject": "The proposed method inspects type-level properties; the question concerns type-level ratings.",
+    "fields": {
+      "method": "The proposed method inspects type-level properties; the question concerns type-level ratings.",
+      "question": "The proposed method inspects type-level properties; the question concerns type-level ratings."
+    },
+    "answers": {
+      "assessment": "relevant"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "qualify"
+  },
+  {
+    "family": "J08",
+    "subject": "The method requires revision D, but only revision C is available.",
+    "fields": {
+      "method": "The method requires revision D, but only revision C is available.",
+      "prerequisites": "The method requires revision D, but only revision C is available.",
+      "evidence": "The method requires revision D, but only revision C is available."
+    },
+    "answers": {
+      "assessment": "unmet"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "defer"
+  },
+  {
+    "family": "J09",
+    "subject": "Two references share the authoritative asset identifier but have different display names.",
+    "fields": {
+      "references": "Two references share the authoritative asset identifier but have different display names.",
+      "identity_rules": "Two references share the authoritative asset identifier but have different display names."
+    },
+    "answers": {
+      "assessment": "same"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "qualify"
+  },
+  {
+    "family": "J10",
+    "subject": "One property is conductor temperature; the other is ambient temperature.",
+    "fields": {
+      "properties": "One property is conductor temperature; the other is ambient temperature.",
+      "definitions": "One property is conductor temperature; the other is ambient temperature."
+    },
+    "answers": {
+      "assessment": "different"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "qualify"
+  },
+  {
+    "family": "J11",
+    "subject": "Two reports copied the same site observation and are not independent support.",
+    "fields": {
+      "cases": "Two reports copied the same site observation and are not independent support.",
+      "source_lineage": "Two reports copied the same site observation and are not independent support."
+    },
+    "answers": {
+      "comparable": "yes",
+      "counterexample": "no",
+      "duplicate": "yes"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "investigate"
+  },
+  {
+    "family": "J12",
+    "subject": "The original method requires dry conditions; the proposed clause omits this condition.",
+    "fields": {
+      "clause": "The original method requires dry conditions; the proposed clause omits this condition.",
+      "source_cases": "The original method requires dry conditions; the proposed clause omits this condition."
+    },
+    "answers": {
+      "conditions": "no",
+      "uncertainty": "yes",
+      "scope": "no"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "revise"
+  },
+  {
+    "family": "J13",
+    "subject": "The recorded asset moved on a later date; the earlier location was correct at the time.",
+    "fields": {
+      "before": "The recorded asset moved on a later date; the earlier location was correct at the time.",
+      "after": "The recorded asset moved on a later date; the earlier location was correct at the time.",
+      "valid_time": "The recorded asset moved on a later date; the earlier location was correct at the time."
+    },
+    "answers": {
+      "assessment": "new_valid_time_state"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "qualify"
+  },
+  {
+    "family": "J14",
+    "subject": "Both claims refer to the same valve and date but give incompatible positions.",
+    "fields": {
+      "claims": "Both claims refer to the same valve and date but give incompatible positions.",
+      "scope_and_time": "Both claims refer to the same valve and date but give incompatible positions."
+    },
+    "answers": {
+      "assessment": "incompatible"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "investigate"
+  },
+  {
+    "family": "J15",
+    "subject": "The removed report was the only evidence for the recommended setting.",
+    "fields": {
+      "claim": "The removed report was the only evidence for the recommended setting.",
+      "remaining_evidence": "The removed report was the only evidence for the recommended setting.",
+      "source_lineage": "The removed report was the only evidence for the recommended setting."
+    },
+    "answers": {
+      "assessment": "none"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "retrieve_further"
+  },
+  {
+    "family": "J16",
+    "subject": "A revised property definition changes the meaning used by this unfinished calculation.",
+    "fields": {
+      "change": "A revised property definition changes the meaning used by this unfinished calculation.",
+      "dependency": "A revised property definition changes the meaning used by this unfinished calculation."
+    },
+    "answers": {
+      "assessment": "affected"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "investigate"
+  },
+  {
+    "family": "J17",
+    "subject": "The result meets the semantic acceptance condition, but no execution receipt is supplied.",
+    "fields": {
+      "completion_condition": "The result meets the semantic acceptance condition, but no execution receipt is supplied.",
+      "evidence": "The result meets the semantic acceptance condition, but no execution receipt is supplied."
+    },
+    "answers": {
+      "assessment": "satisfied"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "qualify"
+  },
+  {
+    "family": "J18",
+    "subject": "The brief requests compliant clearance without defining the applicable clearance rule.",
+    "fields": {
+      "brief": "The brief requests compliant clearance without defining the applicable clearance rule.",
+      "available_evidence": "The brief requests compliant clearance without defining the applicable clearance rule."
+    },
+    "answers": {
+      "definitions": "no",
+      "versions": "yes",
+      "scope": "yes",
+      "outputs": "yes",
+      "evidence": "yes"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "retrieve_further"
+  },
+  {
+    "family": "J19",
+    "subject": "The original records a counterexample and a pending check; the handoff omits both.",
+    "fields": {
+      "original": "The original records a counterexample and a pending check; the handoff omits both.",
+      "handoff": "The original records a counterexample and a pending check; the handoff omits both."
+    },
+    "answers": {
+      "conditions": "yes",
+      "uncertainty": "yes",
+      "conflicts": "no",
+      "obligations": "no",
+      "checks": "no"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "revise"
+  },
+  {
+    "family": "J20",
+    "subject": "Two children report different scopes; their findings share a single source observation.",
+    "fields": {
+      "child_findings": "Two children report different scopes; their findings share a single source observation.",
+      "source_lineage": "Two children report different scopes; their findings share a single source observation."
+    },
+    "answers": {
+      "duplicate": "yes",
+      "conflicting": "no",
+      "shared_support": "yes"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "investigate"
+  },
+  {
+    "family": "J21",
+    "subject": "The report claims every component was checked; only two of five were examined.",
+    "fields": {
+      "coverage_claims": "The report claims every component was checked; only two of five were examined.",
+      "demonstrated_work": "The report claims every component was checked; only two of five were examined."
+    },
+    "answers": {
+      "assessment": "overclaimed"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "revise"
+  },
+  {
+    "family": "J22",
+    "subject": "The table says revision D, but the conclusion describes revision C.",
+    "fields": {
+      "artifacts": "The table says revision D, but the conclusion describes revision C.",
+      "ownership": "The table says revision D, but the conclusion describes revision C."
+    },
+    "answers": {
+      "scope": "yes",
+      "findings": "no",
+      "status": "yes"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "revise"
+  },
+  {
+    "family": "J23",
+    "subject": "An instance-level query returns no ratings; the schema indicates ratings are type-level.",
+    "fields": {
+      "query": "An instance-level query returns no ratings; the schema indicates ratings are type-level.",
+      "result": "An instance-level query returns no ratings; the schema indicates ratings are type-level.",
+      "source_context": "An instance-level query returns no ratings; the schema indicates ratings are type-level."
+    },
+    "answers": {
+      "assessment": "suspicious"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "investigate"
+  },
+  {
+    "family": "J24",
+    "subject": "The same empty query is repeated without changing scope or inspecting the schema.",
+    "fields": {
+      "attempts": "The same empty query is repeated without changing scope or inspecting the schema.",
+      "current_proposal": "The same empty query is repeated without changing scope or inspecting the schema."
+    },
+    "answers": {
+      "assessment": "unchanged_failure"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "revise"
+  },
+  {
+    "family": "J25",
+    "subject": "Inspecting the type schema would distinguish missing data from an incorrect query location.",
+    "fields": {
+      "unresolved_explanation": "Inspecting the type schema would distinguish missing data from an incorrect query location.",
+      "proposed_check": "Inspecting the type schema would distinguish missing data from an incorrect query location."
+    },
+    "answers": {
+      "assessment": "discriminating"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "qualify"
+  },
+  {
+    "family": "J26",
+    "subject": "The workflow assumes every asset has a stable identifier; one source omits identifiers.",
+    "fields": {
+      "assumption": "The workflow assumes every asset has a stable identifier; one source omits identifiers.",
+      "evidence": "The workflow assumes every asset has a stable identifier; one source omits identifiers."
+    },
+    "answers": {
+      "assessment": "challenged"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "investigate"
+  },
+  {
+    "family": "J27",
+    "subject": "The user says \"Use short paragraphs in my future reports\".",
+    "fields": {
+      "contribution": "The user says \"Use short paragraphs in my future reports\".",
+      "actor_context": "The user says \"Use short paragraphs in my future reports\"."
+    },
+    "answers": {
+      "assessment": "persistent_preference"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "qualify"
+  },
+  {
+    "family": "J28",
+    "subject": "The choice depends on the user preferred audience, which no source records.",
+    "fields": {
+      "missing_information": "The choice depends on the user preferred audience, which no source records.",
+      "available_evidence": "The choice depends on the user preferred audience, which no source records."
+    },
+    "answers": {
+      "assessment": "requires_intent"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "request_input"
+  },
+  {
+    "family": "J29",
+    "subject": "The result is plausible, but the established independent verification is outstanding.",
+    "fields": {
+      "result": "The result is plausible, but the established independent verification is outstanding.",
+      "required_checks": "The result is plausible, but the established independent verification is outstanding."
+    },
+    "answers": {
+      "interpretation": "no",
+      "evidence": "no",
+      "check": "yes"
+    },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "investigate"
+  }
+]

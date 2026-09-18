@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SemanticAssessment",
+  "type": "object",
+  "properties": {
+    "answers": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/JudgementAnswer"
+      }
+    },
+    "assessed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "failure": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "model_release": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "packet_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "raw_artifact_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "requested_model": {
+      "type": "string"
+    },
+    "reservation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "returned_model": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "status": {
+      "$ref": "#/$defs/AssessmentStatus"
+    },
+    "usage": {
+      "$ref": "#/$defs/JudgementUsage"
+    }
+  },
+  "required": [
+    "id",
+    "packet_id",
+    "raw_artifact_id",
+    "reservation_id",
+    "provider",
+    "requested_model",
+    "status",
+    "answers",
+    "usage",
+    "assessed_at",
+    "expires_at"
+  ],
+  "$defs": {
+    "AssessmentStatus": {
+      "type": "string",
+      "enum": [
+        "answered",
+        "invalid_response",
+        "unavailable"
+      ]
+    },
+    "JudgementAnswer": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "choice": {
+              "type": "string"
+            },
+            "confidence": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "probabilities": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": {
+                "type": "number"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "choice"
+            }
+          },
+          "required": [
+            "type",
+            "choice"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "noul": {
+              "type": "number"
+            },
+            "type": {
+              "type": "string",
+              "const": "noul"
+            }
+          },
+          "required": [
+            "type",
+            "noul"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "confidence": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "legend": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "probabilities": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": {
+                "type": "number"
+              }
+            },
+            "score": {
+              "type": "number"
+            },
+            "type": {
+              "type": "string",
+              "const": "score"
+            }
+          },
+          "required": [
+            "type",
+            "score",
+            "legend"
+          ]
+        }
+      ]
+    },
+    "JudgementUsage": {
+      "type": "object",
+      "properties": {
+        "cost_microunits": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "input_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

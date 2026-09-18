@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1030" viewBox="0 0 1200 1030" role="img" aria-labelledby="title desc">
+<title id="title">Source revision with a scoped investigation</title><desc id="desc">A host event activates a memory-owned intention. The main task receives relevant records and gives a scoped investigation its brief and references. The host supplies selected evidence to the investigation workspace. A bounded finding and result reference return to the main task. Formation preserves experience and maintenance checks intention completion. Committed changes reach relevant open work through activation.</desc>
+<rect width="1200" height="1030" fill="white"/>
+<defs>
+<marker id="line" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#718090"/></marker>
+<marker id="green" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#176D61"/></marker>
+<marker id="blue" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#315B86"/></marker>
+<marker id="purple" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#745A93"/></marker>
+<marker id="gold" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#9A6B25"/></marker>
+<marker id="red" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#A34F4F"/></marker>
+</defs><rect x="11" y="8" width="244" height="78" rx="10" fill="#F4F6F8" stroke="#CED7DD" stroke-width="2"/>
+<text x="133" y="39" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#243447">Host runtime</text>
+<text x="133" y="65" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#586778">Events + evidence</text>
+<path d="M133,86 L133,1010" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="8 6"/>
+<rect x="313" y="8" width="244" height="78" rx="10" fill="#F4F6F8" stroke="#CED7DD" stroke-width="2"/>
+<text x="435" y="39" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#243447">Memory collection</text>
+<text x="435" y="65" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#586778">+ processes</text>
+<path d="M435,86 L435,1010" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="8 6"/>
+<rect x="638" y="8" width="244" height="78" rx="10" fill="#F4F6F8" stroke="#CED7DD" stroke-width="2"/>
+<text x="760" y="39" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#243447">Main task</text>
+<text x="760" y="65" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#586778">Agent + workspace</text>
+<path d="M760,86 L760,1010" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="8 6"/>
+<rect x="948" y="8" width="244" height="78" rx="10" fill="#F4F6F8" stroke="#CED7DD" stroke-width="2"/>
+<text x="1070" y="39" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#243447">Scoped investigation</text>
+<text x="1070" y="65" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#586778">Own workspace + context</text>
+<path d="M1070,86 L1070,1010" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="8 6"/>
+<path d="M133,132 L435,132" fill="none" stroke="#315B86" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#blue)"/>
+<text x="284.0" y="120" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">Revision D event</text>
+<text x="284.0" y="120" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#586778">Revision D event</text>
+<rect x="288.0" y="154" width="294" height="90" rx="8" fill="white" stroke="#176D61" stroke-width="2"/>
+<text x="435" y="179" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">Find intention + linked records</text>
+<text x="435" y="203" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">Check readiness + expiry</text>
+<text x="435" y="227" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">Activation records firing</text>
+<path d="M435,282 L760,282" fill="none" stroke="#315B86" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#blue)"/>
+<text x="597.5" y="270" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">Claim, playbook + intention</text>
+<text x="597.5" y="270" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#586778">Claim, playbook + intention</text>
+<rect x="620.0" y="306" width="280" height="66" rx="8" fill="white" stroke="#315B86" stroke-width="2"/>
+<text x="760" y="331" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">Render to budget; keep</text>
+<text x="760" y="355" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">IDs, versions and origins</text>
+<path d="M760,433 L1070,433" fill="none" stroke="#315B86" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#blue)"/>
+<text x="915.0" y="421" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">Work brief + references</text>
+<text x="915.0" y="421" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#586778">Work brief + references</text>
+<path d="M1070,485 L133,485" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#line)"/>
+<text x="601.5" y="473" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">Read referenced evidence; select entities and schema fields</text>
+<text x="601.5" y="473" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#586778">Read referenced evidence; select entities and schema fields</text>
+<path d="M133,538 L1070,538" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#line)"/>
+<text x="601.5" y="526" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">Selected results + source references enter the working environment</text>
+<text x="601.5" y="526" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#586778">Selected results + source references enter the working environment</text>
+<rect x="948.0" y="559" width="244" height="90" rx="8" fill="white" stroke="#176D61" stroke-width="2"/>
+<text x="1070" y="584" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">Structured comparison</text>
+<text x="1070" y="608" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">Focused model calls</text>
+<text x="1070" y="632" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">Check context gaps</text>
+<path d="M1070,710 L760,710" fill="none" stroke="#176D61" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#green)"/>
+<text x="915.0" y="674" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">Bounded finding +</text>
+<text x="915.0" y="674" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#586778">Bounded finding +</text>
+<text x="915.0" y="698" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">result reference</text>
+<text x="915.0" y="698" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#586778">result reference</text>
+<path d="M760,763 L435,763" fill="none" stroke="#176D61" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#green)"/>
+<text x="597.5" y="751" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">Cited finding + verification</text>
+<text x="597.5" y="751" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#586778">Cited finding + verification</text>
+<rect x="271.0" y="785" width="328" height="90" rx="8" fill="white" stroke="#9A6B25" stroke-width="2"/>
+<text x="435" y="810" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">Formation: retain episode</text>
+<text x="435" y="834" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">Maintenance: revise claim;</text>
+<text x="435" y="858" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">check and record completion</text>
+<path d="M435,922 L760,922" fill="none" stroke="#9A6B25" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#gold)"/>
+<text x="597.5" y="910" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">Scoped memory-change event</text>
+<text x="597.5" y="910" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#586778">Scoped memory-change event</text>
+<rect x="612.0" y="949" width="296" height="66" rx="8" fill="white" stroke="#315B86" stroke-width="2"/>
+<text x="760" y="974" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">Assess relevant open work;</text>
+<text x="760" y="998" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#243447">revalidate when required</text>
+</svg>

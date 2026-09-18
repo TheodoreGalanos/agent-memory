@@ -1,0 +1,1461 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MaintenanceResult",
+  "type": "object",
+  "properties": {
+    "changed": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/MemoryVersion"
+      }
+    },
+    "coverage": {
+      "$ref": "#/$defs/Coverage"
+    },
+    "kind": {
+      "$ref": "#/$defs/ChangeKind"
+    },
+    "notices": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/MemoryChangeNotice"
+      }
+    },
+    "preserved": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/MemoryRef"
+      }
+    },
+    "revalidation": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/MemoryRef"
+      }
+    },
+    "review_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "unresolved": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "review_id",
+    "kind",
+    "changed",
+    "preserved",
+    "notices",
+    "revalidation",
+    "unresolved",
+    "coverage"
+  ],
+  "$defs": {
+    "Availability": {
+      "type": "string",
+      "enum": [
+        "routine",
+        "historical",
+        "retired",
+        "quarantined"
+      ]
+    },
+    "Capabilities": {
+      "type": "object",
+      "properties": {
+        "queries": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          }
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "sources",
+        "queries",
+        "tools"
+      ]
+    },
+    "ChangeKind": {
+      "type": "string",
+      "enum": [
+        "wording",
+        "correction",
+        "world_change",
+        "support_removal",
+        "access",
+        "unresolved"
+      ]
+    },
+    "CommitPosition": {
+      "type": "object",
+      "properties": {
+        "recorded_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "sequence",
+        "recorded_at"
+      ]
+    },
+    "CompletionRule": {
+      "type": "object",
+      "properties": {
+        "confirmation_owner": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "delivery_grace_seconds": {
+          "description": "When set, a host-recorded job completion before expiry can be delivered within this grace.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "equals": true,
+        "required_effects": {
+          "description": "Invocation IDs within the execution job. The Host supplies the operation prefix.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "result_pointer": {
+          "type": "string"
+        },
+        "semantic_conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "result_pointer",
+        "equals",
+        "required_effects",
+        "semantic_conditions"
+      ]
+    },
+    "ConfigRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "label": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "label"
+      ]
+    },
+    "Coverage": {
+      "type": "object",
+      "properties": {
+        "examined": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unexamined": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "examined",
+        "unexamined"
+      ]
+    },
+    "EvidentialStatus": {
+      "type": "string",
+      "enum": [
+        "observation",
+        "attributed_statement",
+        "inference",
+        "assumption",
+        "simulation"
+      ]
+    },
+    "IntentionPlan": {
+      "type": "object",
+      "properties": {
+        "completion": {
+          "$ref": "#/$defs/CompletionRule"
+        },
+        "execution": {
+          "$ref": "#/$defs/WorkBrief"
+        },
+        "ready_artifacts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "ready_memories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MemoryRef"
+          }
+        },
+        "recurrence_seconds": {
+          "description": "Fixed intervals only; missed windows expire without a backlog of executions.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "trigger": {
+          "$ref": "#/$defs/IntentionTrigger"
+        }
+      },
+      "required": [
+        "trigger",
+        "execution",
+        "ready_memories",
+        "ready_artifacts",
+        "completion"
+      ]
+    },
+    "IntentionTrigger": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "kind": {
+              "type": "string",
+              "const": "time"
+            }
+          },
+          "required": [
+            "kind",
+            "at"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event_kind": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "event"
+            },
+            "resource_id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "kind",
+            "resource_id",
+            "event_kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "after_revision": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "source_revision"
+            },
+            "source_id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "kind",
+            "source_id",
+            "after_revision"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "job_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "kind": {
+              "type": "string",
+              "const": "result"
+            }
+          },
+          "required": [
+            "kind",
+            "job_id"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "definition": {
+              "$ref": "#/$defs/JudgementDefinition"
+            },
+            "kind": {
+              "type": "string",
+              "const": "semantic"
+            },
+            "matched_choice": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "definition",
+            "matched_choice"
+          ]
+        }
+      ]
+    },
+    "JudgementDefinition": {
+      "type": "object",
+      "properties": {
+        "applicability": {
+          "type": "string"
+        },
+        "evaluation_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fallback": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "input_requirements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "owner": {
+          "type": "string"
+        },
+        "permitted_uses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JudgementQuestion"
+          }
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "owner",
+        "input_requirements",
+        "questions",
+        "applicability",
+        "permitted_uses",
+        "evaluation_refs",
+        "fallback"
+      ]
+    },
+    "JudgementQuestion": {
+      "type": "object",
+      "properties": {
+        "form": {
+          "$ref": "#/$defs/QuestionForm"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "instructions",
+        "form"
+      ]
+    },
+    "MemoryChangeNotice": {
+      "type": "object",
+      "properties": {
+        "current": {
+          "$ref": "#/$defs/MemoryRef"
+        },
+        "cursor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "kind": {
+          "$ref": "#/$defs/ChangeKind"
+        },
+        "previous": {
+          "$ref": "#/$defs/MemoryRef"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "valid_time": {
+          "$ref": "#/$defs/ValidTime"
+        }
+      },
+      "required": [
+        "id",
+        "cursor",
+        "kind",
+        "previous",
+        "current",
+        "scope",
+        "valid_time",
+        "reason"
+      ]
+    },
+    "MemoryContent": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "actions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "corrections": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "family": {
+              "type": "string",
+              "const": "episode"
+            },
+            "initial_conditions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "objective": {
+              "type": "string"
+            },
+            "observations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "outcome": {
+              "type": "string"
+            },
+            "uncertainty": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "verification": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "family",
+            "objective",
+            "initial_conditions",
+            "observations",
+            "actions",
+            "corrections",
+            "outcome",
+            "verification",
+            "uncertainty"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "examined_coverage": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "family": {
+              "type": "string",
+              "const": "knowledge"
+            },
+            "predicate": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "statement": {
+              "type": "string"
+            },
+            "subject": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            },
+            "uncertainty": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "family",
+            "statement",
+            "uncertainty",
+            "examined_coverage"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "applicability": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "capabilities": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "contract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ProcedureContract"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "counterexamples": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/MemoryRef"
+              }
+            },
+            "exclusions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "family": {
+              "type": "string",
+              "const": "procedure"
+            },
+            "method": {
+              "$ref": "#/$defs/ProcedureForm"
+            },
+            "purpose": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "family",
+            "purpose",
+            "capabilities",
+            "applicability",
+            "exclusions",
+            "method",
+            "counterexamples"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "completion": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "expires_at": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            },
+            "family": {
+              "type": "string",
+              "const": "intention"
+            },
+            "notification_policy": {
+              "type": "string"
+            },
+            "owner_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "plan": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntentionPlan"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "purpose": {
+              "type": "string"
+            },
+            "readiness": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "recurrence": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "trigger": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "family",
+            "purpose",
+            "owner_id",
+            "trigger",
+            "readiness",
+            "completion",
+            "notification_policy"
+          ]
+        }
+      ]
+    },
+    "MemoryRef": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "memory_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "revision": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        }
+      },
+      "required": [
+        "memory_id",
+        "revision",
+        "label"
+      ]
+    },
+    "MemoryVersion": {
+      "type": "object",
+      "properties": {
+        "created_by": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "decision_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "record": {
+          "$ref": "#/$defs/RecordDraft"
+        },
+        "recorded": {
+          "$ref": "#/$defs/CommitPosition"
+        },
+        "recorded_until": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "reference": {
+          "$ref": "#/$defs/MemoryRef"
+        },
+        "version_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "reference",
+        "version_id",
+        "created_by",
+        "recorded",
+        "decision_id",
+        "record"
+      ]
+    },
+    "Origin": {
+      "type": "string",
+      "enum": [
+        "observed",
+        "activated",
+        "agent_generated"
+      ]
+    },
+    "PolicyAction": {
+      "type": "string",
+      "enum": [
+        "retain",
+        "qualify",
+        "retrieve_further",
+        "investigate",
+        "revise",
+        "defer",
+        "retire",
+        "request_input"
+      ]
+    },
+    "PolicyDecision": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/PolicyAction"
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expires_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "policy": {
+          "$ref": "#/$defs/ConfigRef"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "required_evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "policy",
+        "action",
+        "reason",
+        "constraints",
+        "required_evidence"
+      ]
+    },
+    "ProcedureContract": {
+      "type": "object",
+      "properties": {
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "decision_points": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "recognition": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecognitionCriterion"
+          }
+        },
+        "replay_class": {
+          "$ref": "#/$defs/ReplayClass"
+        },
+        "stopping_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "parameters",
+        "effects",
+        "replay_class",
+        "decision_points",
+        "stopping_criteria",
+        "checks",
+        "recognition"
+      ]
+    },
+    "ProcedureForm": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "evidence_criteria": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "form": {
+              "type": "string",
+              "const": "advisory"
+            },
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "form",
+            "steps",
+            "evidence_criteria"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "artifact_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "entrypoint": {
+              "type": "string"
+            },
+            "form": {
+              "type": "string",
+              "const": "executable"
+            },
+            "inputs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "outputs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "form",
+            "artifact_id",
+            "entrypoint",
+            "inputs",
+            "outputs"
+          ]
+        }
+      ]
+    },
+    "Process": {
+      "type": "string",
+      "enum": [
+        "formation",
+        "activation",
+        "consolidation",
+        "maintenance",
+        "investigation",
+        "evaluation"
+      ]
+    },
+    "Qualification": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "const": "candidate"
+            }
+          },
+          "required": [
+            "status"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "conditions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "evaluation_artifact": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            },
+            "evaluator_profile": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ConfigRef"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "evidence": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/MemoryRef"
+              }
+            },
+            "status": {
+              "type": "string",
+              "const": "evaluated"
+            }
+          },
+          "required": [
+            "status",
+            "conditions",
+            "evidence"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "const": "withdrawn"
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ]
+        }
+      ]
+    },
+    "QuestionForm": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "criteria": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "choice"
+            }
+          },
+          "required": [
+            "type",
+            "criteria"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "criteria": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "noul"
+            }
+          },
+          "required": [
+            "type",
+            "criteria"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "criteria": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "score"
+            }
+          },
+          "required": [
+            "type",
+            "criteria"
+          ]
+        }
+      ]
+    },
+    "RecognitionCriterion": {
+      "type": "object",
+      "properties": {
+        "definition": {
+          "$ref": "#/$defs/JudgementDefinition"
+        },
+        "model": {
+          "type": "string"
+        },
+        "model_release": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/ConfigRef"
+        }
+      },
+      "required": [
+        "definition",
+        "model",
+        "model_release",
+        "policy"
+      ]
+    },
+    "RecordDraft": {
+      "type": "object",
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/Availability"
+        },
+        "content": {
+          "$ref": "#/$defs/MemoryContent"
+        },
+        "decision": {
+          "$ref": "#/$defs/PolicyDecision"
+        },
+        "derived_from": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MemoryRef"
+          }
+        },
+        "evidential_status": {
+          "$ref": "#/$defs/EvidentialStatus"
+        },
+        "label": {
+          "type": "string"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "qualification": {
+          "$ref": "#/$defs/Qualification"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "source_locators": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "valid_time": {
+          "$ref": "#/$defs/ValidTime"
+        }
+      },
+      "required": [
+        "label",
+        "scope",
+        "content",
+        "origin",
+        "evidential_status",
+        "availability",
+        "qualification",
+        "valid_time",
+        "source_locators",
+        "derived_from",
+        "decision"
+      ]
+    },
+    "ReplayClass": {
+      "type": "string",
+      "enum": [
+        "observation",
+        "remote_idempotent",
+        "reconcile"
+      ]
+    },
+    "Scope": {
+      "description": "Absent dimensions are unrestricted. An assigned restriction cannot be removed\nby leaving that dimension out of a request. Tenant is checked separately.",
+      "type": "object",
+      "properties": {
+        "entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "project_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "source_versions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          }
+        },
+        "task_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "entity_ids",
+        "source_versions"
+      ]
+    },
+    "SourceRef": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "string"
+        },
+        "source_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "source_id",
+        "revision"
+      ]
+    },
+    "ValidTime": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "unknown"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            },
+            "kind": {
+              "type": "string",
+              "const": "interval"
+            },
+            "to": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        }
+      ]
+    },
+    "WireVersion": {
+      "type": "string",
+      "enum": [
+        "1"
+      ]
+    },
+    "WorkBrief": {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "$ref": "#/$defs/Capabilities"
+        },
+        "definitions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "disclosure_policy": {
+          "type": "string"
+        },
+        "evidence_cutoff": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "frame_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "freshness_requirement": {
+          "type": "string"
+        },
+        "inputs": {
+          "$ref": "#/$defs/WorkInputs"
+        },
+        "known_conflicts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limits": {
+          "$ref": "#/$defs/WorkLimits"
+        },
+        "output_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "policy": {
+          "$ref": "#/$defs/ConfigRef"
+        },
+        "process": {
+          "$ref": "#/$defs/Process"
+        },
+        "profile": {
+          "$ref": "#/$defs/ConfigRef"
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "retention_policy": {
+          "type": "string"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/WireVersion"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "task_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "schema_version",
+        "purpose",
+        "process",
+        "task_id",
+        "definitions",
+        "scope",
+        "inputs",
+        "capabilities",
+        "known_conflicts",
+        "evidence_cutoff",
+        "freshness_requirement",
+        "output_criteria",
+        "limits",
+        "policy",
+        "profile",
+        "retention_policy",
+        "disclosure_policy"
+      ]
+    },
+    "WorkInputs": {
+      "type": "object",
+      "properties": {
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "memories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MemoryRef"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          }
+        }
+      },
+      "required": [
+        "sources",
+        "memories",
+        "artifacts"
+      ]
+    },
+    "WorkLimits": {
+      "type": "object",
+      "properties": {
+        "max_child_concurrency": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "max_child_depth": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "max_output_bytes": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        },
+        "max_provider_attempts": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        },
+        "max_tokens": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        },
+        "root_budget_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "root_budget_id",
+        "max_provider_attempts",
+        "max_tokens",
+        "max_output_bytes",
+        "max_child_depth",
+        "max_child_concurrency"
+      ]
+    }
+  }
+}

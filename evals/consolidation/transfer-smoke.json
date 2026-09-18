@@ -1,0 +1,21 @@
+{
+  "profile": "authored scripted qualification with real Host, Pi and local Python interpreter",
+  "advisory": {
+    "episodes": 1,
+    "procedure": 1,
+    "summary": 0.5
+  },
+  "executable": {
+    "episodes": 1,
+    "procedure": 1,
+    "summary": 0.5
+  },
+  "failedCandidate": {
+    "episodes": 1,
+    "procedure": 0,
+    "summary": 0.5
+  },
+  "sourceGroups": 2,
+  "cohortCases": 3,
+  "limitation": "Functional transfer fixture; no live synthesis/judgement model or production sandbox qualification"
+}

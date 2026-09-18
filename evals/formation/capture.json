@@ -1,0 +1,526 @@
+{
+  "schema_version": "memory-tool-events/1",
+  "events": [
+    {
+      "event_id": "instance-empty",
+      "observed_at": "2026-09-17T00:01:00Z",
+      "kind": "capture",
+      "origin": "observed",
+      "evidential_status": "observation",
+      "content": {
+        "episode": "property-location",
+        "objective": "Locate fire resistance for W-101",
+        "conditions": [
+          "Source revision C"
+        ],
+        "boundary_explicit": true,
+        "retention": "required",
+        "explicitly_selected": false,
+        "explicit_contribution": false,
+        "actor_id": null,
+        "content": {
+          "family": "knowledge",
+          "statement": "The instance query for W-101 returned no fire-resistance value.",
+          "subject": null,
+          "predicate": null,
+          "uncertainty": [],
+          "examined_coverage": []
+        },
+        "evidence": {
+          "query": "W-101 instance FireResistance",
+          "rows": []
+        },
+        "source_locators": [],
+        "corrects": [],
+        "uncertainty": [],
+        "coverage": {
+          "examined": [],
+          "unexamined": []
+        },
+        "based_on": []
+      }
+    },
+    {
+      "event_id": "possibly-absent",
+      "observed_at": "2026-09-17T00:01:00Z",
+      "kind": "capture",
+      "origin": "agent_generated",
+      "evidential_status": "inference",
+      "content": {
+        "episode": "property-location",
+        "objective": "Locate fire resistance for W-101",
+        "conditions": [
+          "Source revision C"
+        ],
+        "boundary_explicit": true,
+        "retention": "required",
+        "explicitly_selected": false,
+        "explicit_contribution": false,
+        "actor_id": null,
+        "content": {
+          "family": "knowledge",
+          "statement": "The property may be absent, but its type-level location has not been examined.",
+          "subject": null,
+          "predicate": null,
+          "uncertainty": [],
+          "examined_coverage": []
+        },
+        "evidence": {
+          "instance_rows": [],
+          "type_properties_examined": false
+        },
+        "source_locators": [],
+        "corrects": [],
+        "uncertainty": [],
+        "coverage": {
+          "examined": [
+            "instance query"
+          ],
+          "unexamined": [
+            "type properties"
+          ]
+        },
+        "based_on": []
+      }
+    },
+    {
+      "event_id": "type-property",
+      "observed_at": "2026-09-17T00:01:00Z",
+      "kind": "capture",
+      "origin": "observed",
+      "evidential_status": "observation",
+      "content": {
+        "episode": "property-location",
+        "objective": "Locate fire resistance for W-101",
+        "conditions": [
+          "Source revision C"
+        ],
+        "boundary_explicit": false,
+        "retention": "required",
+        "explicitly_selected": false,
+        "explicit_contribution": false,
+        "actor_id": null,
+        "content": {
+          "family": "knowledge",
+          "statement": "FireResistance is 120 min on type WT-12, linked to W-101.",
+          "subject": null,
+          "predicate": null,
+          "uncertainty": [],
+          "examined_coverage": []
+        },
+        "evidence": {
+          "instance_id": "W-101",
+          "type_id": "WT-12",
+          "FireResistance": "120 min"
+        },
+        "source_locators": [],
+        "corrects": [
+          "possibly-absent"
+        ],
+        "uncertainty": [],
+        "coverage": {
+          "examined": [],
+          "unexamined": []
+        },
+        "based_on": []
+      }
+    },
+    {
+      "event_id": "method",
+      "observed_at": "2026-09-17T00:01:00Z",
+      "kind": "capture",
+      "origin": "agent_generated",
+      "evidential_status": "inference",
+      "content": {
+        "episode": "property-location",
+        "objective": "Locate fire resistance for W-101",
+        "conditions": [
+          "Source revision C"
+        ],
+        "boundary_explicit": true,
+        "retention": "required",
+        "explicitly_selected": false,
+        "explicit_contribution": false,
+        "actor_id": null,
+        "content": {
+          "family": "procedure",
+          "purpose": "Locate a property in this model",
+          "capabilities": [
+            "model.read"
+          ],
+          "applicability": [
+            "Instance query is empty; instance has a type"
+          ],
+          "exclusions": [
+            "No type link"
+          ],
+          "method": {
+            "form": "advisory",
+            "steps": [
+              "Inspect type ID",
+              "Read the property on the type"
+            ],
+            "evidence_criteria": [
+              "Retain instance and type query results"
+            ]
+          },
+          "counterexamples": []
+        },
+        "evidence": {
+          "instance_query": [],
+          "type_query": {
+            "FireResistance": "120 min"
+          }
+        },
+        "source_locators": [],
+        "corrects": [],
+        "uncertainty": [],
+        "coverage": {
+          "examined": [],
+          "unexamined": []
+        },
+        "based_on": []
+      }
+    },
+    {
+      "event_id": "preference",
+      "observed_at": "2026-09-17T00:01:00Z",
+      "kind": "capture",
+      "origin": "observed",
+      "evidential_status": "attributed_statement",
+      "content": {
+        "episode": "property-location",
+        "objective": "Locate fire resistance for W-101",
+        "conditions": [
+          "Source revision C"
+        ],
+        "boundary_explicit": true,
+        "retention": "required",
+        "explicitly_selected": false,
+        "explicit_contribution": true,
+        "actor_id": "00000000-0000-0000-0000-000000000001",
+        "content": {
+          "family": "knowledge",
+          "statement": "For my own reports, use short answers.",
+          "subject": null,
+          "predicate": null,
+          "uncertainty": [],
+          "examined_coverage": []
+        },
+        "evidence": {
+          "speaker": "user",
+          "text": "For my own reports, use short answers."
+        },
+        "source_locators": [],
+        "corrects": [],
+        "uncertainty": [],
+        "coverage": {
+          "examined": [],
+          "unexamined": []
+        },
+        "based_on": []
+      }
+    },
+    {
+      "event_id": "intention",
+      "observed_at": "2026-09-17T00:01:00Z",
+      "kind": "capture",
+      "origin": "observed",
+      "evidential_status": "attributed_statement",
+      "content": {
+        "episode": "property-location",
+        "objective": "Locate fire resistance for W-101",
+        "conditions": [
+          "Source revision C"
+        ],
+        "boundary_explicit": true,
+        "retention": "required",
+        "explicitly_selected": false,
+        "explicit_contribution": true,
+        "actor_id": "00000000-0000-0000-0000-000000000001",
+        "content": {
+          "family": "intention",
+          "purpose": "Check the next model revision",
+          "owner_id": "00000000-0000-0000-0000-000000000001",
+          "trigger": "A new model revision arrives",
+          "readiness": [
+            "Source is accessible"
+          ],
+          "completion": [
+            "Property location verified"
+          ],
+          "expires_at": null,
+          "notification_policy": "report changes",
+          "recurrence": null
+        },
+        "evidence": {
+          "speaker": "user",
+          "text": "Please check the next model revision when it arrives."
+        },
+        "source_locators": [],
+        "corrects": [],
+        "uncertainty": [],
+        "coverage": {
+          "examined": [],
+          "unexamined": []
+        },
+        "based_on": []
+      }
+    },
+    {
+      "event_id": "episode",
+      "observed_at": "2026-09-17T00:01:00Z",
+      "kind": "capture",
+      "origin": "agent_generated",
+      "evidential_status": "inference",
+      "content": {
+        "episode": "property-location",
+        "objective": "Locate fire resistance for W-101",
+        "conditions": [
+          "Source revision C"
+        ],
+        "boundary_explicit": true,
+        "retention": "required",
+        "explicitly_selected": false,
+        "explicit_contribution": false,
+        "actor_id": null,
+        "content": {
+          "family": "episode",
+          "objective": "Locate fire resistance for W-101",
+          "initial_conditions": [
+            "Source C; property location unknown"
+          ],
+          "observations": [
+            "Instance query empty",
+            "Type WT-12 holds FireResistance=120 min"
+          ],
+          "actions": [
+            "Query instance",
+            "Inspect schema",
+            "Query type"
+          ],
+          "corrections": [
+            "Initial possible absence was revised after the type query"
+          ],
+          "outcome": "Property found on linked type",
+          "verification": [
+            "Instance-to-type link and type property inspected"
+          ],
+          "uncertainty": [
+            "Applicability to future revisions is untested"
+          ]
+        },
+        "evidence": {
+          "sequence": [
+            "instance query empty",
+            "possible absence inferred",
+            "type WT-12 found",
+            "type FireResistance=120 min"
+          ]
+        },
+        "source_locators": [],
+        "corrects": [],
+        "uncertainty": [],
+        "coverage": {
+          "examined": [],
+          "unexamined": []
+        },
+        "based_on": [
+          "instance-empty",
+          "possibly-absent",
+          "type-property"
+        ]
+      }
+    },
+    {
+      "event_id": "scratch",
+      "observed_at": "2026-09-17T00:01:00Z",
+      "kind": "capture",
+      "origin": "agent_generated",
+      "evidential_status": "inference",
+      "content": {
+        "episode": "property-location",
+        "objective": "Locate fire resistance for W-101",
+        "conditions": [
+          "Source revision C"
+        ],
+        "boundary_explicit": true,
+        "retention": "temporary",
+        "explicitly_selected": false,
+        "explicit_contribution": false,
+        "actor_id": null,
+        "content": {
+          "family": "knowledge",
+          "statement": "Discard this scratch idea.",
+          "subject": null,
+          "predicate": null,
+          "uncertainty": [],
+          "examined_coverage": []
+        },
+        "evidence": {
+          "statement": "Discard this scratch idea."
+        },
+        "source_locators": [],
+        "corrects": [],
+        "uncertainty": [],
+        "coverage": {
+          "examined": [],
+          "unexamined": []
+        },
+        "based_on": []
+      }
+    },
+    {
+      "event_id": "selected-hypothesis",
+      "observed_at": "2026-09-17T00:01:00Z",
+      "kind": "capture",
+      "origin": "agent_generated",
+      "evidential_status": "simulation",
+      "content": {
+        "episode": "property-location",
+        "objective": "Locate fire resistance for W-101",
+        "conditions": [
+          "Source revision C"
+        ],
+        "boundary_explicit": true,
+        "retention": "temporary",
+        "explicitly_selected": true,
+        "explicit_contribution": false,
+        "actor_id": null,
+        "content": {
+          "family": "knowledge",
+          "statement": "Hypothetically, the property is absent in revision Z.",
+          "subject": null,
+          "predicate": null,
+          "uncertainty": [],
+          "examined_coverage": []
+        },
+        "evidence": {
+          "statement": "Hypothetically, the property is absent in revision Z."
+        },
+        "source_locators": [],
+        "corrects": [],
+        "uncertainty": [],
+        "coverage": {
+          "examined": [],
+          "unexamined": []
+        },
+        "based_on": []
+      }
+    },
+    {
+      "event_id": "unselected-hypothesis",
+      "observed_at": "2026-09-17T00:01:00Z",
+      "kind": "capture",
+      "origin": "agent_generated",
+      "evidential_status": "simulation",
+      "content": {
+        "episode": "property-location",
+        "objective": "Locate fire resistance for W-101",
+        "conditions": [
+          "Source revision C"
+        ],
+        "boundary_explicit": true,
+        "retention": "required",
+        "explicitly_selected": false,
+        "explicit_contribution": false,
+        "actor_id": null,
+        "content": {
+          "family": "knowledge",
+          "statement": "An unselected fictional example.",
+          "subject": null,
+          "predicate": null,
+          "uncertainty": [],
+          "examined_coverage": []
+        },
+        "evidence": {
+          "statement": "An unselected fictional example."
+        },
+        "source_locators": [],
+        "corrects": [],
+        "uncertainty": [],
+        "coverage": {
+          "examined": [],
+          "unexamined": []
+        },
+        "based_on": []
+      }
+    },
+    {
+      "event_id": "unsupported",
+      "observed_at": "2026-09-17T00:01:00Z",
+      "kind": "capture",
+      "origin": "agent_generated",
+      "evidential_status": "inference",
+      "content": {
+        "episode": "property-location",
+        "objective": "Locate fire resistance for W-101",
+        "conditions": [
+          "Source revision C"
+        ],
+        "boundary_explicit": true,
+        "retention": "required",
+        "explicitly_selected": false,
+        "explicit_contribution": false,
+        "actor_id": null,
+        "content": {
+          "family": "knowledge",
+          "statement": "All walls have this fire resistance.",
+          "subject": null,
+          "predicate": null,
+          "uncertainty": [],
+          "examined_coverage": []
+        },
+        "evidence": {
+          "examined": "W-101 only"
+        },
+        "source_locators": [],
+        "corrects": [],
+        "uncertainty": [],
+        "coverage": {
+          "examined": [],
+          "unexamined": []
+        },
+        "based_on": []
+      }
+    },
+    {
+      "event_id": "future",
+      "observed_at": "2030-01-01T00:00:00Z",
+      "kind": "capture",
+      "origin": "observed",
+      "evidential_status": "observation",
+      "content": {
+        "episode": "property-location",
+        "objective": "Locate fire resistance for W-101",
+        "conditions": [
+          "Source revision C"
+        ],
+        "boundary_explicit": true,
+        "retention": "required",
+        "explicitly_selected": false,
+        "explicit_contribution": false,
+        "actor_id": null,
+        "content": {
+          "family": "knowledge",
+          "statement": "Future evidence.",
+          "subject": null,
+          "predicate": null,
+          "uncertainty": [],
+          "examined_coverage": []
+        },
+        "evidence": {
+          "statement": "Future evidence."
+        },
+        "source_locators": [],
+        "corrects": [],
+        "uncertainty": [],
+        "coverage": {
+          "examined": [],
+          "unexamined": []
+        },
+        "based_on": []
+      }
+    }
+  ]
+}

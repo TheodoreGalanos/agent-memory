@@ -1,0 +1,41 @@
+# OS and editors
+.DS_Store
+.vscode/
+.idea/
+
+# Build outputs and dependencies (restored by npm run setup / cargo build)
+.upstream/
+node_modules/
+target/
+dist/
+*.tsbuildinfo
+__pycache__/
+.ruff_cache/
+.venv-harbor/
+
+# Secrets and private local configuration — never commit
+.env
+.env.*
+!.env.example
+.runtime/
+deploy/secrets/
+deploy/host.json
+deploy/worker.json
+
+# Local instances created by `npm run memory -- init` and their backups
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite.owner
+*.sqlite.worker.json
+host.json
+client.json
+admin.json
+worker.json
+worker-*.json
+
+# Personal notes
+journal/

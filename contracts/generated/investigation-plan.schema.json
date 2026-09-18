@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "InvestigationPlan",
+  "type": "object",
+  "properties": {
+    "definitions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/DefinitionLookup"
+      }
+    },
+    "interpretation_conditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "method": {
+      "$ref": "#/$defs/ConfigRef"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/InvestigationStep"
+      }
+    }
+  },
+  "required": [
+    "method",
+    "interpretation_conditions",
+    "definitions",
+    "steps"
+  ],
+  "$defs": {
+    "ConfigRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "label": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "label"
+      ]
+    },
+    "DefinitionLookup": {
+      "type": "object",
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "pointer": {
+          "description": "RFC 6901 pointer into an assigned JSON artifact.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "artifact_id",
+        "pointer"
+      ]
+    },
+    "InvestigationStep": {
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "$ref": "#/$defs/WorkInputs"
+        },
+        "key": {
+          "type": "string"
+        },
+        "output_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "question": {
+          "type": "string"
+        },
+        "reuse_job_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "key",
+        "question",
+        "inputs",
+        "output_criteria",
+        "tools"
+      ]
+    },
+    "MemoryRef": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "memory_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "revision": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        }
+      },
+      "required": [
+        "memory_id",
+        "revision",
+        "label"
+      ]
+    },
+    "SourceRef": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "string"
+        },
+        "source_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "source_id",
+        "revision"
+      ]
+    },
+    "WorkInputs": {
+      "type": "object",
+      "properties": {
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "memories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MemoryRef"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          }
+        }
+      },
+      "required": [
+        "sources",
+        "memories",
+        "artifacts"
+      ]
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "pi": {
+    "repository": "earendil-works/pi",
+    "commit": "e4c75a73222ae2c72abb5f5314fa35ee8effc508",
+    "package_version": "0.85.1",
+    "packages": [
+      "chord",
+      "pi-telemetry",
+      "pi-ai",
+      "pi-agent-core",
+      "pi-session-backend-sqlite-node"
+    ],
+    "license": "MIT",
+    "session_format": 4,
+    "node_minimum": "22.19.0",
+    "hook_failure_policy": "Most context/request/payload hook exceptions are reported without stopping execution. The worker guards streamSimple, streamDeferred and onPayload after hook aggregation."
+  },
+  "harbor": {
+    "repository": "kobe0938/harbor",
+    "commit": "dd4784b1ade1f446399e194f6dffd15142a77b98",
+    "package_version": "0.22.0",
+    "license": "Apache-2.0",
+    "python_minimum": "3.12",
+    "qualification": "Installed in Python 3.13.2; complete host/Harbor/Pi/ASP/artifact/deletion integration passed on Docker 29.5.2 and the bounded Daytona profile (SDK 0.214.0, API v0.214.3)."
+  },
+  "asp": {
+    "rfc": "https://github.com/harbor-framework/harbor/pull/3023",
+    "reference_repository": "kobe0938/harbor",
+    "reference_commit": "8ee7f0188b4c55aeca47d90b430da24bbbdbda89",
+    "schema_path": "asp/asp.schema.json",
+    "version": "0",
+    "transport": "ssh",
+    "qualification": "Real OpenSSH plus Docker and Daytona integrations passed: files, bounded output, cancellation, endpoint renewal/expiry, protected control files and artifact publication. Cloud profile uses a separately approved pinned gateway key."
+  },
+  "model": {
+    "provider": "faux",
+    "model_id": "faux-1",
+    "implementation": "Pi fauxProvider at the pinned Pi revision, used only in tests",
+    "live_provider": null
+  },
+  "domain_storage": {
+    "sqlx": "0.8.6",
+    "object_store": "0.14.2",
+    "postgres_installed": "14.17",
+    "sqlite_qualification": "Repository, temporal, relation, source, artifact and migration tests passed",
+    "postgres_qualification": "Shared repository, migration and coordinator suites passed on disposable PostgreSQL 14.17",
+    "object_store_qualification": "Durable local filesystem backend tested; cloud backend unqualified"
+  },
+  "host": {
+    "axum": "0.8.9",
+    "qualification": "Authenticated loopback HTTP and real Pi worker result publication tested"
+  },
+  "pi_session_storage": {
+    "local": "Pinned SQLite backend with kernel ownership lock; reopen, backup and process-death tests passed",
+    "postgres": "pg 8.23.0; pi_sessions schema; 56 storage/repository/fork/ownership/workspace checks passed",
+    "sqlite_storage_schema": 1
+  }
+}

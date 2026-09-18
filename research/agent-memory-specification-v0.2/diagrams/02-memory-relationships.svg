@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+<title id="title">Connected memory</title><desc id="desc">An episode supports a claim and is the derivation source for a procedure. A procedure depends on knowledge. Conflicting claims link symmetrically. An event triggers an investigation intention.</desc>
+<rect width="1200" height="500" fill="white"/>
+<defs>
+<marker id="line" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#718090"/></marker>
+<marker id="green" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#176D61"/></marker>
+<marker id="blue" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#315B86"/></marker>
+<marker id="purple" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#745A93"/></marker>
+<marker id="gold" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#9A6B25"/></marker>
+<marker id="red" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#A34F4F"/></marker>
+</defs>
+<rect x="25" y="180" width="250" height="110" rx="12" fill="#EAF4EF" stroke="#176D61" stroke-width="2"/>
+<text x="43" y="213.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#176D61">Episode</text>
+<text x="43" y="244.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">Query, correction</text>
+<text x="43" y="270.84" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">and observed result</text>
+<rect x="430" y="20" width="280" height="110" rx="12" fill="#EAF4EF" stroke="#176D61" stroke-width="2"/>
+<text x="448" y="53.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#176D61">Claim A</text>
+<text x="448" y="84.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">Current interpretation</text>
+<text x="448" y="110.84" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">with source support</text>
+<rect x="900" y="20" width="275" height="110" rx="12" fill="#EAF4EF" stroke="#315B86" stroke-width="2"/>
+<text x="918" y="53.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#315B86">Claim B</text>
+<text x="918" y="84.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="start" fill="#243447">Competing interpretation</text>
+<text x="918" y="108.4" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="start" fill="#243447">with source support</text>
+<rect x="430" y="310" width="280" height="110" rx="12" fill="#EAF4EF" stroke="#745A93" stroke-width="2"/>
+<text x="448" y="343.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#745A93">Procedure</text>
+<text x="448" y="374.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">Executable skill or</text>
+<text x="448" y="400.84" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">advisory playbook</text>
+<rect x="900" y="310" width="275" height="110" rx="12" fill="#EAF4EF" stroke="#9A6B25" stroke-width="2"/>
+<text x="918" y="343.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#9A6B25">Intention</text>
+<text x="918" y="374.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">Investigate the</text>
+<text x="918" y="400.84" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">disagreement</text>
+<path d="M275,215 L335,215 L335,75 L430,75" fill="none" stroke="#176D61" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#green)"/>
+<text x="337" y="156.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">supports</text>
+<text x="337" y="156.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#586778">supports</text>
+<path d="M710,75 L900,75" fill="none" stroke="#A34F4F" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#red)" marker-start="url(#red)"/>
+<text x="805" y="49.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">conflicts with</text>
+<text x="805" y="49.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#A34F4F">conflicts with</text>
+<path d="M570,310 L570,130" fill="none" stroke="#745A93" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#purple)"/>
+<text x="575" y="222.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">depends on</text>
+<text x="575" y="222.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#745A93">depends on</text>
+<path d="M430,368 L180,368 L180,290" fill="none" stroke="#745A93" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#purple)"/>
+<text x="270" y="347.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">derived from</text>
+<text x="270" y="347.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#745A93">derived from</text>
+<path d="M1038,310 L1038,130" fill="none" stroke="#9A6B25" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#gold)"/>
+<text x="1038" y="220.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">depends on</text>
+<text x="1038" y="220.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#9A6B25">depends on</text>
+<text x="775" y="470.0" font-family="Lato, Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start" fill="#315B86">Event / cue</text>
+<path d="M920,465 L1038,465 L1038,420" fill="none" stroke="#315B86" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#blue)"/>
+<text x="1118" y="469.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">triggers</text>
+<text x="1118" y="469.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#315B86">triggers</text>
+<text x="28" y="459.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="start" fill="#586778">Each link carries its basis, scope and temporal history.</text>
+</svg>

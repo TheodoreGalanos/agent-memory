@@ -1,0 +1,51 @@
+{
+  "document_version": "1.0",
+  "checked_on": "2026-09-17",
+  "kind": "implementation-design-source-manifest",
+  "source_basis": {
+    "file": "specification.md",
+    "lines": 966,
+    "words": 14188,
+    "authority": "attached final conceptual specification"
+  },
+  "pi": {
+    "repository": "earendil-works/pi",
+    "commit": "e4c75a73222ae2c72abb5f5314fa35ee8effc508",
+    "package_installation_tested": false,
+    "integration_tested": false,
+    "paths": [
+      "packages/agent/src/harness/agent-harness.ts",
+      "packages/agent/docs/harness.md",
+      "packages/agent/docs/post-wp05-roadmap.md",
+      "packages/agent/src/harness/types.ts",
+      "packages/agent/README.md"
+    ]
+  },
+  "asp": {
+    "repository": "harbor-framework/harbor",
+    "pull_request": 3023,
+    "state_at_review": "open-unmerged",
+    "head_repository": "kobe0938/harbor",
+    "head_commit": "dd4784b1ade1f446399e194f6dffd15142a77b98",
+    "contract": "ASP v0 SSH",
+    "integration_tested": false
+  },
+  "providers": {
+    "generative_model": "selected-and-pinned-during-WP01",
+    "jev": {
+      "documentation": "https://docs.typesafe.ai/api",
+      "live_requests_performed": false
+    },
+    "sandbox_profiles": [
+      "Harbor/Docker",
+      "Harbor/qualified SSH-capable managed provider; Daytona qualification target"
+    ]
+  },
+  "coverage": {
+    "mapped_source_sections": 104,
+    "work_packages": 16,
+    "test_suites": 15,
+    "judgement_families": 29
+  },
+  "implementation_status": "design only; compile, conformance and workload evidence are required deliverables, not reported results"
+}

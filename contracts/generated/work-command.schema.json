@@ -1,0 +1,407 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Command",
+  "type": "object",
+  "properties": {
+    "actor_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "budget_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "command_version": {
+      "$ref": "#/$defs/WireVersion"
+    },
+    "deadline": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expected_revisions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/MemoryRef"
+      }
+    },
+    "invocation_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "job_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid"
+    },
+    "lane_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "lease_epoch": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "maximum": 4294967295,
+      "minimum": 1
+    },
+    "operation_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "payload": {
+      "$ref": "#/$defs/WorkBrief"
+    },
+    "request_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "scope": {
+      "$ref": "#/$defs/Scope"
+    },
+    "session_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tenant_id": {
+      "type": "string",
+      "format": "uuid"
+    }
+  },
+  "required": [
+    "request_id",
+    "command_version",
+    "tenant_id",
+    "actor_id",
+    "scope",
+    "expected_revisions",
+    "deadline",
+    "budget_id",
+    "payload"
+  ],
+  "$defs": {
+    "Capabilities": {
+      "type": "object",
+      "properties": {
+        "queries": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          }
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "sources",
+        "queries",
+        "tools"
+      ]
+    },
+    "ConfigRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "label": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "label"
+      ]
+    },
+    "MemoryRef": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "memory_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "revision": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        }
+      },
+      "required": [
+        "memory_id",
+        "revision",
+        "label"
+      ]
+    },
+    "Process": {
+      "type": "string",
+      "enum": [
+        "formation",
+        "activation",
+        "consolidation",
+        "maintenance",
+        "investigation",
+        "evaluation"
+      ]
+    },
+    "Scope": {
+      "description": "Absent dimensions are unrestricted. An assigned restriction cannot be removed\nby leaving that dimension out of a request. Tenant is checked separately.",
+      "type": "object",
+      "properties": {
+        "entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "project_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "source_versions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          }
+        },
+        "task_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "entity_ids",
+        "source_versions"
+      ]
+    },
+    "SourceRef": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "string"
+        },
+        "source_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "source_id",
+        "revision"
+      ]
+    },
+    "WireVersion": {
+      "type": "string",
+      "enum": [
+        "1"
+      ]
+    },
+    "WorkBrief": {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "$ref": "#/$defs/Capabilities"
+        },
+        "definitions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "disclosure_policy": {
+          "type": "string"
+        },
+        "evidence_cutoff": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "frame_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "freshness_requirement": {
+          "type": "string"
+        },
+        "inputs": {
+          "$ref": "#/$defs/WorkInputs"
+        },
+        "known_conflicts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limits": {
+          "$ref": "#/$defs/WorkLimits"
+        },
+        "output_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "policy": {
+          "$ref": "#/$defs/ConfigRef"
+        },
+        "process": {
+          "$ref": "#/$defs/Process"
+        },
+        "profile": {
+          "$ref": "#/$defs/ConfigRef"
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "retention_policy": {
+          "type": "string"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/WireVersion"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "task_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "schema_version",
+        "purpose",
+        "process",
+        "task_id",
+        "definitions",
+        "scope",
+        "inputs",
+        "capabilities",
+        "known_conflicts",
+        "evidence_cutoff",
+        "freshness_requirement",
+        "output_criteria",
+        "limits",
+        "policy",
+        "profile",
+        "retention_policy",
+        "disclosure_policy"
+      ]
+    },
+    "WorkInputs": {
+      "type": "object",
+      "properties": {
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "memories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MemoryRef"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          }
+        }
+      },
+      "required": [
+        "sources",
+        "memories",
+        "artifacts"
+      ]
+    },
+    "WorkLimits": {
+      "type": "object",
+      "properties": {
+        "max_child_concurrency": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "max_child_depth": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "max_output_bytes": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        },
+        "max_provider_attempts": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        },
+        "max_tokens": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        },
+        "root_budget_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "root_budget_id",
+        "max_provider_attempts",
+        "max_tokens",
+        "max_output_bytes",
+        "max_child_depth",
+        "max_child_concurrency"
+      ]
+    }
+  }
+}

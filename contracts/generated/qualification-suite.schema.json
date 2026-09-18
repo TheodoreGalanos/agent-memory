@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QualificationSuite",
+  "type": "object",
+  "properties": {
+    "cases": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/QualificationCase"
+      }
+    },
+    "evaluator_profile": {
+      "$ref": "#/$defs/ConfigRef"
+    }
+  },
+  "required": [
+    "evaluator_profile",
+    "cases"
+  ],
+  "$defs": {
+    "ConfigRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "label": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "label"
+      ]
+    },
+    "QualificationCase": {
+      "type": "object",
+      "properties": {
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expected": true,
+        "id": {
+          "type": "string"
+        },
+        "source_group": {
+          "description": "All variants/restatements of a source must share this group.",
+          "type": "string",
+          "format": "uuid"
+        },
+        "task": true
+      },
+      "required": [
+        "id",
+        "source_group",
+        "conditions",
+        "task",
+        "expected"
+      ]
+    }
+  }
+}

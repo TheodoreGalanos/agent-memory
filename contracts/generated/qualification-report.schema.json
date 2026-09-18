@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QualificationReport",
+  "type": "object",
+  "properties": {
+    "candidate": {
+      "$ref": "#/$defs/MemoryRef"
+    },
+    "evaluator_profile": {
+      "$ref": "#/$defs/ConfigRef"
+    },
+    "review_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "suite_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "trials": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/QualificationTrial"
+      }
+    },
+    "unresolved": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "review_id",
+    "candidate",
+    "suite_id",
+    "evaluator_profile",
+    "trials",
+    "unresolved"
+  ],
+  "$defs": {
+    "ConfigRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "label": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "label"
+      ]
+    },
+    "MemoryRef": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "memory_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "revision": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        }
+      },
+      "required": [
+        "memory_id",
+        "revision",
+        "label"
+      ]
+    },
+    "QualificationArm": {
+      "type": "string",
+      "enum": [
+        "episodes",
+        "summary",
+        "procedure"
+      ]
+    },
+    "QualificationTrial": {
+      "type": "object",
+      "properties": {
+        "answer": true,
+        "arm": {
+          "$ref": "#/$defs/QualificationArm"
+        },
+        "case_id": {
+          "type": "string"
+        },
+        "cost_microunits": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_artifact": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "recognition": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecognitionObservation"
+          }
+        }
+      },
+      "required": [
+        "case_id",
+        "arm",
+        "answer",
+        "evidence_artifact",
+        "cost_microunits",
+        "recognition"
+      ]
+    },
+    "RecognitionObservation": {
+      "type": "object",
+      "properties": {
+        "answer_correct": {
+          "type": "boolean"
+        },
+        "criterion": {
+          "type": "string"
+        },
+        "false_negative": {
+          "type": "boolean"
+        },
+        "packet_valid": {
+          "type": "boolean"
+        },
+        "routing_correct": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "criterion",
+        "packet_valid",
+        "answer_correct",
+        "routing_correct",
+        "false_negative"
+      ]
+    }
+  }
+}

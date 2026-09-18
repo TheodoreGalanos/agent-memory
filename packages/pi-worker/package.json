@@ -1,0 +1,12 @@
+{
+  "name": "@memory/pi-worker",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@earendil-works/pi-agent-core": "0.85.1",
+    "@earendil-works/pi-ai": "0.85.1",
+    "@earendil-works/pi-session-backend-sqlite-node": "0.85.1",
+    "@huggingface/transformers": "4.3.0",
+    "pg": "^8.23.0"
+  }
+}

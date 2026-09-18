@@ -1,0 +1,599 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RenderManifest",
+  "type": "object",
+  "properties": {
+    "access_revision": {
+      "type": "string"
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ConflictGroup"
+      }
+    },
+    "decision_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "deferred": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/DeferredContext"
+      }
+    },
+    "estimated_input_tokens": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "estimator": {
+      "type": "string"
+    },
+    "final_payload_bytes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "lane": {
+      "type": "string"
+    },
+    "messages": {
+      "description": "The projected transcript and tool schemas, never provider credentials.",
+      "type": "array",
+      "items": true
+    },
+    "model": {
+      "type": "string"
+    },
+    "next_step": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "operation_id": {
+      "type": "string"
+    },
+    "profile": {
+      "$ref": "#/$defs/ConfigRef"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "rebuild_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "reserved_output_tokens": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "reserved_result_tokens": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "schema_version": {
+      "$ref": "#/$defs/WireVersion"
+    },
+    "selected": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/WorkspaceEntry"
+      }
+    },
+    "session_id": {
+      "type": "string"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SourceInventoryItem"
+      }
+    },
+    "status": {
+      "type": "string"
+    },
+    "strategy": {
+      "type": "string"
+    },
+    "tool_schemas": {
+      "type": "array",
+      "items": true
+    },
+    "usage": {
+      "$ref": "#/$defs/RenderUsage"
+    },
+    "workspace_id": {
+      "type": "string",
+      "format": "uuid"
+    }
+  },
+  "required": [
+    "schema_version",
+    "decision_id",
+    "workspace_id",
+    "session_id",
+    "lane",
+    "operation_id",
+    "profile",
+    "provider",
+    "model",
+    "access_revision",
+    "selected",
+    "sources",
+    "conflicts",
+    "deferred",
+    "messages",
+    "tool_schemas",
+    "strategy",
+    "rebuild_reasons",
+    "estimator",
+    "estimated_input_tokens",
+    "reserved_output_tokens",
+    "reserved_result_tokens",
+    "status",
+    "usage"
+  ],
+  "$defs": {
+    "ConfigRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "label": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "label"
+      ]
+    },
+    "ConflictGroup": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "type": "string"
+        },
+        "unresolved": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "members",
+        "status",
+        "unresolved"
+      ]
+    },
+    "DeferredContext": {
+      "type": "object",
+      "properties": {
+        "entry_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "entry_ids",
+        "reason"
+      ]
+    },
+    "EvidenceExposure": {
+      "type": "string",
+      "enum": [
+        "parent_read",
+        "delegated_finding",
+        "not_read"
+      ]
+    },
+    "EvidentialStatus": {
+      "type": "string",
+      "enum": [
+        "observation",
+        "attributed_statement",
+        "inference",
+        "assumption",
+        "simulation"
+      ]
+    },
+    "MemoryRef": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "memory_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "revision": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        }
+      },
+      "required": [
+        "memory_id",
+        "revision",
+        "label"
+      ]
+    },
+    "Origin": {
+      "type": "string",
+      "enum": [
+        "observed",
+        "activated",
+        "agent_generated"
+      ]
+    },
+    "RenderUsage": {
+      "type": "object",
+      "properties": {
+        "cache_read_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "cache_write_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "uncached_input_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "Scope": {
+      "description": "Absent dimensions are unrestricted. An assigned restriction cannot be removed\nby leaving that dimension out of a request. Tenant is checked separately.",
+      "type": "object",
+      "properties": {
+        "entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "project_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "source_versions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          }
+        },
+        "task_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "entity_ids",
+        "source_versions"
+      ]
+    },
+    "ScratchLifetime": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "task"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "phase"
+            },
+            "phase": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "phase"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "expires_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "kind": {
+              "type": "string",
+              "const": "until"
+            }
+          },
+          "required": [
+            "kind",
+            "expires_at"
+          ]
+        }
+      ]
+    },
+    "SourceCoverage": {
+      "type": "string",
+      "enum": [
+        "examined",
+        "unexamined",
+        "unavailable"
+      ]
+    },
+    "SourceInventoryItem": {
+      "type": "object",
+      "properties": {
+        "coverage": {
+          "$ref": "#/$defs/SourceCoverage"
+        },
+        "description": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/SourceRef"
+        }
+      },
+      "required": [
+        "source",
+        "coverage",
+        "description"
+      ]
+    },
+    "SourceRef": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "string"
+        },
+        "source_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "source_id",
+        "revision"
+      ]
+    },
+    "ValidTime": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "unknown"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            },
+            "kind": {
+              "type": "string",
+              "const": "interval"
+            },
+            "to": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        }
+      ]
+    },
+    "WireVersion": {
+      "type": "string",
+      "enum": [
+        "1"
+      ]
+    },
+    "WorkInputs": {
+      "type": "object",
+      "properties": {
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "memories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MemoryRef"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          }
+        }
+      },
+      "required": [
+        "sources",
+        "memories",
+        "artifacts"
+      ]
+    },
+    "WorkingStatus": {
+      "type": "string",
+      "enum": [
+        "active",
+        "needs_revalidation",
+        "completed"
+      ]
+    },
+    "WorkspaceEntry": {
+      "type": "object",
+      "properties": {
+        "decision_relevant": {
+          "type": "boolean"
+        },
+        "evidential_status": {
+          "$ref": "#/$defs/EvidentialStatus"
+        },
+        "exposure": {
+          "$ref": "#/$defs/EvidenceExposure"
+        },
+        "generating_operation": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "id": {
+          "type": "string"
+        },
+        "inputs": {
+          "$ref": "#/$defs/WorkInputs"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkspaceKind"
+        },
+        "lifetime": {
+          "$ref": "#/$defs/ScratchLifetime"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "priority": {
+          "type": "integer"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "status": {
+          "$ref": "#/$defs/WorkingStatus"
+        },
+        "supporting_entries": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "text": {
+          "description": "A concise, complete statement; large detail stays in referenced artifacts.",
+          "type": "string"
+        },
+        "valid_time": {
+          "$ref": "#/$defs/ValidTime"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "text",
+        "origin",
+        "evidential_status",
+        "scope",
+        "valid_time",
+        "inputs",
+        "supporting_entries",
+        "exposure",
+        "lifetime",
+        "status",
+        "decision_relevant",
+        "priority"
+      ]
+    },
+    "WorkspaceKind": {
+      "type": "string",
+      "enum": [
+        "goal",
+        "constraint",
+        "observation",
+        "hypothesis",
+        "plan",
+        "obligation",
+        "dependency",
+        "artifact",
+        "memory"
+      ]
+    }
+  }
+}

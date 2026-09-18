@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JudgementDecision",
+  "type": "object",
+  "properties": {
+    "assessment_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "decisions": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/PolicyDecision"
+      }
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "inconsistencies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mode": {
+      "type": "string"
+    },
+    "packet_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "selected_assessment": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid"
+    }
+  },
+  "required": [
+    "id",
+    "packet_id",
+    "assessment_ids",
+    "decisions",
+    "inconsistencies",
+    "mode"
+  ],
+  "$defs": {
+    "ConfigRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "label": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "label"
+      ]
+    },
+    "PolicyAction": {
+      "type": "string",
+      "enum": [
+        "retain",
+        "qualify",
+        "retrieve_further",
+        "investigate",
+        "revise",
+        "defer",
+        "retire",
+        "request_input"
+      ]
+    },
+    "PolicyDecision": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/PolicyAction"
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expires_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "policy": {
+          "$ref": "#/$defs/ConfigRef"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "required_evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "policy",
+        "action",
+        "reason",
+        "constraints",
+        "required_evidence"
+      ]
+    }
+  }
+}

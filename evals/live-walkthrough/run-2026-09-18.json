@@ -1,0 +1,304 @@
+{
+  "date": "2026-09-18T08:31:07.321Z",
+  "steps": [
+    {
+      "step": "prepare",
+      "output": "Budget 1e60a683-ad77-4347-a95f-5099f8adf73d: at most 30 provider calls and 2.000000 cost units; reservations settle to observed usage.\nTask job 01a0b3a4-10a3-72f9-824b-3ddcce55e947 queued (investigation; input memory \"W-101 fire resistance\" revision 2). The pool claims it within a second.\nNext: npm run live -- DIRECTORY work\n"
+    },
+    {
+      "step": "work",
+      "output": "Task job 01a0b3a4-10a3-72f9-824b-3ddcce55e947: queued\nTask job 01a0b3a4-10a3-72f9-824b-3ddcce55e947: running (attempt 1)\nTask job 01a0b3a4-10a3-72f9-824b-3ddcce55e947: partial (attempt 1)\nRecorded context (1 render manifest(s)):\n  render responded (azure-openai-responses/gpt-5.4-mini); 3 selected: goal \"Report the fire-resistance rating currently recorded for wa…\", constraint \"{\"definitions\":[\"An empty instance query says nothing about…\", memory \"{\"label\":\"W-101 fire resistance\",\"content\":{\"family\":\"knowl…\"; 0 source(s); 0 conflict group(s); 0 deferred; 7133 bytes\n\nResult status partial; 2 finding(s)\n  1. [observed/attributed_statement] The currently recorded fire-resistance rating for wall W-101 is 90 minutes.\n     supported by W-101 fire resistance r2\n  2. [agent_generated/inference] The evidence provided in the workspace is only a user statement, and no source file was inspected to verify the rating.\n     supported by W-101 fire resistance r2\n  examined:   Reviewed the supplied W-101 fire resistance memory.; Checked the workspace for additional sources or artifacts.\n  unexamined: No source file or external evidence was available to inspect.; The underlying basis for the 90-minute rating remains unverified.\n  unresolved: Verify the W-101 rating against a source file or other primary evidence.\nBudget ledger: committed 1 call(s), 3054 tokens, 4522 cost microunits; unresolved reservations 0 call(s), 0 tokens.\n\nInspect the recorded context: npm run memory -- task --config /var/folders/6l/0gj028r92tb6b268rkbz3rrw0000gp/T/memory-live-walkthrough-bE0CCp/demo/client.json --id 01a0b3a4-10a3-72f9-824b-3ddcce55e947\n"
+    },
+    {
+      "step": "capture",
+      "output": "Published source a85bf41f-fdcd-4fdd-90e4-408777ce7d9b revision live-1; snapshot artifact 01a0b3a4-3a23-7631-8b6c-357b931391dc\n  finding-1: [observed/attributed_statement] The currently recorded fire-resistance rating for wall W-101 is 90 minutes.\n  finding-2: [agent_generated/inference] The evidence provided in the workspace is only a user statement, and no source file was inspected to verify the rating.\nEach event keeps the finding's own origin and evidential status; the connector adds no verification.\nFormation job 01a0b3a4-3a3d-731b-b3d4-544b517205e0 queued; it reads source a85bf41f-fdcd-4fdd-90e4-408777ce7d9b revision live-1. Watch the Host terminal for the judgement trace.\nNext: npm run live -- DIRECTORY form\n"
+    },
+    {
+      "step": "form",
+      "output": "Formation job 01a0b3a4-3a3d-731b-b3d4-544b517205e0: queued\nFormation job 01a0b3a4-3a3d-731b-b3d4-544b517205e0: running (attempt 1)\nFormation job 01a0b3a4-3a3d-731b-b3d4-544b517205e0: partial (attempt 1)\nResult status partial; unresolved: Verify the W-101 rating against a source file or other primary evidence.; Unexamined: No source file or external evidence was available to inspect.; Unexamined: The underlying basis for the 90-minute rating remains unverified.\nRetained 2 candidate record(s) from the task's findings:\n  + 01a0b3a4-10a3-72f9-824b-3ddcce55e947: finding-1 r1 [knowledge, attributed_statement, candidate]\n  + 01a0b3a4-10a3-72f9-824b-3ddcce55e947: finding-2 r1 [knowledge, inference, candidate]\nThe per-question Jev and Azure answers are in the Host terminal (pool trace). Jev ran in shadow mode and did not decide retention.\nBudget ledger: committed 1 call(s), 3054 tokens, 4522 cost microunits; unresolved reservations 4 call(s), 120000 tokens.\n"
+    },
+    {
+      "step": "show",
+      "output": "Current records in scope (4):\n  - W-101 fire resistance r2 [observed/attributed_statement, candidate] created by cf435df3-79ba-46d6-823e-38c3c5001476\n  - How the property was found r1 [observed/attributed_statement, candidate] created by cf435df3-79ba-46d6-823e-38c3c5001476\n  - 01a0b3a4-10a3-72f9-824b-3ddcce55e947: finding-1 r1 [observed/attributed_statement, candidate] created by 01a0b3a4-3d49-7552-bf58-ad7b5f5f0451; 1 source locator(s)\n  - 01a0b3a4-10a3-72f9-824b-3ddcce55e947: finding-2 r1 [agent_generated/inference, candidate] created by 01a0b3a4-3d49-7552-bf58-ad7b5f5f0451; 1 source locator(s)\nTask 01a0b3a4-10a3-72f9-824b-3ddcce55e947: 1 recorded render manifest(s); Up to three manifests per page; selection does not prove model use\nChange events: memory_revised ×5, user_memory_changed ×2, job_accepted ×3, memory_maintained ×1, job_leased ×5, job_recovered ×2, job_settled ×2, source_registered ×1, memory_changed ×1\n\nFull detail: npm run memory -- browse|changes|history|task --config /var/folders/6l/0gj028r92tb6b268rkbz3rrw0000gp/T/memory-live-walkthrough-bE0CCp/demo/client.json ...\n"
+    }
+  ],
+  "records": [
+    {
+      "reference": {
+        "memory_id": "01a0b3a4-0c8d-75e3-8411-43c58fc6e738",
+        "revision": 2,
+        "label": "W-101 fire resistance"
+      },
+      "version_id": "01a0b3a4-0d79-7467-8449-bb0aaf21cfc7",
+      "created_by": "cf435df3-79ba-46d6-823e-38c3c5001476",
+      "recorded": {
+        "sequence": 9,
+        "recorded_at": "2026-09-18T08:31:08.153Z"
+      },
+      "recorded_until": null,
+      "decision_id": "01a0b3a4-0d79-7467-8449-bb091502ac4a",
+      "record": {
+        "label": "W-101 fire resistance",
+        "scope": {
+          "user_id": null,
+          "project_id": "a6fec35c-4595-4d53-81dc-51e2338e4f33",
+          "task_id": null,
+          "entity_ids": [],
+          "source_versions": []
+        },
+        "content": {
+          "family": "knowledge",
+          "statement": "The user corrects W-101 to 90 minutes.",
+          "subject": null,
+          "predicate": null,
+          "uncertainty": [
+            "No source file inspected in this exercise"
+          ],
+          "examined_coverage": [
+            "User statement only"
+          ]
+        },
+        "origin": "observed",
+        "evidential_status": "attributed_statement",
+        "availability": "routine",
+        "qualification": {
+          "status": "candidate"
+        },
+        "valid_time": {
+          "kind": "unknown"
+        },
+        "source_locators": [],
+        "derived_from": [],
+        "decision": {
+          "policy": {
+            "id": "01a0b3a4-0bcc-7676-8fc1-369213526847",
+            "revision": 1,
+            "label": "Walkthrough retention"
+          },
+          "action": "revise",
+          "reason": "The user corrected the earlier statement; source verification remains open",
+          "constraints": [
+            "Local demonstration only"
+          ],
+          "required_evidence": [],
+          "expires_at": null
+        }
+      }
+    },
+    {
+      "reference": {
+        "memory_id": "01a0b3a4-0e14-7147-81b0-18933c5c6f16",
+        "revision": 1,
+        "label": "How the property was found"
+      },
+      "version_id": "01a0b3a4-0e14-7147-81b0-1895f0127e7d",
+      "created_by": "cf435df3-79ba-46d6-823e-38c3c5001476",
+      "recorded": {
+        "sequence": 12,
+        "recorded_at": "2026-09-18T08:31:08.308Z"
+      },
+      "recorded_until": null,
+      "decision_id": "01a0b3a4-0e14-7147-81b0-1894378a09bf",
+      "record": {
+        "label": "How the property was found",
+        "scope": {
+          "user_id": null,
+          "project_id": "a6fec35c-4595-4d53-81dc-51e2338e4f33",
+          "task_id": null,
+          "entity_ids": [],
+          "source_versions": []
+        },
+        "content": {
+          "family": "episode",
+          "objective": "Locate the fire-resistance property",
+          "initial_conditions": [
+            "Instance lookup was empty"
+          ],
+          "observations": [
+            "Type lookup supplied the value"
+          ],
+          "actions": [
+            "Inspect instance then type properties"
+          ],
+          "corrections": [
+            "Do not infer absence from an empty instance lookup"
+          ],
+          "outcome": "Property location identified in a user demonstration",
+          "verification": [],
+          "uncertainty": [
+            "Demonstration has not been independently checked"
+          ]
+        },
+        "origin": "observed",
+        "evidential_status": "attributed_statement",
+        "availability": "routine",
+        "qualification": {
+          "status": "candidate"
+        },
+        "valid_time": {
+          "kind": "unknown"
+        },
+        "source_locators": [],
+        "derived_from": [],
+        "decision": {
+          "policy": {
+            "id": "01a0b3a4-0bcc-7676-8fc1-369213526847",
+            "revision": 1,
+            "label": "Walkthrough retention"
+          },
+          "action": "retain",
+          "reason": "User-supplied walkthrough evidence; not a verified building assessment",
+          "constraints": [
+            "Local demonstration only"
+          ],
+          "required_evidence": [],
+          "expires_at": null
+        }
+      }
+    },
+    {
+      "reference": {
+        "memory_id": "01a0b3a4-5205-7317-b85b-9b058c8bca15",
+        "revision": 1,
+        "label": "01a0b3a4-10a3-72f9-824b-3ddcce55e947: finding-1"
+      },
+      "version_id": "01a0b3a4-5205-7317-b85b-9b0769aad32c",
+      "created_by": "01a0b3a4-3d49-7552-bf58-ad7b5f5f0451",
+      "recorded": {
+        "sequence": 265,
+        "recorded_at": "2026-09-18T08:31:25.700Z"
+      },
+      "recorded_until": null,
+      "decision_id": "01a0b3a4-5205-7317-b85b-9b065d331549",
+      "record": {
+        "label": "01a0b3a4-10a3-72f9-824b-3ddcce55e947: finding-1",
+        "scope": {
+          "user_id": null,
+          "project_id": "a6fec35c-4595-4d53-81dc-51e2338e4f33",
+          "task_id": "3031aa84-0b88-4ddf-953a-31028beb7ca6",
+          "entity_ids": [],
+          "source_versions": []
+        },
+        "content": {
+          "family": "knowledge",
+          "statement": "The currently recorded fire-resistance rating for wall W-101 is 90 minutes.",
+          "subject": null,
+          "predicate": null,
+          "uncertainty": [
+            "No source file or external evidence was available to inspect.",
+            "The underlying basis for the 90-minute rating remains unverified.",
+            "Verify the W-101 rating against a source file or other primary evidence.",
+            "Not examined: No source file or external evidence was available to inspect.",
+            "Not examined: The underlying basis for the 90-minute rating remains unverified."
+          ],
+          "examined_coverage": [
+            "Reviewed the supplied W-101 fire resistance memory.",
+            "Checked the workspace for additional sources or artifacts.",
+            "Reviewed the supplied W-101 fire resistance memory.",
+            "Checked the workspace for additional sources or artifacts."
+          ]
+        },
+        "origin": "observed",
+        "evidential_status": "attributed_statement",
+        "availability": "routine",
+        "qualification": {
+          "status": "candidate"
+        },
+        "valid_time": {
+          "kind": "unknown"
+        },
+        "source_locators": [
+          "01a0b3a4-3d99-7530-8f8d-6178df110c6d"
+        ],
+        "derived_from": [],
+        "decision": {
+          "policy": {
+            "id": "01a0b3a4-0bcc-7676-8fc1-369213526847",
+            "revision": 1,
+            "label": "Walkthrough retention"
+          },
+          "action": "retain",
+          "reason": "Formation support and status checks passed; decision abf1bc5c-b641-4f90-9b2f-a89232283761",
+          "constraints": [
+            "Candidate only; no promotion or intention execution"
+          ],
+          "required_evidence": [],
+          "expires_at": null
+        }
+      }
+    },
+    {
+      "reference": {
+        "memory_id": "01a0b3a4-5206-71a8-a501-fc130374e883",
+        "revision": 1,
+        "label": "01a0b3a4-10a3-72f9-824b-3ddcce55e947: finding-2"
+      },
+      "version_id": "01a0b3a4-5206-71a8-a501-fc1574da4e19",
+      "created_by": "01a0b3a4-3d49-7552-bf58-ad7b5f5f0451",
+      "recorded": {
+        "sequence": 265,
+        "recorded_at": "2026-09-18T08:31:25.700Z"
+      },
+      "recorded_until": null,
+      "decision_id": "01a0b3a4-5206-71a8-a501-fc144dc97099",
+      "record": {
+        "label": "01a0b3a4-10a3-72f9-824b-3ddcce55e947: finding-2",
+        "scope": {
+          "user_id": null,
+          "project_id": "a6fec35c-4595-4d53-81dc-51e2338e4f33",
+          "task_id": "3031aa84-0b88-4ddf-953a-31028beb7ca6",
+          "entity_ids": [],
+          "source_versions": []
+        },
+        "content": {
+          "family": "knowledge",
+          "statement": "The evidence provided in the workspace is only a user statement, and no source file was inspected to verify the rating.",
+          "subject": null,
+          "predicate": null,
+          "uncertainty": [
+            "No source file or external evidence was available to inspect.",
+            "The underlying basis for the 90-minute rating remains unverified.",
+            "Verify the W-101 rating against a source file or other primary evidence.",
+            "Not examined: No source file or external evidence was available to inspect.",
+            "Not examined: The underlying basis for the 90-minute rating remains unverified."
+          ],
+          "examined_coverage": [
+            "Reviewed the supplied W-101 fire resistance memory.",
+            "Checked the workspace for additional sources or artifacts.",
+            "Reviewed the supplied W-101 fire resistance memory.",
+            "Checked the workspace for additional sources or artifacts."
+          ]
+        },
+        "origin": "agent_generated",
+        "evidential_status": "inference",
+        "availability": "routine",
+        "qualification": {
+          "status": "candidate"
+        },
+        "valid_time": {
+          "kind": "unknown"
+        },
+        "source_locators": [
+          "01a0b3a4-3d9a-73b5-9ba7-acbd7ea163e4"
+        ],
+        "derived_from": [],
+        "decision": {
+          "policy": {
+            "id": "01a0b3a4-0bcc-7676-8fc1-369213526847",
+            "revision": 1,
+            "label": "Walkthrough retention"
+          },
+          "action": "retain",
+          "reason": "Formation support and status checks passed; decision 02ccd6f0-0aff-4622-bd5f-be4ba16cadb2",
+          "constraints": [
+            "Candidate only; no promotion or intention execution"
+          ],
+          "required_evidence": [],
+          "expires_at": null
+        }
+      }
+    }
+  ],
+  "manifests": 1,
+  "host_log": "Memory host listening on 127.0.0.1:52205\nMemory host listening on 127.0.0.1:52205\nStarting 1 worker pool child(ren)\npool 0: classes interactive,deferred; processes investigation,formation; task azure-openai-responses/gpt-5.4-mini; reference gpt-4.1-mini; jev jev-latest\npool 0: claimed investigation job 01a0b3a4-0cec-7693-b06c-acb97edcb7ee (attempt 1)\npool 0: job 01a0b3a4-0cec-7693-b06c-acb97edcb7ee failed: Memory 01a0b3a4-0c8d-75e3-8411-43c58fc6e738 is at revision 2; the brief granted revision 1\npool 0: claimed investigation job 01a0b3a4-10a3-72f9-824b-3ddcce55e947 (attempt 1)\npool 0: job 01a0b3a4-10a3-72f9-824b-3ddcce55e947 settled (partial)\npool 0: claimed investigation job 01a0b3a4-0cec-7693-b06c-acb97edcb7ee (attempt 2)\npool 0: job 01a0b3a4-0cec-7693-b06c-acb97edcb7ee failed: Memory 01a0b3a4-0c8d-75e3-8411-43c58fc6e738 is at revision 2; the brief granted revision 1\npool 0: idle\npool 0: SIGTERM received; finishing current work\nMemory host listening on 127.0.0.1:52205\nStarting 1 worker pool child(ren)\npool 0: classes interactive,deferred; processes investigation,formation; task azure-openai-responses/gpt-5.4-mini; reference gpt-4.1-mini; jev jev-latest\npool 0: claimed formation job 01a0b3a4-3a3d-731b-b3d4-544b517205e0 (attempt 1)\npool 0: → shadow jev (jev-latest) asked J01.assessment, J01.faithfulness, J02.assessment about \"Formation of finding-1\"\npool 0: ← shadow jev: J01.assessment=attributed_statement, J01.faithfulness=yes, J02.assessment=supports (HTTP 200, 765 ms, tokens in 5615 / out 225)\npool 0: → reference azure-reference (gpt-4.1-mini) asked J01.assessment, J01.faithfulness, J02.assessment about \"Formation of finding-1\"\npool 0: ← reference azure-reference: J01.assessment=attributed_statement, J01.faithfulness=yes, J02.assessment=supports (HTTP 200, 2119 ms, tokens in 3892 / out 49)\npool 0: → shadow jev (jev-latest) asked J01.assessment, J01.faithfulness, J02.assessment about \"Formation of finding-2\"\npool 0: ← shadow jev: J01.assessment=inference, J01.faithfulness=yes, J02.assessment=supports (HTTP 200, 320 ms, tokens in 5611 / out 224)\npool 0: → reference azure-reference (gpt-4.1-mini) asked J01.assessment, J01.faithfulness, J02.assessment about \"Formation of finding-2\"\npool 0: ← reference azure-reference: J01.assessment=inference, J01.faithfulness=yes, J02.assessment=supports (HTTP 200, 1451 ms, tokens in 3939 / out 48)\npool 0: job 01a0b3a4-3a3d-731b-b3d4-544b517205e0 source a85bf41f-fdcd-4fdd-90e4-408777ce7d9b@live-1: retained 2, deferred 0\npool 0: job 01a0b3a4-3a3d-731b-b3d4-544b517205e0 partial\npool 0: claimed investigation job 01a0b3a4-0cec-7693-b06c-acb97edcb7ee (attempt 3)\npool 0: job 01a0b3a4-0cec-7693-b06c-acb97edcb7ee failed: Memory 01a0b3a4-0c8d-75e3-8411-43c58fc6e738 is at revision 2; the brief granted revision 1\npool 0: idle\n"
+}

@@ -1,0 +1,374 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WorkResult",
+  "type": "object",
+  "properties": {
+    "child_outputs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "coverage": {
+      "$ref": "#/$defs/Coverage"
+    },
+    "examined_scope": {
+      "$ref": "#/$defs/Scope"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Finding"
+      }
+    },
+    "inputs": {
+      "$ref": "#/$defs/WorkInputs"
+    },
+    "known_effects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/KnownEffect"
+      }
+    },
+    "proposed_changes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "result_artifact": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid"
+    },
+    "schema_version": {
+      "$ref": "#/$defs/WireVersion"
+    },
+    "status": {
+      "$ref": "#/$defs/WorkStatus"
+    },
+    "unresolved_work": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "usage": {
+      "$ref": "#/$defs/Usage"
+    }
+  },
+  "required": [
+    "schema_version",
+    "status",
+    "examined_scope",
+    "inputs",
+    "findings",
+    "coverage",
+    "unresolved_work",
+    "proposed_changes",
+    "child_outputs",
+    "known_effects",
+    "usage"
+  ],
+  "$defs": {
+    "Coverage": {
+      "type": "object",
+      "properties": {
+        "examined": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unexamined": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "examined",
+        "unexamined"
+      ]
+    },
+    "EffectStatus": {
+      "type": "string",
+      "enum": [
+        "confirmed",
+        "not_performed",
+        "unknown"
+      ]
+    },
+    "EvidentialStatus": {
+      "type": "string",
+      "enum": [
+        "observation",
+        "attributed_statement",
+        "inference",
+        "assumption",
+        "simulation"
+      ]
+    },
+    "Finding": {
+      "type": "object",
+      "properties": {
+        "applicability": {
+          "$ref": "#/$defs/Scope"
+        },
+        "challenging_memories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MemoryRef"
+          }
+        },
+        "evidential_status": {
+          "$ref": "#/$defs/EvidentialStatus"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          }
+        },
+        "statement": {
+          "type": "string"
+        },
+        "supporting_memories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MemoryRef"
+          }
+        }
+      },
+      "required": [
+        "statement",
+        "origin",
+        "evidential_status",
+        "sources",
+        "supporting_memories",
+        "challenging_memories",
+        "applicability"
+      ]
+    },
+    "KnownEffect": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "effect_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "status": {
+          "$ref": "#/$defs/EffectStatus"
+        }
+      },
+      "required": [
+        "effect_id",
+        "status",
+        "description"
+      ]
+    },
+    "MemoryRef": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "memory_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "revision": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 1
+        }
+      },
+      "required": [
+        "memory_id",
+        "revision",
+        "label"
+      ]
+    },
+    "Money": {
+      "type": "object",
+      "properties": {
+        "currency": {
+          "type": "string"
+        },
+        "minor_units": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "currency",
+        "minor_units"
+      ]
+    },
+    "Origin": {
+      "type": "string",
+      "enum": [
+        "observed",
+        "activated",
+        "agent_generated"
+      ]
+    },
+    "Scope": {
+      "description": "Absent dimensions are unrestricted. An assigned restriction cannot be removed\nby leaving that dimension out of a request. Tenant is checked separately.",
+      "type": "object",
+      "properties": {
+        "entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "project_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "source_versions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          }
+        },
+        "task_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "entity_ids",
+        "source_versions"
+      ]
+    },
+    "SourceRef": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "string"
+        },
+        "source_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "source_id",
+        "revision"
+      ]
+    },
+    "Usage": {
+      "type": "object",
+      "properties": {
+        "cost": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "input_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "status": {
+          "$ref": "#/$defs/UsageStatus"
+        }
+      },
+      "required": [
+        "status"
+      ]
+    },
+    "UsageStatus": {
+      "type": "string",
+      "enum": [
+        "known",
+        "partial",
+        "unknown"
+      ]
+    },
+    "WireVersion": {
+      "type": "string",
+      "enum": [
+        "1"
+      ]
+    },
+    "WorkInputs": {
+      "type": "object",
+      "properties": {
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "memories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MemoryRef"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          }
+        }
+      },
+      "required": [
+        "sources",
+        "memories",
+        "artifacts"
+      ]
+    },
+    "WorkStatus": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "partial",
+        "blocked"
+      ]
+    }
+  }
+}

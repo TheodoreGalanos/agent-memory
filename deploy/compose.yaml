@@ -1,0 +1,75 @@
+# ABOUTME: Production-profile composition (§20.2): PostgreSQL with separate domain and session
+# ABOUTME: roles, the Host with its worker pool, and a reverse proxy terminating TLS.
+name: memory
+services:
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: memory_admin
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_admin_password
+      POSTGRES_DB: memory
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/10-roles.sql:ro
+    secrets:
+      - postgres_admin_password
+      - memory_domain_password
+      - memory_session_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memory_admin -d memory"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  host:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Provider credentials for the worker pool; the pool reads .env only when configured to.
+      AZURE_OPENAI_API_KEY_FILE: /run/secrets/azure_openai_api_key
+      JEV_API_KEY_FILE: /run/secrets/jev_api_key
+    volumes:
+      - ./host.json:/run/memory/host.json:ro
+      - ./worker.json:/run/memory/worker.json:ro
+      - artifacts:/var/lib/memory/artifacts
+      - sessions:/var/lib/memory/sessions
+    secrets:
+      - azure_openai_api_key
+      - jev_api_key
+    expose:
+      - "7331"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:7331/readyz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+  proxy:
+    image: caddy:2
+    depends_on:
+      - host
+    ports:
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    restart: unless-stopped
+volumes:
+  postgres-data:
+  artifacts:
+  sessions:
+  caddy-data:
+secrets:
+  postgres_admin_password:
+    file: ./secrets/postgres_admin_password
+  memory_domain_password:
+    file: ./secrets/memory_domain_password
+  memory_session_password:
+    file: ./secrets/memory_session_password
+  azure_openai_api_key:
+    file: ./secrets/azure_openai_api_key
+  jev_api_key:
+    file: ./secrets/jev_api_key

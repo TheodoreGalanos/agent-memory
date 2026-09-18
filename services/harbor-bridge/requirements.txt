@@ -1,0 +1,2 @@
+harbor[daytona] @ git+https://github.com/kobe0938/harbor.git@dd4784b1ade1f446399e194f6dffd15142a77b98
+daytona==0.214.0

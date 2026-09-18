@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1350" viewBox="0 0 1200 1350" role="img" aria-labelledby="title desc">
+<title id="title">System composition: two stores, four peer processes</title><desc id="desc">Users and authorised operators contribute direction, evidence and corrections through the input and policy paths and receive inspectable findings, commitments and decision requests. Workspace and collection hold state. Formation, activation, consolidation and maintenance are peer processes. Maintenance receives cited use and outcome feedback and supplies priorities and change events to activation. Shared context and policy apply across the system. A separate inset shows the host harness supporting all four processes through main-task and scoped-operation workspaces, with work briefs and referenced findings exchanged between them. Structured computation, semantic judgement and generative investigation are shared harness capabilities.</desc>
+<rect width="1200" height="1350" fill="white"/>
+<defs>
+<marker id="line" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#718090"/></marker>
+<marker id="green" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#176D61"/></marker>
+<marker id="blue" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#315B86"/></marker>
+<marker id="purple" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#745A93"/></marker>
+<marker id="gold" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#9A6B25"/></marker>
+<marker id="red" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L11,5 L0,10 Z" fill="#A34F4F"/></marker>
+</defs>
+<rect x="12" y="160" width="1175" height="825" rx="18" fill="white" stroke="#CED7DD" stroke-width="2"/>
+<text x="170" y="215.0" font-family="Lato, Arial, sans-serif" font-size="17" font-weight="700" text-anchor="start" fill="#586778">MEMORY SYSTEM</text>
+<rect x="35" y="15" width="300" height="108" rx="12" fill="#F4F6F8" stroke="#718090" stroke-width="2"/>
+<text x="53" y="48.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#243447">Experience</text>
+<text x="53" y="79.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">Sources, observations,</text>
+<text x="53" y="105.84" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">actions and outcomes</text>
+<rect x="865" y="15" width="300" height="108" rx="12" fill="#F4F6F8" stroke="#718090" stroke-width="2"/>
+<text x="883" y="48.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#243447">Agent + host</text>
+<text x="883" y="79.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">Decisions, execution,</text>
+<text x="883" y="105.84" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">events and results</text>
+<rect x="405" y="200" width="350" height="130" rx="12" fill="#EAF4EF" stroke="#176D61" stroke-width="2"/>
+<text x="423" y="233.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#176D61">Workspace</text>
+<text x="423" y="264.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">Main task + scoped work;</text>
+<text x="423" y="290.84" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">state, budget and rendering</text>
+<rect x="35" y="415" width="280" height="130" rx="12" fill="white" stroke="#176D61" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="53" y="448.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#176D61">Formation</text>
+<text x="53" y="479.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">Select, segment</text>
+<text x="53" y="505.84" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">and encode</text>
+<rect x="380" y="485" width="405" height="137" rx="12" fill="#EAF4EF" stroke="#176D61" stroke-width="2"/>
+<text x="398" y="518.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#176D61">Memory collection</text>
+<text x="398" y="549.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">Episodes · Knowledge</text>
+<text x="398" y="575.84" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">Procedures · Intentions</text>
+<rect x="865" y="415" width="300" height="130" rx="12" fill="white" stroke="#315B86" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="883" y="448.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#315B86">Activation</text>
+<text x="883" y="479.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">Find, assess, group</text>
+<text x="883" y="505.84" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">and route context</text>
+<rect x="45" y="758" width="325" height="125" rx="12" fill="white" stroke="#745A93" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="63" y="791.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#745A93">Consolidation</text>
+<text x="63" y="822.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">Develop abstractions</text>
+<text x="63" y="848.84" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">and candidate methods</text>
+<rect x="830" y="758" width="335" height="125" rx="12" fill="white" stroke="#9A6B25" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="848" y="791.0" font-family="Lato, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start" fill="#9A6B25">Maintenance</text>
+<text x="848" y="822.0" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">Revise support, validity,</text>
+<text x="848" y="848.84" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="start" fill="#243447">priority and lifecycle</text>
+<path d="M120,123 L120,415" fill="none" stroke="#176D61" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#green)"/>
+<text x="152" y="290.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="start" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">capture</text>
+<text x="152" y="290.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="start" fill="#586778">capture</text>
+<path d="M270,123 L270,175 L500,175 L500,200" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#line)"/>
+<text x="350" y="155.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">observations</text>
+<text x="350" y="155.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#586778">observations</text>
+<path d="M915,123 L915,180 L800,180 L800,260 L755,260" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#line)" marker-start="url(#line)"/>
+<text x="811" y="155.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="start" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">context / decisions</text>
+<text x="811" y="155.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="start" fill="#586778">context / decisions</text>
+<path d="M1070,123 L1070,415" fill="none" stroke="#315B86" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#blue)"/>
+<text x="1090" y="295.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="start" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">host events</text>
+<text x="1090" y="295.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="start" fill="#586778">host events</text>
+<path d="M405,260 L345,260 L345,375 L220,375 L220,415" fill="none" stroke="#176D61" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#green)"/>
+<text x="257" y="355.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">task experience</text>
+<text x="257" y="355.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#586778">task experience</text>
+<path d="M755,280 L875,280 L875,365 L950,365 L950,415" fill="none" stroke="#315B86" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#blue)"/>
+<text x="947" y="343.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">task cues</text>
+<text x="947" y="343.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#586778">task cues</text>
+<path d="M865,453 L800,453 L800,350 L685,350 L685,330" fill="none" stroke="#315B86" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#blue)"/>
+<text x="699" y="375.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">ranked context</text>
+<text x="699" y="375.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#586778">ranked context</text>
+<path d="M315,480 L345,480 L345,530 L380,530" fill="none" stroke="#176D61" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#green)"/>
+<text x="345" y="565.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">retain</text>
+<text x="345" y="565.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#586778">retain</text>
+<path d="M785,550 L835,550 L835,505 L865,505" fill="none" stroke="#315B86" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#blue)"/>
+<text x="822" y="585.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">candidates</text>
+<text x="822" y="585.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#586778">candidates</text>
+<path d="M490,622 L490,706 L220,706 L220,758" fill="none" stroke="#745A93" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#purple)" marker-start="url(#purple)"/>
+<text x="305" y="684.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">read / add abstractions</text>
+<text x="305" y="684.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#586778">read / add abstractions</text>
+<path d="M690,622 L690,716 L1000,716 L1000,758" fill="none" stroke="#9A6B25" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#gold)" marker-start="url(#gold)"/>
+<text x="890" y="695.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">read / revise</text>
+<text x="890" y="695.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#586778">read / revise</text>
+<path d="M755,310 L815,310 L815,650 L1130,650 L1130,758" fill="none" stroke="#9A6B25" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#gold)"/>
+<text x="1010" y="627.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">cited use · outcomes · cost</text>
+<text x="1010" y="627.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#586778">cited use · outcomes · cost</text>
+<path d="M1165,810 L1180,810 L1180,390 L1135,390 L1135,415" fill="none" stroke="#9A6B25" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="8 6" marker-end="url(#gold)"/>
+<text x="1015" y="575.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="white" stroke="white" stroke-width="7" stroke-linejoin="round">priority updates + change events</text>
+<text x="1015" y="575.0" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="#9A6B25">priority updates + change events</text>
+<path d="M1154,569 L1180,569" fill="none" stroke="#9A6B25" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="8 6"/>
+<rect x="35" y="914" width="1130" height="52" rx="10" fill="#F4F6F8" stroke="#CED7DD" stroke-width="2"/>
+<text x="53" y="945.0" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="700" text-anchor="start" fill="#243447">SHARED CONTEXT · SHARED POLICY</text>
+<text x="557" y="945.0" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="start" fill="#586778">Memory system owns policy; host enforces limits.</text>
+<rect x="12" y="1005" width="1175" height="330" rx="18" fill="#F4F6F8" stroke="#CED7DD" stroke-width="2"/>
+<text x="35" y="1041" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="start" fill="#586778">HOST HARNESS / SCOPED EXECUTION</text>
+<text x="35" y="1074" font-family="Lato, Arial, sans-serif" font-size="21" font-weight="400" text-anchor="start" fill="#586778">Supports formation, activation, consolidation and maintenance.</text>
+<rect x="35" y="1100" width="300" height="126" rx="10" fill="#EAF4EF" stroke="#176D61" stroke-width="2"/>
+<text x="185" y="1134" font-family="Lato, Arial, sans-serif" font-size="23" font-weight="700" text-anchor="middle" fill="#176D61">Main task workspace</text>
+<text x="185" y="1164" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#243447">Task state + references</text>
+<text x="185" y="1192" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#243447">Bounded model context</text>
+<rect x="865" y="1100" width="300" height="126" rx="10" fill="#EAF4EF" stroke="#176D61" stroke-width="2"/>
+<text x="1015" y="1134" font-family="Lato, Arial, sans-serif" font-size="23" font-weight="700" text-anchor="middle" fill="#176D61">Scoped workspace</text>
+<text x="1015" y="1164" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#243447">Inspection + working results</text>
+<text x="1015" y="1192" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#243447">Bounded model context</text>
+<path d="M335,1140 L865,1140" fill="none" stroke="#315B86" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#blue)"/>
+<text x="600" y="1126" font-family="Lato, Arial, sans-serif" font-size="21" font-weight="400" text-anchor="middle" fill="#586778">work brief + references</text>
+<path d="M865,1200 L335,1200" fill="none" stroke="#176D61" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#green)"/>
+<text x="600" y="1186" font-family="Lato, Arial, sans-serif" font-size="21" font-weight="400" text-anchor="middle" fill="#586778">bounded finding + result reference</text>
+<text x="600" y="1310" font-family="Lato, Arial, sans-serif" font-size="20" font-weight="400" text-anchor="middle" fill="#586778">The host enforces one budget for coordination, child work and result assembly.</text>
+<rect x="390" y="15" width="400" height="125" rx="12" fill="#F4F6F8" stroke="#718090" stroke-width="2"/>
+<text x="590" y="43" font-family="Lato, Arial, sans-serif" font-size="23" font-weight="700" text-anchor="middle" fill="#243447">Users and authorised operators</text>
+<text x="590" y="72" font-family="Lato, Arial, sans-serif" font-size="19" font-weight="400" text-anchor="middle" fill="#586778">direction, evidence and corrections</text>
+<path d="M410,83 L770,83" fill="none" stroke="#CED7DD" stroke-width="1.5"/>
+<text x="590" y="106" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="#586778">inspectable findings, commitments</text>
+<text x="590" y="129" font-family="Lato, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="middle" fill="#586778">and decision requests</text>
+<path d="M390,63 L335,63" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#line)"/>
+<path d="M790,63 L865,63" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#line)"/>
+<path d="M865,113 L790,113" fill="none" stroke="#718090" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#line)"/>
+<text x="361" y="51" font-family="Lato, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="middle" fill="#586778">input</text>
+<text x="827" y="51" font-family="Lato, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="middle" fill="#586778">policy</text>
+<text x="827" y="101" font-family="Lato, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="middle" fill="#586778">views</text>
+<text x="600" y="1268" font-family="Lato, Arial, sans-serif" font-size="22" font-weight="400" text-anchor="middle" fill="#586778">Structured computation · Semantic judgement · Generative investigation</text>
+</svg>

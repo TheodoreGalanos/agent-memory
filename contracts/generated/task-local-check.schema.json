@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TaskLocalCheck",
+  "type": "object",
+  "properties": {
+    "allowed_providers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "completion_requirements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "definition": {
+      "$ref": "#/$defs/JudgementDefinition"
+    },
+    "disclosure_policy": {
+      "type": "string"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "job_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "retired": {
+      "type": "boolean"
+    },
+    "scope": {
+      "$ref": "#/$defs/Scope"
+    },
+    "task_id": {
+      "type": "string",
+      "format": "uuid"
+    }
+  },
+  "required": [
+    "id",
+    "job_id",
+    "task_id",
+    "definition",
+    "scope",
+    "allowed_providers",
+    "disclosure_policy",
+    "completion_requirements",
+    "expires_at",
+    "retired"
+  ],
+  "$defs": {
+    "JudgementDefinition": {
+      "type": "object",
+      "properties": {
+        "applicability": {
+          "type": "string"
+        },
+        "evaluation_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fallback": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "input_requirements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "owner": {
+          "type": "string"
+        },
+        "permitted_uses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JudgementQuestion"
+          }
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "owner",
+        "input_requirements",
+        "questions",
+        "applicability",
+        "permitted_uses",
+        "evaluation_refs",
+        "fallback"
+      ]
+    },
+    "JudgementQuestion": {
+      "type": "object",
+      "properties": {
+        "form": {
+          "$ref": "#/$defs/QuestionForm"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "instructions",
+        "form"
+      ]
+    },
+    "QuestionForm": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "criteria": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "choice"
+            }
+          },
+          "required": [
+            "type",
+            "criteria"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "criteria": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "noul"
+            }
+          },
+          "required": [
+            "type",
+            "criteria"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "criteria": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "score"
+            }
+          },
+          "required": [
+            "type",
+            "criteria"
+          ]
+        }
+      ]
+    },
+    "Scope": {
+      "description": "Absent dimensions are unrestricted. An assigned restriction cannot be removed\nby leaving that dimension out of a request. Tenant is checked separately.",
+      "type": "object",
+      "properties": {
+        "entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "project_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "source_versions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          }
+        },
+        "task_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "entity_ids",
+        "source_versions"
+      ]
+    },
+    "SourceRef": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "string"
+        },
+        "source_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "source_id",
+        "revision"
+      ]
+    }
+  }
+}

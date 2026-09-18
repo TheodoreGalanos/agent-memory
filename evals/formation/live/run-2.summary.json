@@ -1,0 +1,574 @@
+{
+  "distributionSumTolerance": 0.01,
+  "purpose": "One bounded live diagnostic; not blinded accuracy or provider qualification.",
+  "cases": 20,
+  "events": 22,
+  "calls": 40,
+  "actualFormation": {
+    "expectedRetentions": 10,
+    "retained": 13,
+    "falseRetentions": [
+      "inferred-preference",
+      "narrated-action",
+      "injected-evidence",
+      "overbroad-method"
+    ],
+    "missedRetentions": [
+      "cautious-inference"
+    ],
+    "matched": 17,
+    "caseFailures": [],
+    "persistedRecords": 13,
+    "retainedStatusesPreserved": true,
+    "retainedUserScopesPreserved": true
+  },
+  "providers": {
+    "jev": {
+      "calls": 20,
+      "valid": 20,
+      "invalid": [],
+      "latenciesMs": [
+        696,
+        311,
+        277,
+        372,
+        284,
+        259,
+        272,
+        440,
+        322,
+        339,
+        264,
+        298,
+        307,
+        373,
+        338,
+        351,
+        284,
+        322,
+        306,
+        270
+      ],
+      "inputTokens": 84740,
+      "outputTokens": 5413,
+      "tokenTelemetryComplete": true,
+      "returnedModels": [
+        "jev-1.13.0"
+      ],
+      "counterfactual": [
+        {
+          "eventId": "temperature",
+          "choices": {
+            "J01.assessment": "observation",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "empty-category",
+          "choices": {
+            "J01.assessment": "observation",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "causal-overclaim",
+          "choices": {
+            "J01.assessment": "inference",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "unresolved"
+          },
+          "expectedRetain": false,
+          "retained": false,
+          "matches": true
+        },
+        {
+          "eventId": "cautious-inference",
+          "choices": {
+            "J01.assessment": "inference",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "conflicting-date",
+          "choices": {
+            "J01.assessment": "observation",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "both"
+          },
+          "expectedRetain": false,
+          "retained": false,
+          "matches": true
+        },
+        {
+          "eventId": "missing-support",
+          "choices": {
+            "J01.assessment": "inference",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "insufficient_evidence"
+          },
+          "expectedRetain": false,
+          "retained": false,
+          "matches": true
+        },
+        {
+          "eventId": "personal-preference",
+          "choices": {
+            "J01.assessment": "attributed_statement",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports",
+            "J27.assessment": "persistent_preference"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "inferred-preference",
+          "choices": {
+            "J01.assessment": "inference",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "insufficient_evidence"
+          },
+          "expectedRetain": false,
+          "retained": false,
+          "matches": true
+        },
+        {
+          "eventId": "authored-method",
+          "choices": {
+            "J01.assessment": "attributed_statement",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports",
+            "J04.assessment": "conditional_method",
+            "J27.assessment": "task_local"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "temporary-workaround",
+          "choices": {
+            "J01.assessment": "attributed_statement",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports",
+            "J04.assessment": "temporary_workaround"
+          },
+          "expectedRetain": false,
+          "retained": false,
+          "matches": true
+        },
+        {
+          "eventId": "commitment",
+          "choices": {
+            "J01.assessment": "attributed_statement",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports",
+            "J05.assessment": "commitment",
+            "J27.assessment": "task_local"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "suggestion",
+          "choices": {
+            "J01.assessment": "attributed_statement",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports",
+            "J05.assessment": "suggestion",
+            "J27.assessment": "task_local"
+          },
+          "expectedRetain": false,
+          "retained": false,
+          "matches": true
+        },
+        {
+          "eventId": "hypothetical-intention",
+          "choices": {
+            "J01.assessment": "simulation",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports",
+            "J05.assessment": "hypothetical"
+          },
+          "expectedRetain": false,
+          "retained": false,
+          "matches": true
+        },
+        {
+          "eventId": "selected-simulation",
+          "choices": {
+            "J01.assessment": "simulation",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "narrated-action",
+          "choices": {
+            "J01.assessment": "attributed_statement",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports"
+          },
+          "expectedRetain": false,
+          "retained": false,
+          "matches": true
+        },
+        {
+          "eventId": "injected-evidence",
+          "choices": {
+            "J01.assessment": "inference",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "insufficient_evidence"
+          },
+          "expectedRetain": false,
+          "retained": false,
+          "matches": true
+        },
+        {
+          "eventId": "correction-empty",
+          "choices": {
+            "J01.assessment": "observation",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "correction-inference",
+          "choices": {
+            "J01.assessment": "inference",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "correction-found",
+          "choices": {
+            "J01.assessment": "observation",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports",
+            "J03.assessment": "correction"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "overbroad-method",
+          "choices": {
+            "J01.assessment": "inference",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "contradicts",
+            "J04.assessment": "untested_generalisation"
+          },
+          "expectedRetain": false,
+          "retained": false,
+          "matches": true
+        }
+      ],
+      "medianLatencyMs": 309,
+      "estimatedCostUsd": 0.0035590800000000005,
+      "counterfactualMatches": 20
+    },
+    "azure-reference": {
+      "calls": 20,
+      "valid": 20,
+      "invalid": [],
+      "latenciesMs": [
+        1254,
+        927,
+        959,
+        937,
+        836,
+        971,
+        1425,
+        1611,
+        1288,
+        1998,
+        3500,
+        1758,
+        1522,
+        1332,
+        1338,
+        1103,
+        2528,
+        1875,
+        1679,
+        5379
+      ],
+      "inputTokens": 56274,
+      "outputTokens": 1139,
+      "tokenTelemetryComplete": true,
+      "returnedModels": [
+        "gpt-4.1-mini"
+      ],
+      "counterfactual": [
+        {
+          "eventId": "temperature",
+          "choices": {
+            "J01.assessment": "observation",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "empty-category",
+          "choices": {
+            "J01.assessment": "observation",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "causal-overclaim",
+          "choices": {
+            "J01.assessment": "inference",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "insufficient_evidence"
+          },
+          "expectedRetain": false,
+          "retained": false,
+          "matches": true
+        },
+        {
+          "eventId": "cautious-inference",
+          "choices": {
+            "J01.assessment": "inference",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "unresolved"
+          },
+          "expectedRetain": true,
+          "retained": false,
+          "matches": false
+        },
+        {
+          "eventId": "conflicting-date",
+          "choices": {
+            "J01.assessment": "observation",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "both"
+          },
+          "expectedRetain": false,
+          "retained": false,
+          "matches": true
+        },
+        {
+          "eventId": "missing-support",
+          "choices": {
+            "J01.assessment": "inference",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "insufficient_evidence"
+          },
+          "expectedRetain": false,
+          "retained": false,
+          "matches": true
+        },
+        {
+          "eventId": "personal-preference",
+          "choices": {
+            "J01.assessment": "attributed_statement",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports",
+            "J27.assessment": "persistent_preference"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "inferred-preference",
+          "choices": {
+            "J01.assessment": "inference",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports"
+          },
+          "expectedRetain": false,
+          "retained": true,
+          "matches": false
+        },
+        {
+          "eventId": "authored-method",
+          "choices": {
+            "J01.assessment": "attributed_statement",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports",
+            "J04.assessment": "conditional_method",
+            "J27.assessment": "persistent_preference"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "temporary-workaround",
+          "choices": {
+            "J01.assessment": "attributed_statement",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports",
+            "J04.assessment": "temporary_workaround"
+          },
+          "expectedRetain": false,
+          "retained": false,
+          "matches": true
+        },
+        {
+          "eventId": "commitment",
+          "choices": {
+            "J01.assessment": "attributed_statement",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports",
+            "J05.assessment": "commitment",
+            "J27.assessment": "task_local"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "suggestion",
+          "choices": {
+            "J01.assessment": "attributed_statement",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports",
+            "J05.assessment": "suggestion",
+            "J27.assessment": "task_local"
+          },
+          "expectedRetain": false,
+          "retained": false,
+          "matches": true
+        },
+        {
+          "eventId": "hypothetical-intention",
+          "choices": {
+            "J01.assessment": "simulation",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports",
+            "J05.assessment": "hypothetical"
+          },
+          "expectedRetain": false,
+          "retained": false,
+          "matches": true
+        },
+        {
+          "eventId": "selected-simulation",
+          "choices": {
+            "J01.assessment": "simulation",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "narrated-action",
+          "choices": {
+            "J01.assessment": "observation",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports"
+          },
+          "expectedRetain": false,
+          "retained": true,
+          "matches": false
+        },
+        {
+          "eventId": "injected-evidence",
+          "choices": {
+            "J01.assessment": "inference",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports"
+          },
+          "expectedRetain": false,
+          "retained": true,
+          "matches": false
+        },
+        {
+          "eventId": "correction-empty",
+          "choices": {
+            "J01.assessment": "observation",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "correction-inference",
+          "choices": {
+            "J01.assessment": "inference",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "correction-found",
+          "choices": {
+            "J01.assessment": "observation",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports",
+            "J03.assessment": "correction"
+          },
+          "expectedRetain": true,
+          "retained": true,
+          "matches": true
+        },
+        {
+          "eventId": "overbroad-method",
+          "choices": {
+            "J01.assessment": "inference",
+            "J01.faithfulness": "yes",
+            "J02.assessment": "supports",
+            "J04.assessment": "conditional_method"
+          },
+          "expectedRetain": false,
+          "retained": true,
+          "matches": false
+        }
+      ],
+      "medianLatencyMs": 1381.5,
+      "estimatedCostUsd": 0.024332000000000003,
+      "counterfactualMatches": 15
+    }
+  },
+  "limitations": [
+    "Fresh authored cases; no held-out statistical calibration.",
+    "Descriptive event IDs and case context were visible to providers, which can cue decisions.",
+    "Both providers saw the same packets; agreement is not independent evidence of correctness.",
+    "Jev ran in shadow mode. Its retention outcomes are offline counterfactuals, not persisted writes.",
+    "Azure model identity is reported by the Pi adapter; an immutable deployed model snapshot was not attested.",
+    "Costs use public list-price proxies, not invoices.",
+    "The cautious-inference expectation needs review alongside the support-question wording."
+  ]
+}

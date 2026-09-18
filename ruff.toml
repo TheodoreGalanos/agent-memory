@@ -1,0 +1,29 @@
+# Ruff configuration for the Python bridge, importer and scripts.
+line-length = 120
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "I", "B", "C4", "UP", "S", "BLE", "PL"]
+ignore = [
+  "E501",    # black owns line length
+  "PLR0913", # bridge entry points take many explicit parameters
+  "PLR2004", # protocol constants are named where they matter
+  "PLR0912", "PLR0915", "PLR0911", "PLR0917", # lifecycle handlers are long by nature; split when touched
+  "C408",    # dict()/list() calls read clearly where used
+  "PLC0415", # optional provider SDKs (Docker, Daytona) are imported where they are needed
+  "S603", "S607", # subprocess calls use fixed argument vectors; see the surrounding comments
+]
+
+[lint.per-file-ignores]
+# The sandbox interpreter executes caller code by design and must report anything it raises.
+"services/harbor-bridge/interpreter.py" = ["S102", "BLE001"]
+# Reconciliation and CLI wrappers record every failure as an unknown outcome rather than crash.
+"services/harbor-bridge/lifecycle.py" = ["BLE001"]
+"services/harbor-bridge/asp_helper.py" = ["BLE001"]
+"services/harbor-bridge/cli.py" = ["BLE001"]
+# The per-step closure is invoked within its own iteration; the loop variables are current.
+"services/harbor-bridge/trajectory_import.py" = ["B023"]
+# Test helpers may ignore cleanup failures.
+"services/harbor-bridge/test_*.py" = ["S", "BLE001"]
+"services/harbor-bridge/integration_test.py" = ["S101"]
+"scripts/test-*.py" = ["S"]

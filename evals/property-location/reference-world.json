@@ -1,0 +1,54 @@
+{
+  "description": "Evaluator-only world facts; never sent to a worker. Outcomes allow equivalent wording.",
+  "facts": {
+    "C": {
+      "instance": "W-101",
+      "instance_values": {},
+      "type": "WT-12",
+      "type_values": {
+        "FireResistance": "120 min"
+      }
+    },
+    "D": {
+      "instance": "W-101",
+      "instance_values": {
+        "FireResistance": "90 min"
+      },
+      "type": "WT-12",
+      "type_values": {}
+    }
+  },
+  "checkpoints": {
+    "before-correction": {
+      "visible_evidence": [
+        "instance-empty"
+      ],
+      "status": "partial",
+      "preserve": [
+        "empty query is an observation",
+        "absence is at most an inference",
+        "type properties are unexamined"
+      ]
+    },
+    "after-correction": {
+      "visible_evidence": [
+        "instance-empty",
+        "schema-location",
+        "type-property"
+      ],
+      "status": "complete",
+      "preserve": [
+        "type location and value are supported in C",
+        "instance observation remains true"
+      ]
+    },
+    "revision-d": {
+      "visible_evidence": [],
+      "status": "blocked",
+      "preserve": [
+        "C remains historically scoped",
+        "D requires new inspection"
+      ]
+    }
+  }
+}
