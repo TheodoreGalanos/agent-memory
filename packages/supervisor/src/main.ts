@@ -8,7 +8,7 @@ import { createModels } from "@earendil-works/pi-ai";
 import { azureOpenAIResponsesProvider } from "@earendil-works/pi-ai/providers/azure-openai-responses";
 import { HostClient } from "../../pi-worker/src/host-client.js";
 import { GenerativeProvider, JevProvider, type JudgementProvider } from "../../judgement/src/providers.js";
-import { SUPPORTED_PROCESSES, runSupervisor, type SupportedProcess } from "./index.js";
+import { SUPPORTED_PROCESSES, processHandlers, runSupervisor, type SupportedProcess } from "./index.js";
 
 interface WorkerConfiguration {
   /** Path to a dotenv file with provider credentials; relative paths resolve from the config file. */
@@ -58,6 +58,15 @@ async function main() {
     jev = new JevProvider("jev", config.jev.model, maximum, () => process.env.JEV_API_KEY!);
   }
   const processes = config.processes ?? SUPPORTED_PROCESSES;
+  const unsupported = processes.filter((p) => !SUPPORTED_PROCESSES.includes(p));
+  if (unsupported.length) throw new Error(`This pool supports ${SUPPORTED_PROCESSES.join(", ")} only; not ${unsupported.join(", ")}`);
+  const handlers = processHandlers({
+    models,
+    taskModel,
+    maxPayloadBytes: config.max_payload_bytes ?? 100_000,
+    taskReservationCost: config.task_reservation_cost_microunits,
+    judgement: { reference, jev, mode: config.judgement_mode ?? (jev ? "shadow" : "reference"), maximum },
+  }).filter((handler) => processes.includes(handler.process as SupportedProcess));
   const classes = (process.env.MEMORY_POOL_CLASSES ?? "").split(",").filter(Boolean);
   const controller = new AbortController();
   for (const signal of ["SIGTERM", "SIGINT"] as const)
@@ -70,16 +79,11 @@ async function main() {
     {
       host: new HostClient(hostUrl, token),
       hostUrl,
-      processes,
+      handlers,
       concurrency: config.concurrency ?? { interactive: 1, deferred: 1 },
       pollMs: config.poll_ms ?? 1000,
       leaseSeconds: config.lease_seconds ?? 120,
       sessionsDirectory: resolve(base, config.sessions_directory),
-      models,
-      taskModel,
-      maxPayloadBytes: config.max_payload_bytes ?? 100_000,
-      taskReservationCost: config.task_reservation_cost_microunits,
-      judgement: { reference, jev, mode: config.judgement_mode ?? (jev ? "shadow" : "reference"), maximum },
       log: (line) => console.log(`pool ${process.env.MEMORY_POOL_INDEX ?? ""}: ${line}`),
     },
     withAbortSignal(controller.signal, BACKGROUND_CONTEXT),

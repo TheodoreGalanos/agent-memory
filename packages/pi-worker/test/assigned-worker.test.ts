@@ -16,6 +16,7 @@ import type { Assignment } from "../../../contracts/generated/assignment.js";
 import type { HostRequest } from "../../../contracts/generated/host-request.js";
 import type { HostResponse } from "../../../contracts/generated/host-response.js";
 import { attachAssignedWorker } from "../src/assigned-worker.js";
+import { keepLease } from "../src/lease.js";
 import { openLocalSession } from "../src/local-session.js";
 import { input, scriptedResult } from "./fixtures.js";
 
@@ -498,4 +499,67 @@ it("denies restricted work when the profile has no approved provider retention",
       expect(f.calls.some(c => c.action === "reserve")).toBe(false);
     } finally { await worker.close(); }
   } finally { await f.close(); }
+});
+
+it("drives under a supplied lease keeper instead of starting its own heartbeat", async () => {
+  const f = await fixture();
+  try {
+    f.faux.setResponses([
+      fauxAssistantMessage(JSON.stringify(scriptedResult("before-correction"))),
+    ]);
+    const lifecycle = {
+      renew: vi.fn(async () => {}),
+      finish: vi.fn(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 1_100));
+      }),
+    };
+    // A one-second lease renews about every third of a second.
+    const lease = keepLease(f.host, f.assignment, 1, context);
+    const worker = await attachAssignedWorker(
+      f.assignment,
+      f.host,
+      f.profile,
+      { ...f.options, lease },
+      context,
+      lifecycle,
+    );
+    try {
+      expect(await worker.run()).toMatchObject({ kind: "settled" });
+      const renewals = f.calls.filter((c) => c.action === "renew");
+      // Every renewal carries the keeper's lease length; none carries the worker's former 30 seconds.
+      expect(renewals.length).toBeGreaterThanOrEqual(3);
+      expect(renewals.every((c) => c.lease_seconds === 1)).toBe(true);
+      // The protected endpoint is renewed while the model runs, not during export.
+      expect(lifecycle.renew).not.toHaveBeenCalled();
+      // The worker never stops a keeper it does not own.
+      const before = renewals.length;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      expect(f.calls.filter((c) => c.action === "renew").length).toBeGreaterThan(before);
+    } finally {
+      await worker.close();
+      await lease.stop();
+    }
+  } finally {
+    await f.close();
+  }
+});
+
+it("stops its own lease keeper when the run ends", async () => {
+  const f = await fixture();
+  try {
+    f.faux.setResponses([
+      fauxAssistantMessage(JSON.stringify(scriptedResult("before-correction"))),
+    ]);
+    const worker = await f.attach();
+    try {
+      expect(await worker.run()).toMatchObject({ kind: "settled" });
+      const before = f.calls.filter((c) => c.action === "renew").length;
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      expect(f.calls.filter((c) => c.action === "renew").length).toBe(before);
+    } finally {
+      await worker.close();
+    }
+  } finally {
+    await f.close();
+  }
 });

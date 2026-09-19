@@ -25,6 +25,7 @@ import type {
 } from "../../../contracts/generated/host-request.js";
 import type { HostCommands } from "./host-client.js";
 import { createWorkerHarness, type WorkerOptions } from "./harness.js";
+import { fenceFor, keepLease, type AssignmentLease } from "./lease.js";
 
 export interface WorkerProfile {
   id: string;
@@ -48,12 +49,13 @@ interface SavedResult {
   result: WorkResult;
 }
 
-/** One assignment, one attached Pi session, and one host-mapped operation. */
+/** One assignment, one attached Pi session, and one host-mapped operation. A supplied `lease`
+ * keeper is followed while driving; otherwise the worker keeps its own lease for each run. */
 export async function attachAssignedWorker(
   assignment: Assignment,
   host: HostCommands,
   profile: WorkerProfile,
-  options: WorkerOptions,
+  options: WorkerOptions & { lease?: AssignmentLease },
   parent: Context = BACKGROUND_CONTEXT,
   lifecycle?: ExecutionLifecycle,
 ) {
@@ -75,17 +77,15 @@ export async function attachAssignedWorker(
     profile.providerReservation.provider_calls !== 1
   )
     throw new Error("Invalid provider limits");
-  const fence: Fence = {
-    job_id: job.id,
-    owner_id: assignment.owner_id,
-    epoch: assignment.epoch,
-  };
+  const fence: Fence = fenceFor(assignment);
   const { context, cancel } = withCancel(parent);
   let expiresAt = Date.parse(assignment.expires_at);
   let cancelled = job.cancel_requested;
   let lost: Error | undefined;
   let closed = false;
   let driving = false;
+  /** The keeper currently renewing this assignment: supplied for the worker's lifetime, or owned per run. */
+  let lease: AssignmentLease | undefined = options.lease;
   let expiryTimer: ReturnType<typeof setTimeout>;
   function armExpiry() {
     clearTimeout(expiryTimer);
@@ -376,21 +376,36 @@ export async function attachAssignedWorker(
     return undefined;
   });
 
-  async function renew(updateEndpoint = true) {
+  /** Follows a keeper while driving: renewed ownership rearms expiry and renews the protected
+   * endpoint; a cancel request aborts the Pi operation. During export the endpoint stays fenced. */
+  function follow(keeper: AssignmentLease, exporting: () => boolean) {
+    const off = [
+      keeper.onRenew(async (renewed) => {
+        expiresAt = Date.parse(renewed.expires_at);
+        armExpiry();
+        cancelled = renewed.job.cancel_requested;
+        if (!exporting()) await lifecycle?.renew(renewed);
+      }),
+      keeper.onCancel(async () => {
+        cancelled = true;
+        if (!exporting()) await lane.requestAbort(job.operation_id, context);
+      }),
+    ];
+    const onLost = () => {
+      lost = keeper.lost ?? new Error("Assignment renewal failed");
+      cancel();
+    };
+    keeper.context.abortSignal?.addEventListener("abort", onLost, { once: true });
+    return () => {
+      for (const unsubscribe of off) unsubscribe();
+      keeper.context.abortSignal?.removeEventListener("abort", onLost);
+    };
+  }
+  async function renew() {
     active();
+    if (!lease) throw new Error("Assignment is not being driven");
     try {
-      const response = await host.request(
-        { action: "renew", fence, lease_seconds: 30 },
-        context.abortSignal,
-      );
-      if (response.kind !== "assignment")
-        throw new Error("Host did not renew assignment");
-      expiresAt = Date.parse(response.assignment.expires_at);
-      armExpiry();
-      if (updateEndpoint) await lifecycle?.renew(response.assignment);
-      cancelled = response.assignment.job.cancel_requested;
-      if (cancelled && updateEndpoint)
-        await lane.requestAbort(job.operation_id, context);
+      await lease.renew();
     } catch (error) {
       lost =
         error instanceof Error ? error : new Error("Assignment renewal failed");
@@ -469,35 +484,18 @@ export async function attachAssignedWorker(
     async run() {
       if (driving) throw new Error("Assignment is already being driven");
       driving = true;
-      let heartbeat: ReturnType<typeof setTimeout> | undefined;
-      let renewal: Promise<void> = Promise.resolve();
-      let stopped = false;
+      const own = !options.lease;
+      const keeper = options.lease ?? keepLease(host, assignment, 30, parent);
+      lease = keeper;
       let finishing = false;
-      const schedule = () => {
-        if (stopped) return;
-        heartbeat = setTimeout(() => {
-          renewal = renew(!finishing)
-            .then(schedule)
-            .catch(() => {});
-        }, 5_000);
-      };
+      const unfollow = follow(keeper, () => finishing);
       const finishExecution = async (cancelled: boolean) => {
         // Exports can outlast a lease. Keep host ownership alive while the
         // endpoint is fenced; renewing that endpoint would reopen execution.
         finishing = true;
-        if (heartbeat) clearTimeout(heartbeat);
-        await renewal;
-        if (heartbeat) clearTimeout(heartbeat);
-        try {
-          if (lifecycle) {
-            await renew(false);
-            schedule();
-            await lifecycle.finish(cancelled);
-          }
-        } finally {
-          stopped = true;
-          if (heartbeat) clearTimeout(heartbeat);
-          await renewal;
+        if (lifecycle) {
+          await renew();
+          await lifecycle.finish(cancelled);
         }
       };
       try {
@@ -535,7 +533,6 @@ export async function attachAssignedWorker(
           return { kind: "cancelled" as const };
         }
         await host.request({ action: "start", fence }, context.abortSignal);
-        schedule();
         await flushUsage();
         let investigation:
           Awaited<ReturnType<typeof prepareInvestigation>> | undefined;
@@ -687,9 +684,11 @@ export async function attachAssignedWorker(
           throw new Error("Host did not return the committed result");
         return { kind: "settled" as const, job: committed.job };
       } finally {
-        stopped = true;
-        if (heartbeat) clearTimeout(heartbeat);
-        await renewal;
+        unfollow();
+        if (own) {
+          lease = undefined;
+          await keeper.stop();
+        }
         driving = false;
       }
     },

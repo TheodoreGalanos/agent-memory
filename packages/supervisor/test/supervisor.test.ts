@@ -18,7 +18,7 @@ import { HostClient } from "../../pi-worker/src/host-client.js";
 import { input, loadJson } from "../../pi-worker/test/fixtures.js";
 import { GenerativeProvider, type JudgementProvider } from "../../judgement/src/providers.js";
 import { maximum } from "../../judgement/test/fixtures.js";
-import { runSupervisor } from "../src/index.js";
+import { processHandlers, runSupervisor } from "../src/index.js";
 
 async function freePort(): Promise<number> {
   const socket = createServer();
@@ -92,13 +92,14 @@ async function world(): Promise<World> {
     async close() { host.kill("SIGINT"); await once(host, "exit"); await rm(base, { recursive: true, force: true }); },
   };
 }
-/** Scripted judgement reference answering from each candidate's own evidential status. */
-function scriptedReference(faux: ReturnType<typeof fauxProvider>, models: ReturnType<typeof createModels>, onCall?: () => void): JudgementProvider {
+/** Scripted judgement reference answering from each candidate's own evidential status. `onCall` may
+ * delay or fail the call; it receives the provider's abort signal. */
+function scriptedReference(faux: ReturnType<typeof fauxProvider>, models: ReturnType<typeof createModels>, onCall?: (signal: AbortSignal) => void | Promise<void>): JudgementProvider {
   const generative = new GenerativeProvider("reference", models, faux.getModel(), maximum, 2048, faux.getModel().id);
   return {
     id: generative.id, model: generative.model, release: generative.release, maximum, distributions: false,
     async evaluate(packet: JudgementPacket, signal: AbortSignal) {
-      onCall?.();
+      await onCall?.(signal);
       const entry = packet.evidence.find((e) => e.name === "candidate")!.content as unknown as FormationEntry;
       const choices: Record<string, string> = { "J01.assessment": entry.event.evidential_status, "J01.faithfulness": "yes", "J02.assessment": "supports", "J03.assessment": "correction", "J04.assessment": "conditional_method", "J05.assessment": "commitment", "J27.assessment": "task_local" };
       const answers = Object.fromEntries(packet.questions.flatMap((d) => d.definition.questions.map((q) => [`${d.definition.id}.${q.key}`, { type: "choice", choice: choices[`${d.definition.id}.${q.key}`] }])));
@@ -186,9 +187,9 @@ it("a pool claims, drives and settles investigation and formation jobs through a
       return states.every((state) => ["completed", "partial", "failed"].includes(state));
     };
     await runSupervisor({
-      host: new HostClient(url, tokens.pool), hostUrl: url, processes: ["investigation", "formation"], concurrency: { interactive: 1, deferred: 1 }, pollMs: 50, leaseSeconds: 60,
-      sessionsDirectory: join(base, "sessions"), models, taskModel: faux.getModel(), maxPayloadBytes: 100_000,
-      judgement: { reference, mode: "reference", maximum },
+      host: new HostClient(url, tokens.pool), hostUrl: url, concurrency: { interactive: 1, deferred: 1 }, pollMs: 50, leaseSeconds: 60,
+      sessionsDirectory: join(base, "sessions"),
+      handlers: processHandlers({ models, taskModel: faux.getModel(), maxPayloadBytes: 100_000, judgement: { reference, mode: "reference", maximum } }),
       log: (line) => events.push(line),
       until: settled,
     }, context);
@@ -242,8 +243,8 @@ it("fault: a worker that dies after claiming loses its lease; recovery requeues 
     const result = { schema_version: "1", status: "complete", examined_scope: job.spec.brief.scope, inputs: job.spec.brief.inputs, findings: [], coverage: { examined: ["Second attempt"], unexamined: [] }, unresolved_work: [], proposed_changes: [], child_outputs: [], known_effects: [], usage: { status: "unknown", input_tokens: null, output_tokens: null, cost: null } };
     faux.setResponses([fauxAssistantMessage(JSON.stringify(result))]);
     await runSupervisor({
-      host: w.pool, hostUrl: w.url, processes: ["investigation"], concurrency: 1, pollMs: 50, leaseSeconds: 60, sessionsDirectory: join(w.base, "sessions"),
-      models, taskModel: faux.getModel(), maxPayloadBytes: 100_000, judgement: { reference: scriptedReference(faux, models), mode: "reference", maximum },
+      host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 60, sessionsDirectory: join(w.base, "sessions"),
+      handlers: processHandlers({ models, taskModel: faux.getModel(), maxPayloadBytes: 100_000, judgement: { reference: scriptedReference(faux, models), mode: "reference", maximum } }).filter((h) => h.process === "investigation"),
       log: () => {}, until: async () => SETTLED.includes((await w.job(job.id)).state),
     }, context);
     const done = await w.job(job.id);
@@ -265,8 +266,9 @@ it("fault: a judgement provider outage defers the candidates with a recorded rea
     let outage = true, calls = 0;
     const reference = scriptedReference(faux, models, () => { calls++; if (outage) throw new Error("provider unavailable"); });
     const run = async (jobId: string) => runSupervisor({
-      host: w.pool, hostUrl: w.url, processes: ["formation"], concurrency: 1, pollMs: 50, leaseSeconds: 60, sessionsDirectory: join(w.base, "sessions"),
-      models, taskModel: faux.getModel(), maxPayloadBytes: 100_000, judgement: { reference, mode: "reference", maximum }, log: () => {},
+      host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 60, sessionsDirectory: join(w.base, "sessions"),
+      handlers: processHandlers({ models, taskModel: faux.getModel(), maxPayloadBytes: 100_000, judgement: { reference, mode: "reference", maximum } }).filter((h) => h.process === "formation"),
+      log: () => {},
       until: async () => SETTLED.includes((await w.job(jobId)).state),
     }, context);
     const first = await formationJob();
@@ -287,6 +289,59 @@ it("fault: a judgement provider outage defers the candidates with a recorded rea
     expect(["completed", "partial"]).toContain((await w.job(second.id)).state);
     const after = expectKind(await w.client.request({ action: "user", request: { action: "browse", query: { include_inactive: false, limit: 50 } } }), "user").result;
     expect(after.kind === "records" ? after.records.length : -1).toBe(2);
+  } finally {
+    await w.close();
+  }
+}, 120_000);
+
+it("a formation window slower than its lease completes because the runner renews on a heartbeat", async () => {
+  const w = await world();
+  try {
+    const source = await w.ingestCapture();
+    const job = await w.submit("formation", { inputs: { memories: [], sources: [source], artifacts: [] }, capabilities: { sources: [source], queries: [], tools: [] } });
+    const faux = fauxProvider(), models = createModels();
+    models.setProvider(faux.provider);
+    // Each judgement call outlasts the two-second lease; only renewal keeps the fence valid.
+    const reference = scriptedReference(faux, models, () => new Promise((done) => setTimeout(done, 2_500)));
+    await runSupervisor({
+      host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 2, sessionsDirectory: join(w.base, "sessions"),
+      handlers: processHandlers({ models, taskModel: faux.getModel(), maxPayloadBytes: 100_000, judgement: { reference, mode: "reference", maximum } }).filter((h) => h.process === "formation"),
+      log: () => {}, until: async () => SETTLED.includes((await w.job(job.id)).state),
+    }, context);
+    const done = await w.job(job.id);
+    expect(["completed", "partial"]).toContain(done.state);
+    expect(done.attempt).toBe(1);
+    const browse = expectKind(await w.client.request({ action: "user", request: { action: "browse", query: { include_inactive: false, limit: 50 } } }), "user").result;
+    expect(browse.kind === "records" ? browse.records.length : -1).toBe(2);
+  } finally {
+    await w.close();
+  }
+}, 120_000);
+
+it("cancelling a running formation job settles it as cancelled rather than a failed attempt", async () => {
+  const w = await world();
+  try {
+    const source = await w.ingestCapture();
+    const job = await w.submit("formation", { inputs: { memories: [], sources: [source], artifacts: [] }, capabilities: { sources: [source], queries: [], tools: [] } });
+    const faux = fauxProvider(), models = createModels();
+    models.setProvider(faux.provider);
+    let cancelIssued = false;
+    // The first judgement call requests cancellation and then waits for the runner to abort it.
+    const reference = scriptedReference(faux, models, async (signal) => {
+      if (!cancelIssued) { cancelIssued = true; await w.client.request({ action: "cancel", job_id: job.id }); }
+      await new Promise<void>((_, fail) => signal.addEventListener("abort", () => fail(new Error("aborted")), { once: true }));
+    });
+    const events: string[] = [];
+    await runSupervisor({
+      host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 3, sessionsDirectory: join(w.base, "sessions"),
+      handlers: processHandlers({ models, taskModel: faux.getModel(), maxPayloadBytes: 100_000, judgement: { reference, mode: "reference", maximum } }).filter((h) => h.process === "formation"),
+      log: (line) => events.push(line), until: async () => ["cancelled", ...SETTLED].includes((await w.job(job.id)).state),
+    }, context);
+    const done = await w.job(job.id);
+    expect(done.state).toBe("cancelled");
+    expect(done.attempt).toBe(1);
+    expect(events.some((e) => e.includes("cancelled"))).toBe(true);
+    expect(events.filter((e) => e.includes(`job ${job.id} failed`))).toEqual([]);
   } finally {
     await w.close();
   }

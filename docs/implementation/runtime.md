@@ -1046,23 +1046,29 @@ kills after ten seconds. `npm run memory -- enable-pool DIRECTORY` writes this
 configuration and a `worker.json` for an initialized instance.
 
 `packages/supervisor` is the Node child. `main.ts` reads `worker.json` (models,
-concurrency, poll and lease intervals, judgement mode and maximum, the `.env` path) and
-runs `runSupervisor`, which polls `claim_next` per free slot and dispatches by process.
-Investigation attaches the assigned Pi worker with the job credential, constrains the
-Azure reply to the `WorkResult` contract through `before_payload`, and delivers granted
-input memories through `current_memories`; a granted memory that has since been revised
-or withdrawn settles the job as `blocked` with the reason instead of consuming attempts.
-Formation runs one `runFormation` window per input source with a window ID derived from
-the job and source, so a retried attempt resumes rather than paying again, and completes
-the job with the combined coverage; unexamined material is carried as unresolved work, so
-such results are `partial`. Each judgement call is logged as an operator trace (provider,
-questions, answers, latency, tokens). A failed attempt shortens its lease to one second
-so recovery can requeue it. Other process kinds are not claimed by this pool and stay
-queued.
+concurrency, poll and lease intervals, judgement mode and maximum, the `.env` path),
+registers one handler per enabled process (`processHandlers`) and runs `runSupervisor`,
+which polls `claim_next` per free slot and hands each claim to the one assignment runner
+(`runner.ts`). The runner connects with the job-bound credential, opens the job's Pi session,
+keeps the lease renewed on a heartbeat (`keepLease` in `pi-worker/src/lease.ts`, shared with
+the assigned worker), and gives the handler a context that aborts when the lease is lost,
+the job is cancelled or the pool stops. A handler that throws after a cancel request settles
+the job through `acknowledge_cancellation`; any other failure shortens the lease to one second
+so recovery can requeue it. Handlers only do process work. Investigation attaches the
+assigned Pi worker under the runner's keeper, constrains the Azure reply to the `WorkResult`
+contract through `before_payload`, and delivers granted input memories through
+`current_memories`; a granted memory that has since been revised or withdrawn settles the job
+as `blocked` with the reason instead of consuming attempts. Formation derives one window per
+input source from the assignment (`formationInput`) with a window ID from the job and source,
+so a retried attempt resumes rather than paying again, and completes the job with the combined
+coverage; unexamined material is carried as unresolved work, so such results are `partial`.
+Each judgement call is logged as an operator trace (provider, questions, answers, latency,
+tokens). Other process kinds have no handler in this pool and stay queued.
 
 `claim_next` orders candidates by the number of leased or running jobs in each project, then
-by age, so a busy project cannot starve a quiet one within the pool's scope; the pool keeps
-separate interactive and deferred slots (`worker.json` `concurrency`). The formation
+by age, so a busy project cannot starve a quiet one within the pool's scope. `worker.json`
+`concurrency` is either separate interactive and deferred slots or one number shared across
+both classes. The formation
 operation is the brief's purpose: jobs sharing a purpose continue a source's cursor, a new
 purpose reinterprets the source. `GET /healthz`, `/readyz` and `/metrics` serve liveness,
 database readiness and Prometheus counts (jobs by state, issued credentials, uptime) without

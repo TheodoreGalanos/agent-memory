@@ -7,6 +7,7 @@ import type {
 } from "../../../contracts/generated/judgement-packet.js";
 import type { TaskLocalCheck } from "../../../contracts/generated/task-local-check.js";
 import type { HostCommands } from "../../pi-worker/src/host-client.js";
+import { fenceFor } from "../../pi-worker/src/lease.js";
 import { inspectJson } from "../../pi-worker/src/scoped-operation.js";
 import { permits } from "../../pi-worker/src/workspace.js";
 import {
@@ -14,11 +15,7 @@ import {
   type Context,
 } from "@earendil-works/pi-agent-core";
 
-export const fenceFor = (assignment: Assignment) => ({
-  job_id: assignment.job.id,
-  owner_id: assignment.owner_id,
-  epoch: assignment.epoch,
-});
+export { fenceFor };
 export interface PacketInput {
   id: string;
   subject: string;
