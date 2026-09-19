@@ -30,6 +30,9 @@ export interface FormationInput {
   windows: { id: string; source: FormationWindow["source"]; limit: number }[];
 }
 
+/** Windows one formation job works through per source before leaving the rest to a later job. */
+const MAX_WINDOWS_PER_SOURCE = 8;
+
 export function formationInput(assignment: Assignment): FormationInput {
   const brief = assignment.job.spec.brief;
   if (brief.process !== "formation") throw new Error("Formation input needs a formation assignment");
@@ -75,9 +78,15 @@ async function runFormationJob(run: ProcessRun, deps: FormationDeps) {
   };
   const results: FormationResult[] = [];
   for (const window of input.windows) {
-    const result = await runFormation(host, assignment, session, { ...window, operation: input.operation }, judgement, context);
-    results.push(result);
-    log(`job ${assignment.job.id} source ${window.source.source_id}@${window.source.revision}: retained ${result.records.length}, deferred ${result.deferred.length}`);
+    // Continue bounded windows while the source has more, up to the per-source allowance; what is
+    // left is reported as unexamined and a later job continues the cursor.
+    for (let continuation = 0; continuation < MAX_WINDOWS_PER_SOURCE; continuation++) {
+      const id = continuation ? windowId(assignment.job.id, { ...window.source, revision: `${window.source.revision}#${continuation}` }) : window.id;
+      const result = await runFormation(host, assignment, session, { ...window, id, operation: input.operation }, judgement, context);
+      results.push(result);
+      log(`job ${assignment.job.id} source ${window.source.source_id}@${window.source.revision} window ${continuation + 1}: retained ${result.records.length}, deferred ${result.deferred.length}${result.remaining ? ", more remains" : ""}`);
+      if (!result.remaining) break;
+    }
   }
   const coverage = { examined: results.flatMap((r) => r.coverage.examined), unexamined: results.flatMap((r) => r.coverage.unexamined) };
   // Unexamined material is itself unresolved work: a partial result must say what remains.

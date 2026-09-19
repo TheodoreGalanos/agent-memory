@@ -134,6 +134,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 {
                     eprintln!("Job recovery failed; retrying on the next tick");
                 }
+                // Settled tasks with a published experience get a bounded formation job.
+                if tick % RECOVERY_TICKS == 0
+                    && timer_store.schedule_formation(authority, 10).await.is_err()
+                {
+                    eprintln!("Formation scheduling failed; retrying on the next tick");
+                }
             }
         }
     });

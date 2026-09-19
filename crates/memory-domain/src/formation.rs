@@ -207,6 +207,9 @@ pub struct SupportGroup {
 pub struct FormationResult {
     pub window_id: Uuid,
     pub cursor: u32,
+    /// Whether the source holds events after this window; the caller continues or persists that work.
+    #[serde(default)]
+    pub remaining: bool,
     pub records: Vec<MemoryVersion>,
     pub duplicate_events: BTreeMap<String, Vec<MemoryRef>>,
     pub deferred: Vec<DeferredContribution>,

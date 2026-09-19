@@ -1,5 +1,5 @@
 //! Host state transitions. Transactions finish before a worker performs I/O.
-mod budgets;
+pub(crate) mod budgets;
 mod effects;
 pub(crate) mod events;
 pub(crate) mod jobs;

@@ -1242,6 +1242,10 @@ export interface FormationResult {
     [k: string]: JudgementUsage;
   };
   records: MemoryVersion[];
+  /**
+   * Whether the source holds events after this window; the caller continues or persists that work.
+   */
+  remaining?: boolean;
   unresolved: string[];
   usage: Usage;
   window_id: string;

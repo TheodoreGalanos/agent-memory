@@ -2,8 +2,11 @@
 //! ABOUTME: tool-event source scoped to the brief, idempotently per attempt, and clients can find it by job.
 use chrono::{DateTime, Duration, Utc};
 use memory_domain::{
-    contracts::{Authority, Command, EvidentialStatus, Origin, Process, WireVersion, WorkBrief},
-    coordination::{Budget, Fence, HostRequest, HostResponse, Resources, SubmitJob},
+    contracts::{
+        Authority, Command, Coverage, EvidentialStatus, Origin, Process, Usage, UsageStatus,
+        WireVersion, WorkBrief, WorkResult, WorkStatus,
+    },
+    coordination::{Budget, Fence, HostRequest, HostResponse, JobState, Resources, SubmitJob},
     sources::ToolEvent,
 };
 use memory_host::{Credential, Host, Role};
@@ -268,6 +271,87 @@ async fn a_worker_publishes_its_experience_once_per_attempt_and_clients_find_it_
         .filter(|e| e.kind == "experience_published")
         .count();
     assert_eq!(events_read, 1);
+
+    // Nothing is scheduled while the task runs; once it settles, exactly one formation job follows,
+    // under the task's policy and budget, with the experience as its only source. A repeated sweep
+    // schedules nothing more.
+    assert_eq!(store.schedule_formation(&auth, 10).await.unwrap(), 0);
+    let settled_brief = store.job(&auth, job).await.unwrap().spec.brief;
+    let (scope, task_inputs) = (settled_brief.scope.clone(), settled_brief.inputs.clone());
+    store
+        .complete_job(
+            &auth,
+            Uuid::now_v7(),
+            &fence,
+            WorkResult {
+                schema_version: WireVersion::V1,
+                status: WorkStatus::Complete,
+                examined_scope: scope,
+                inputs: task_inputs.clone(),
+                findings: vec![],
+                coverage: Coverage {
+                    examined: vec!["Fixture".into()],
+                    unexamined: vec![],
+                },
+                unresolved_work: vec![],
+                proposed_changes: vec![],
+                child_outputs: vec![],
+                result_artifact: None,
+                known_effects: vec![],
+                usage: Usage {
+                    status: UsageStatus::Known,
+                    input_tokens: Some(0),
+                    output_tokens: Some(0),
+                    cost: None,
+                },
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        store.schedule_formation(&auth, 10).await.unwrap(),
+        1,
+        "{:?}",
+        store.scheduled_formation(&auth, job).await.unwrap()
+    );
+    assert_eq!(store.schedule_formation(&auth, 10).await.unwrap(), 0);
+    let scheduled = Uuid::parse_str(
+        &store
+            .scheduled_formation(&auth, job)
+            .await
+            .unwrap()
+            .unwrap(),
+    )
+    .unwrap();
+    let formed = store.job(&auth, scheduled).await.unwrap();
+    assert_eq!(formed.state, JobState::Queued);
+    assert_eq!(formed.spec.brief.process, Process::Formation);
+    assert_eq!(
+        formed.spec.brief.inputs.sources,
+        vec![source.reference.clone()]
+    );
+    assert_eq!(
+        formed.spec.brief.capabilities.sources,
+        vec![source.reference.clone()]
+    );
+    let task_brief = store.job(&auth, job).await.unwrap().spec.brief;
+    assert_eq!(formed.spec.brief.policy, task_brief.policy);
+    assert_eq!(
+        formed.spec.brief.limits.root_budget_id,
+        task_brief.limits.root_budget_id
+    );
+    assert_ne!(formed.spec.brief.task_id, task_brief.task_id);
+    assert_eq!(
+        formed.spec.brief.scope.task_id,
+        Some(formed.spec.brief.task_id)
+    );
+    assert!(
+        formed
+            .spec
+            .brief
+            .purpose
+            .contains(&task_brief.task_id.to_string())
+    );
 
     // Only a task's own worker can publish, and only for task processes.
     let other = store.claim_job(&auth, formation, 60).await.unwrap();

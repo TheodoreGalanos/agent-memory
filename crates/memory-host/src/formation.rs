@@ -586,6 +586,7 @@ impl Host {
         let mut result = FormationResult {
             window_id: window.id,
             cursor: window.through,
+            remaining: window.remaining,
             records: vec![],
             duplicate_events: BTreeMap::new(),
             deferred: vec![],

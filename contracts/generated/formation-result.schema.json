@@ -49,6 +49,11 @@
         "$ref": "#/$defs/MemoryVersion"
       }
     },
+    "remaining": {
+      "description": "Whether the source holds events after this window; the caller continues or persists that work.",
+      "type": "boolean",
+      "default": false
+    },
     "unresolved": {
       "type": "array",
       "items": {

@@ -369,7 +369,7 @@ it("cancelling a running formation job settles it as cancelled rather than a fai
   }
 }, 120_000);
 
-it("formation over a task's published experience judges span roles, constructs candidates from the spans and retains them", async () => {
+it("a settled task's experience is formed automatically: the Host schedules formation, roles are judged, candidates constructed and retained", async () => {
   const w = await world();
   try {
     // Task A: a scripted model answers the brief; its experience is published when it settles.
@@ -389,8 +389,25 @@ it("formation over a task's published experience judges span roles, constructs c
     expect((await w.job(task.id)).state).toBe("completed");
     const experience = expectKind(await w.client.request({ action: "experience", job_id: task.id }), "source").source;
 
-    // Formation over that experience: no authored candidates exist anywhere.
-    const formation = await w.submit("formation", { inputs: { memories: [], sources: [experience.reference], artifacts: [] }, capabilities: { sources: [experience.reference], queries: [], tools: [] } });
+    // The Host schedules formation over that experience by itself; nobody submits it and no authored
+    // candidates exist anywhere. Find the scheduled job through the durable events.
+    const scheduled = async () => {
+      const page = expectKind(await w.client.request({ action: "events", after: 0, limit: 500 }), "events").page;
+      for (const event of page.events.filter((e) => e.kind === "job_accepted" && e.resource_id !== task.id)) {
+        const job = await w.job(event.resource_id);
+        if (job.spec.brief.process === "formation" && job.spec.brief.inputs.sources.some((s) => s.source_id === experience.reference.source_id)) return job;
+      }
+      return undefined;
+    };
+    const started = Date.now();
+    let formation = await scheduled();
+    while (!formation) {
+      if (Date.now() - started > 30_000) throw new Error("the Host did not schedule formation for the settled task");
+      await new Promise((d) => setTimeout(d, 500));
+      formation = await scheduled();
+    }
+    expect(formation.spec.brief.policy).toEqual(task.spec.brief.policy);
+    expect(formation.spec.brief.limits.root_budget_id).toBe(task.spec.brief.limits.root_budget_id);
     await run(formation.id, "formation");
     const done = await w.job(formation.id);
     expect(["completed", "partial"], log.join("\n")).toContain(done.state);
