@@ -293,7 +293,7 @@ async fn fixture(live: bool) {
         owner_id: auth.actor_id,
         epoch: assignment.epoch,
     };
-    store.start_job(&auth, &fence).await.unwrap();
+    store.start_job(&auth, &fence, None).await.unwrap();
     let token = "consolidation-test-admin".repeat(3);
     let worker_token = "consolidation-test-worker".repeat(3);
     let host = Host::new(

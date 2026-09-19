@@ -18,7 +18,14 @@ import { HostClient } from "../../host-client/src/client.js";
 import { input, loadJson } from "../../pi-worker/test/fixtures.js";
 import { GenerativeProvider, type JudgementProvider } from "../../judgement/src/providers.js";
 import { maximum } from "../../judgement/test/fixtures.js";
-import { processHandlers, runSupervisor } from "../src/index.js";
+import { POOL_MODULES, composeApplication, runSupervisor, type Services } from "../src/index.js";
+
+/** Composes the pool's modules for the named processes against scripted services. */
+function compose(services: Services, ...processes: ("investigation" | "formation")[]) {
+  return composeApplication(services, POOL_MODULES.filter((m) => m.declaration.operations.some((op) => (processes as string[]).includes(op))));
+}
+const taskService = (models: ReturnType<typeof createModels>, faux: ReturnType<typeof fauxProvider>) =>
+  ({ models, model: faux.getModel(), maxPayloadBytes: 100_000 });
 
 async function freePort(): Promise<number> {
   const socket = createServer();
@@ -186,10 +193,12 @@ it("a pool claims, drives and settles investigation and formation jobs through a
       const states = await Promise.all([investigation.id, formation.id, stale.id].map(jobState));
       return states.every((state) => ["completed", "partial", "failed"].includes(state));
     };
+    const composition = compose({ taskModel: taskService(models, faux), judgement: { reference, mode: "reference", maximum } }, "investigation", "formation");
+    expect(composition.identity).toMatch(/^investigation@1\+formation@1#[0-9a-f]{12}$/);
     await runSupervisor({
       host: new HostClient(url, tokens.pool), hostUrl: url, concurrency: { interactive: 1, deferred: 1 }, pollMs: 50, leaseSeconds: 60,
       sessionsDirectory: join(base, "sessions"),
-      handlers: processHandlers({ models, taskModel: faux.getModel(), maxPayloadBytes: 100_000, judgement: { reference, mode: "reference", maximum } }),
+      composition,
       log: (line) => events.push(line),
       until: settled,
     }, context);
@@ -197,7 +206,10 @@ it("a pool claims, drives and settles investigation and formation jobs through a
     const doneInvestigation = expectKind(await client.request({ action: "inspect_job", job_id: investigation.id }), "job").job;
     expect(doneInvestigation.state).toBe("completed");
     expect(doneInvestigation.result?.coverage.examined).toEqual(["Scripted"]);
+    // The Host records which composition accepted each job.
+    expect(doneInvestigation.composition).toBe(composition.identity);
     const doneFormation = expectKind(await client.request({ action: "inspect_job", job_id: formation.id }), "job").job;
+    expect(doneFormation.composition).toBe(composition.identity);
     // Formation reports material it did not examine; a partial result must then say what remains.
     expect(["completed", "partial"]).toContain(doneFormation.state);
     if (doneFormation.state === "partial") expect(doneFormation.result?.unresolved_work.length).toBeGreaterThan(0);
@@ -244,7 +256,7 @@ it("fault: a worker that dies after claiming loses its lease; recovery requeues 
     faux.setResponses([fauxAssistantMessage(JSON.stringify(result))]);
     await runSupervisor({
       host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 60, sessionsDirectory: join(w.base, "sessions"),
-      handlers: processHandlers({ models, taskModel: faux.getModel(), maxPayloadBytes: 100_000, judgement: { reference: scriptedReference(faux, models), mode: "reference", maximum } }).filter((h) => h.process === "investigation"),
+      composition: compose({ taskModel: taskService(models, faux) }, "investigation"),
       log: () => {}, until: async () => SETTLED.includes((await w.job(job.id)).state),
     }, context);
     const done = await w.job(job.id);
@@ -267,7 +279,7 @@ it("fault: a judgement provider outage defers the candidates with a recorded rea
     const reference = scriptedReference(faux, models, () => { calls++; if (outage) throw new Error("provider unavailable"); });
     const run = async (jobId: string) => runSupervisor({
       host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 60, sessionsDirectory: join(w.base, "sessions"),
-      handlers: processHandlers({ models, taskModel: faux.getModel(), maxPayloadBytes: 100_000, judgement: { reference, mode: "reference", maximum } }).filter((h) => h.process === "formation"),
+      composition: compose({ judgement: { reference, mode: "reference", maximum } }, "formation"),
       log: () => {},
       until: async () => SETTLED.includes((await w.job(jobId)).state),
     }, context);
@@ -305,7 +317,7 @@ it("a formation window slower than its lease completes because the runner renews
     const reference = scriptedReference(faux, models, () => new Promise((done) => setTimeout(done, 2_500)));
     await runSupervisor({
       host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 2, sessionsDirectory: join(w.base, "sessions"),
-      handlers: processHandlers({ models, taskModel: faux.getModel(), maxPayloadBytes: 100_000, judgement: { reference, mode: "reference", maximum } }).filter((h) => h.process === "formation"),
+      composition: compose({ judgement: { reference, mode: "reference", maximum } }, "formation"),
       log: () => {}, until: async () => SETTLED.includes((await w.job(job.id)).state),
     }, context);
     const done = await w.job(job.id);
@@ -334,7 +346,7 @@ it("cancelling a running formation job settles it as cancelled rather than a fai
     const events: string[] = [];
     await runSupervisor({
       host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 3, sessionsDirectory: join(w.base, "sessions"),
-      handlers: processHandlers({ models, taskModel: faux.getModel(), maxPayloadBytes: 100_000, judgement: { reference, mode: "reference", maximum } }).filter((h) => h.process === "formation"),
+      composition: compose({ judgement: { reference, mode: "reference", maximum } }, "formation"),
       log: (line) => events.push(line), until: async () => ["cancelled", ...SETTLED].includes((await w.job(job.id)).state),
     }, context);
     const done = await w.job(job.id);

@@ -266,7 +266,7 @@ async fn formation_through_http_and_pi() {
         owner_id: auth.actor_id,
         epoch: assigned.epoch,
     };
-    store.start_job(&auth, &permit).await.unwrap();
+    store.start_job(&auth, &permit, None).await.unwrap();
     let token = "test-token".repeat(5);
     let host = Host::new(
         store.clone(),

@@ -248,12 +248,20 @@ async fn pools_claim_the_next_job_in_their_classes_and_receive_a_worker_credenti
         owner_id: assignment.owner_id,
         epoch: assignment.epoch,
     };
-    assert!(matches!(
-        host.handle(Some(&worker), HostRequest::Start { fence })
-            .await
-            .unwrap(),
-        HostResponse::Job { .. }
-    ));
+    let started = host
+        .handle(
+            Some(&worker),
+            HostRequest::Start {
+                fence,
+                composition: Some("pool-test@1#0".into()),
+            },
+        )
+        .await
+        .unwrap();
+    let HostResponse::Job { job: started } = started else {
+        panic!("start did not return the job");
+    };
+    assert_eq!(started.composition.as_deref(), Some("pool-test@1#0"));
     // The pool only claims processes it names, and skips leased jobs.
     let HostResponse::Work { assignment, .. } = host
         .handle(

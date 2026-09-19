@@ -647,6 +647,10 @@ export interface DecisionRequest {
 export interface Job {
   attempt: number;
   cancel_requested: boolean;
+  /**
+   * Identity of the pool composition that started the current attempt, as the pool reported it.
+   */
+  composition?: string | null;
   deadline: string;
   depth: number;
   id: string;

@@ -1238,6 +1238,13 @@
           "type": "string",
           "const": "start"
         },
+        "composition": {
+          "description": "Composition identity of the pool accepting the work; recorded on the job.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "fence": {
           "$ref": "#/$defs/Fence"
         }

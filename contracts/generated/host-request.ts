@@ -288,6 +288,10 @@ export type HostRequest =
     }
   | {
       action: "start";
+      /**
+       * Composition identity of the pool accepting the work; recorded on the job.
+       */
+      composition?: string | null;
       fence: Fence;
     }
   | {

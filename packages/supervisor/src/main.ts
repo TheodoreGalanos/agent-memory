@@ -8,7 +8,7 @@ import { createModels } from "@earendil-works/pi-ai";
 import { azureOpenAIResponsesProvider } from "@earendil-works/pi-ai/providers/azure-openai-responses";
 import { HostClient } from "../../host-client/src/client.js";
 import { GenerativeProvider, JevProvider, type JudgementProvider } from "../../judgement/src/providers.js";
-import { SUPPORTED_PROCESSES, processHandlers, runSupervisor, type SupportedProcess } from "./index.js";
+import { POOL_MODULES, SUPPORTED_PROCESSES, composeApplication, runSupervisor, type SupportedProcess } from "./index.js";
 
 interface WorkerConfiguration {
   /** Path to a dotenv file with provider credentials; relative paths resolve from the config file. */
@@ -17,6 +17,8 @@ interface WorkerConfiguration {
   concurrency?: number | { interactive?: number; deferred?: number };
   poll_ms?: number;
   lease_seconds?: number;
+  /** How long running work may finish after SIGTERM before it is cancelled. */
+  drain_ms?: number;
   max_payload_bytes?: number;
   task_reservation_cost_microunits?: number;
   processes?: SupportedProcess[];
@@ -60,13 +62,14 @@ async function main() {
   const processes = config.processes ?? SUPPORTED_PROCESSES;
   const unsupported = processes.filter((p) => !SUPPORTED_PROCESSES.includes(p));
   if (unsupported.length) throw new Error(`This pool supports ${SUPPORTED_PROCESSES.join(", ")} only; not ${unsupported.join(", ")}`);
-  const handlers = processHandlers({
-    models,
-    taskModel,
-    maxPayloadBytes: config.max_payload_bytes ?? 100_000,
-    taskReservationCost: config.task_reservation_cost_microunits,
-    judgement: { reference, jev, mode: config.judgement_mode ?? (jev ? "shadow" : "reference"), maximum },
-  }).filter((handler) => processes.includes(handler.process as SupportedProcess));
+  // Composition is validated here, before the pool credential claims anything.
+  const composition = composeApplication(
+    {
+      taskModel: { models, model: taskModel, maxPayloadBytes: config.max_payload_bytes ?? 100_000, reservationCost: config.task_reservation_cost_microunits },
+      judgement: { reference, jev, mode: config.judgement_mode ?? (jev ? "shadow" : "reference"), maximum },
+    },
+    POOL_MODULES.filter((module) => module.declaration.operations.some((op) => processes.includes(op as SupportedProcess))),
+  );
   const classes = (process.env.MEMORY_POOL_CLASSES ?? "").split(",").filter(Boolean);
   const controller = new AbortController();
   for (const signal of ["SIGTERM", "SIGINT"] as const)
@@ -74,15 +77,16 @@ async function main() {
       console.log(`pool ${process.env.MEMORY_POOL_INDEX ?? ""}: ${signal} received; finishing current work`);
       controller.abort();
     });
-  console.log(`pool ${process.env.MEMORY_POOL_INDEX ?? ""}: classes ${classes.join(",") || "?"}; processes ${processes.join(",")}; task ${taskModel.provider}/${taskModel.id}; reference ${referenceModel.id}; jev ${jev ? config.jev!.model : "off"}`);
+  console.log(`pool ${process.env.MEMORY_POOL_INDEX ?? ""}: classes ${classes.join(",") || "?"}; composition ${composition.identity}; task ${taskModel.provider}/${taskModel.id}; reference ${referenceModel.id}; jev ${jev ? config.jev!.model : "off"}`);
   await runSupervisor(
     {
       host: new HostClient(hostUrl, token),
       hostUrl,
-      handlers,
+      composition,
       concurrency: config.concurrency ?? { interactive: 1, deferred: 1 },
       pollMs: config.poll_ms ?? 1000,
       leaseSeconds: config.lease_seconds ?? 120,
+      drainMs: config.drain_ms ?? 5_000,
       sessionsDirectory: resolve(base, config.sessions_directory),
       log: (line) => console.log(`pool ${process.env.MEMORY_POOL_INDEX ?? ""}: ${line}`),
     },

@@ -1054,15 +1054,24 @@ kills after ten seconds. `npm run memory -- enable-pool DIRECTORY` writes this
 configuration and a `worker.json` for an initialized instance.
 
 `packages/supervisor` is the Node child. `main.ts` reads `worker.json` (models,
-concurrency, poll and lease intervals, judgement mode and maximum, the `.env` path),
-registers one handler per enabled process (`processHandlers`) and runs `runSupervisor`,
-which polls `claim_next` per free slot and hands each claim to the one assignment runner
+concurrency, poll, lease and drain intervals, judgement mode and maximum, the `.env` path),
+installs the typed services (`taskModel`, `judgement`) and composes the enabled process
+modules against them with `composeApplication` (`composition.ts`) before the pool credential
+claims anything. Each module declares its id, version, required services and operations and
+attaches exactly those handlers, optionally offering application tools; a module whose service
+is not installed, two modules for one process, or a tool that collides with another or with a
+native execution tool rejects the composition. The composition identity
+(`investigation@1+formation@1#<digest>`) is sent with `start` and recorded on the job
+(`Job.composition`), so inspection shows which composition accepted the work. `runSupervisor`
+polls `claim_next` per free slot and hands each claim to the one assignment runner
 (`runner.ts`). The runner connects with the job-bound credential, opens the job's Pi session,
 keeps the lease renewed on a heartbeat (`keepLease` in `pi-worker/src/lease.ts`, shared with
 the assigned worker), and gives the handler a context that aborts when the lease is lost,
 the job is cancelled or the pool stops. A handler that throws after a cancel request settles
 the job through `acknowledge_cancellation`; any other failure shortens the lease to one second
-so recovery can requeue it. Handlers only do process work. Investigation attaches the
+so recovery can requeue it. On SIGTERM the pool stops claiming, lets running work finish for
+`drain_ms` (default five seconds, inside the Host's ten-second kill window) and then cancels
+it through the same release path. Handlers only do process work. Investigation attaches the
 assigned Pi worker under the runner's keeper, constrains the Azure reply to the `WorkResult`
 contract through `before_payload`, and delivers granted input memories through
 `current_memories`; a granted memory that has since been revised or withdrawn settles the job

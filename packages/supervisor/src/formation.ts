@@ -1,4 +1,4 @@
-// ABOUTME: Formation process handler for the pool: derives one bounded capture window per input source
+// ABOUTME: Formation process module for the pool: derives one bounded capture window per input source
 // ABOUTME: from the assignment, runs each under the runner's lease, and publishes the combined WorkResult.
 import { createHash } from "node:crypto";
 import type { Assignment } from "../../../contracts/generated/assignment.js";
@@ -6,20 +6,19 @@ import type { FormationResult } from "../../../contracts/generated/formation-res
 import type { FormationWindow } from "../../../contracts/generated/formation-window.js";
 import type { HostResponse } from "../../../contracts/generated/host-response.js";
 import type { WorkResult } from "../../../contracts/generated/work-result.js";
-import type { JudgementProvider } from "../../judgement/src/providers.js";
 import type { JudgementOptions } from "../../judgement/src/runtime.js";
 import { runFormation } from "../../formation/src/index.js";
+import type { ProcessModule, Services } from "./composition.js";
 import type { ProcessHandler, ProcessRun } from "./runner.js";
 import { observeProvider } from "./trace.js";
 
-export interface FormationDeps {
-  judgement: {
-    reference: JudgementProvider;
-    jev?: JudgementProvider;
-    mode?: JudgementOptions["mode"];
-    maximum: JudgementProvider["maximum"];
-  };
-}
+type FormationDeps = Required<Pick<Services, "judgement">>;
+
+/** Formation needs the judgement providers; it drives no task model. */
+export const formationModule: ProcessModule = {
+  declaration: { id: "formation", version: "1", requires: ["judgement"], operations: ["formation"] },
+  attach: (services) => [formationHandler({ judgement: services.judgement! })],
+};
 
 /** The persisted work a formation attempt needs, derived deterministically from its assignment so a
  * retried attempt resumes the same windows instead of paying again. */
@@ -58,7 +57,8 @@ async function runFormationJob(run: ProcessRun, deps: FormationDeps) {
   const brief = assignment.job.spec.brief;
   const fence = lease.fence;
   const input = formationInput(assignment);
-  if (assignment.job.state !== "running") await host.request({ action: "start", fence }, context.abortSignal);
+  if (assignment.job.state !== "running")
+    await host.request({ action: "start", fence, composition: run.composition }, context.abortSignal);
   const judgement: JudgementOptions = {
     reference: observeProvider(deps.judgement.reference, "reference", log),
     jev: deps.judgement.jev ? observeProvider(deps.judgement.jev, "shadow", log) : undefined,

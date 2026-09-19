@@ -23,6 +23,8 @@ export interface ProcessRun {
   lease: AssignmentLease;
   session: Session;
   sessionsDirectory: string;
+  /** Identity of the composition accepting this work; handlers report it with `start`. */
+  composition: string;
   context: Context;
   log(line: string): void;
 }
@@ -36,6 +38,7 @@ export interface RunnerDeps {
   connect(credential: IssuedWorkerCredential): HostCommands;
   sessionsDirectory: string;
   leaseSeconds: number;
+  composition: string;
   log(line: string): void;
 }
 
@@ -50,7 +53,7 @@ export async function runAssignment(work: Work, handler: ProcessHandler, deps: R
   let local: Awaited<ReturnType<typeof openLocalSession>> | undefined;
   try {
     local = await openLocalSession(join(deps.sessionsDirectory, "sessions"), job.session_id);
-    await handler.run({ host, lease, session: local.session, sessionsDirectory: deps.sessionsDirectory, context, log: deps.log });
+    await handler.run({ host, lease, session: local.session, sessionsDirectory: deps.sessionsDirectory, composition: deps.composition, context, log: deps.log });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     if (lease.cancelled && !lease.lost) {

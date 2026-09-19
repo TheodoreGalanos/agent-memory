@@ -47,6 +47,8 @@ pub struct Job {
     pub wait_reason: Option<String>,
     pub ready_at: Option<DateTime<Utc>>,
     pub result: Option<WorkResult>,
+    /// Identity of the pool composition that started the current attempt, as the pool reported it.
+    pub composition: Option<String>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Assignment {
@@ -430,6 +432,8 @@ pub enum HostRequest {
     },
     Start {
         fence: Fence,
+        /// Composition identity of the pool accepting the work; recorded on the job.
+        composition: Option<String>,
     },
     InspectAssignment {
         fence: Fence,

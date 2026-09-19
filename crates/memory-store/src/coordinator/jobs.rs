@@ -229,7 +229,17 @@ impl Store {
         ))
     }
 
-    pub async fn start_job(&self, authority: &Authority, permit: &Fence) -> Result<Job> {
+    pub async fn start_job(
+        &self,
+        authority: &Authority,
+        permit: &Fence,
+        composition: Option<&str>,
+    ) -> Result<Job> {
+        if composition.is_some_and(|c| c.trim().is_empty() || c.chars().count() > 200) {
+            return Err(Error::Invalid(
+                "Composition identity must be 1 to 200 characters".into(),
+            ));
+        }
         let (mut tx, position) = self.begin_write().await?;
         let mut current = fence(&mut tx, authority, permit, position.recorded_at).await?;
         crate::interaction::execution_gate(&mut tx, authority, &current).await?;
@@ -237,7 +247,9 @@ impl Store {
             return Err(Error::Conflict);
         }
         current.state = JobState::Running;
-        sqlx::query("UPDATE jobs SET state='running' WHERE tenant_id=$1 AND id=$2")
+        current.composition = composition.map(str::to_owned);
+        sqlx::query("UPDATE jobs SET state='running',composition=$1 WHERE tenant_id=$2 AND id=$3")
+            .bind(&current.composition)
             .bind(authority.tenant_id.to_string())
             .bind(current.id.to_string())
             .execute(&mut *tx)

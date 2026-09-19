@@ -363,7 +363,7 @@ async fn exercise(store: &Store) {
     let decision = &decisions[0];
     let assignment = store.claim_job(&a, job.id, 120).await.unwrap();
     let fence = permit(&assignment);
-    assert!(store.start_job(&a, &fence).await.is_err());
+    assert!(store.start_job(&a, &fence, None).await.is_err());
     assert!(
         store
             .check_execution(&a, &fence, Some("fixture"), None)
@@ -394,7 +394,7 @@ async fn exercise(store: &Store) {
         panic!()
     };
     assert!(page.events.is_empty());
-    assert!(store.start_job(&a, &fence).await.is_err());
+    assert!(store.start_job(&a, &fence, None).await.is_err());
     let nonowner = Authority {
         actor_id: Uuid::now_v7(),
         ..a.clone()
@@ -426,7 +426,7 @@ async fn exercise(store: &Store) {
     let unrelated = store.submit_job(&broad, independent).await.unwrap();
     let unrelated_assignment = store.claim_job(&broad, unrelated.id, 120).await.unwrap();
     store
-        .start_job(&broad, &permit(&unrelated_assignment))
+        .start_job(&broad, &permit(&unrelated_assignment), None)
         .await
         .unwrap();
     mutate(
@@ -441,7 +441,7 @@ async fn exercise(store: &Store) {
     )
     .await
     .unwrap();
-    store.start_job(&a, &fence).await.unwrap();
+    store.start_job(&a, &fence, None).await.unwrap();
     let notices = store.memory_changes(&a, 0, 100).await.unwrap();
     assert_eq!(notices.changes.len(), 1);
     assert_eq!(notices.changes[0].previous, initial.reference);

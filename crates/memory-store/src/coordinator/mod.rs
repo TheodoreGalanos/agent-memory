@@ -55,6 +55,7 @@ fn decode_job(row: &AnyRow) -> Result<Job> {
             .try_get::<Option<String>, _>("result")?
             .map(|s| serde_json::from_str(&s))
             .transpose()?,
+        composition: row.try_get("composition")?,
     })
 }
 pub(crate) async fn fence(

@@ -13,7 +13,12 @@ import type { HostResponse, IssuedWorkerCredential } from "../../../contracts/ge
 import type { Process } from "../../../contracts/generated/work-command.js";
 import { input } from "../../pi-worker/test/fixtures.js";
 import { keepLease, runAssignment, type ProcessHandler } from "../src/runner.js";
+import { composeApplication } from "../src/composition.js";
 import { runSupervisor } from "../src/index.js";
+
+/** A composition of one test module carrying the given handlers. */
+const composed = (handlers: ProcessHandler[]) =>
+  composeApplication({}, [{ declaration: { id: "test", version: "1", requires: [], operations: handlers.map((h) => h.process) }, attach: () => handlers }]);
 
 const seconds = (n: number) => new Date(Date.now() + n * 1000).toISOString();
 const sleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
@@ -117,6 +122,7 @@ it("the runner opens the job session, runs the handler with a job-bound host, an
     process: "formation",
     async run(run) {
       sessionId = run.session.metadata.id;
+      expect(run.composition).toBe("test@1#0");
       expect(run.lease.fence).toEqual({ job_id: assignment.job.id, owner_id: assignment.owner_id, epoch: 1 });
       throw new Error("handler failed");
     },
@@ -125,7 +131,7 @@ it("the runner opens the job session, runs the handler with a job-bound host, an
   await runAssignment(
     { assignment, credential: credential(assignment) },
     handler,
-    { connect: (c) => { connected.push(c.token); return host; }, sessionsDirectory: base, leaseSeconds: 60, log: (l) => log.push(l) },
+    { connect: (c) => { connected.push(c.token); return host; }, sessionsDirectory: base, leaseSeconds: 60, composition: "test@1#0", log: (l) => log.push(l) },
     BACKGROUND_CONTEXT,
   );
   expect(connected).toEqual(["t".repeat(40)]);
@@ -150,7 +156,7 @@ it("the runner acknowledges cancellation when the handler is interrupted by a ca
   await runAssignment(
     { assignment, credential: credential(assignment) },
     handler,
-    { connect: () => host, sessionsDirectory: base, leaseSeconds: 1, log: (l) => log.push(l) },
+    { connect: () => host, sessionsDirectory: base, leaseSeconds: 1, composition: "test@1#0", log: (l) => log.push(l) },
     BACKGROUND_CONTEXT,
   );
   const acknowledged = host.calls.findIndex((c) => c.action === "acknowledge_cancellation");
@@ -170,7 +176,7 @@ it("a single concurrency number is a shared cap across work classes", async () =
   });
   await runSupervisor({
     host, connect: () => host, concurrency: 1, pollMs: 10, leaseSeconds: 60,
-    sessionsDirectory: base, handlers: [handler("investigation"), handler("formation")], log: () => {},
+    sessionsDirectory: base, composition: composed([handler("investigation"), handler("formation")]), log: () => {},
     until: async () => finished === 4,
   });
   expect(finished).toBe(4);
@@ -181,13 +187,21 @@ it("per-class concurrency keeps interactive and deferred slots separate", async 
   const queue = [assignmentFor("investigation"), assignmentFor("formation")];
   const host = scriptedHost(queue);
   let inFlight = 0, peak = 0, finished = 0;
+  // Each handler holds its slot until the other class has also started (or a timeout proves it never did).
+  let release!: () => void;
+  const bothStarted = new Promise<void>((done) => { release = done; });
   const handler = (process: Process): ProcessHandler => ({
     process,
-    async run() { inFlight++; peak = Math.max(peak, inFlight); await sleep(80); inFlight--; finished++; },
+    async run() {
+      inFlight++; peak = Math.max(peak, inFlight);
+      if (inFlight === 2) release();
+      await Promise.race([bothStarted, sleep(2_000)]);
+      inFlight--; finished++;
+    },
   });
   await runSupervisor({
     host, connect: () => host, concurrency: { interactive: 1, deferred: 1 }, pollMs: 10, leaseSeconds: 60,
-    sessionsDirectory: base, handlers: [handler("investigation"), handler("formation")], log: () => {},
+    sessionsDirectory: base, composition: composed([handler("investigation"), handler("formation")]), log: () => {},
     until: async () => finished === 2,
   });
   expect(peak).toBe(2);
@@ -199,7 +213,7 @@ it("the poll loop does not accumulate abort listeners while idle", async () => {
   let polls = 0;
   const run = runSupervisor({
     host, connect: () => host, concurrency: 1, pollMs: 5, leaseSeconds: 60,
-    sessionsDirectory: base, handlers: [{ process: "investigation", async run() {} }], log: () => {},
+    sessionsDirectory: base, composition: composed([{ process: "investigation", async run() {} }]), log: () => {},
     until: async () => ++polls > 40,
   }, withAbortSignal(controller.signal, BACKGROUND_CONTEXT));
   await run;
@@ -207,11 +221,47 @@ it("the poll loop does not accumulate abort listeners while idle", async () => {
   expect(getEventListeners(controller.signal, "abort").length).toBeLessThanOrEqual(1);
 });
 
-it("the supervisor rejects an empty or duplicated handler registration before claiming work", async () => {
-  const host = scriptedHost();
-  const loop = { host, connect: () => host, concurrency: 1, pollMs: 5, leaseSeconds: 60, sessionsDirectory: base, log: () => {} };
-  await expect(runSupervisor({ ...loop, handlers: [] })).rejects.toThrow(/handler/i);
-  const twice: ProcessHandler = { process: "investigation", async run() {} };
-  await expect(runSupervisor({ ...loop, handlers: [twice, twice] })).rejects.toThrow(/investigation/);
-  expect(host.calls).toHaveLength(0);
+it("shutdown drains running work within the drain window instead of cancelling it", async () => {
+  const assignment = assignmentFor("investigation");
+  const host = scriptedHost([assignment]);
+  const controller = new AbortController();
+  const log: string[] = [];
+  let finished = false;
+  const handler: ProcessHandler = {
+    process: "investigation",
+    async run(run) {
+      controller.abort();
+      await sleep(150);
+      if (run.context.abortSignal?.aborted) throw new Error("aborted during drain");
+      finished = true;
+    },
+  };
+  await runSupervisor({
+    host, connect: () => host, concurrency: 1, pollMs: 10, leaseSeconds: 60, drainMs: 2_000,
+    sessionsDirectory: base, composition: composed([handler]), log: (l) => log.push(l),
+  }, withAbortSignal(controller.signal, BACKGROUND_CONTEXT));
+  expect(finished).toBe(true);
+  expect(log.filter((l) => l.includes("failed"))).toEqual([]);
+  // Nothing new is claimed once shutdown begins.
+  expect(host.calls.filter((c) => c.action === "claim_next").length).toBe(1);
+});
+
+it("shutdown cancels running work once the drain window passes", async () => {
+  const assignment = assignmentFor("investigation");
+  const host = scriptedHost([assignment]);
+  const controller = new AbortController();
+  const log: string[] = [];
+  const handler: ProcessHandler = {
+    process: "investigation",
+    async run(run) {
+      controller.abort();
+      await new Promise<void>((_, fail) => run.context.abortSignal?.addEventListener("abort", () => fail(new Error("cancelled by shutdown")), { once: true }));
+    },
+  };
+  await runSupervisor({
+    host, connect: () => host, concurrency: 1, pollMs: 10, leaseSeconds: 60, drainMs: 100,
+    sessionsDirectory: base, composition: composed([handler]), log: (l) => log.push(l),
+  }, withAbortSignal(controller.signal, BACKGROUND_CONTEXT));
+  expect(log.some((l) => l.includes("failed") && l.includes("cancelled by shutdown"))).toBe(true);
+  expect(host.calls.at(-1)).toMatchObject({ action: "renew", lease_seconds: 1 });
 });

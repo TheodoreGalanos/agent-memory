@@ -109,7 +109,7 @@ async fn semantic_judgement_through_http_and_pi() {
         owner_id: auth.actor_id,
         epoch: assigned.epoch,
     };
-    store.start_job(&auth, &permit).await.unwrap();
+    store.start_job(&auth, &permit, None).await.unwrap();
     let root = directory.path().join("artifacts");
     let token = "test-token".repeat(5);
     let host = Host::new(

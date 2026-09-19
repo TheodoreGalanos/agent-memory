@@ -3020,6 +3020,13 @@
         "cancel_requested": {
           "type": "boolean"
         },
+        "composition": {
+          "description": "Identity of the pool composition that started the current attempt, as the pool reported it.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "deadline": {
           "type": "string",
           "format": "date-time"

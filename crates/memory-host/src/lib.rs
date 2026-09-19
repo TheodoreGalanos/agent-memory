@@ -861,8 +861,12 @@ impl Host {
             R::InspectAssignment { fence } => O::Assignment {
                 assignment: Box::new(self.store.inspect_assignment(auth, &fence).await?),
             },
-            R::Start { fence } => O::Job {
-                job: Box::new(self.store.start_job(auth, &fence).await?),
+            R::Start { fence, composition } => O::Job {
+                job: Box::new(
+                    self.store
+                        .start_job(auth, &fence, composition.as_deref())
+                        .await?,
+                ),
             },
             R::Renew {
                 fence,
@@ -1118,7 +1122,7 @@ fn authorize(role: &Role, request: &HostRequest) -> Result<(), ContractError> {
             | R::ReadInput { fence, .. }
             | R::PublishArtifact { fence, .. }
             | R::InspectAssignment { fence }
-            | R::Start { fence }
+            | R::Start { fence, .. }
             | R::Renew { fence, .. }
             | R::Wait { fence, .. }
             | R::AcknowledgeCancellation { fence }

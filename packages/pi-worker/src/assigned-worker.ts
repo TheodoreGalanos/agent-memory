@@ -51,12 +51,13 @@ interface SavedResult {
 }
 
 /** One assignment, one attached Pi session, and one host-mapped operation. A supplied `lease`
- * keeper is followed while driving; otherwise the worker keeps its own lease for each run. */
+ * keeper is followed while driving; otherwise the worker keeps its own lease for each run.
+ * `composition` names the pool composition accepting the work and is recorded with `start`. */
 export async function attachAssignedWorker(
   assignment: Assignment,
   host: HostCommands,
   profile: WorkerProfile,
-  options: WorkerOptions & { lease?: AssignmentLease },
+  options: WorkerOptions & { lease?: AssignmentLease; composition?: string },
   parent: Context = BACKGROUND_CONTEXT,
   lifecycle?: ExecutionLifecycle,
 ) {
@@ -533,7 +534,10 @@ export async function attachAssignedWorker(
           );
           return { kind: "cancelled" as const };
         }
-        await host.request({ action: "start", fence }, context.abortSignal);
+        await host.request(
+          { action: "start", fence, composition: options.composition ?? null },
+          context.abortSignal,
+        );
         await flushUsage();
         let investigation:
           Awaited<ReturnType<typeof prepareInvestigation>> | undefined;
