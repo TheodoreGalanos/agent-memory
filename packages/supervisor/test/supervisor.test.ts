@@ -208,6 +208,11 @@ it("a pool claims, drives and settles investigation and formation jobs through a
     expect(doneInvestigation.result?.coverage.examined).toEqual(["Scripted"]);
     // The Host records which composition accepted each job.
     expect(doneInvestigation.composition).toBe(composition.identity);
+    // The task's experience was published as a source scoped to the task, keyed by job and attempt.
+    const experience = expectKind(await client.request({ action: "experience", job_id: investigation.id }), "source").source;
+    expect(experience.reference).toEqual({ source_id: investigation.id, revision: "1" });
+    expect(experience.scope).toEqual(investigation.spec.brief.scope);
+    expect(experience.kind).toBe("tool_events");
     const doneFormation = expectKind(await client.request({ action: "inspect_job", job_id: formation.id }), "job").job;
     expect(doneFormation.composition).toBe(composition.identity);
     // Formation reports material it did not examine; a partial result must then say what remains.

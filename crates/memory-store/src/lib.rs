@@ -4,6 +4,7 @@ pub mod artifacts;
 pub mod coordinator;
 mod database;
 mod entities;
+pub mod experience;
 mod formation;
 mod judgements;
 mod memories;

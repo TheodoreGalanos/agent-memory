@@ -69,6 +69,15 @@ async function fixture() {
         };
       if (command.action === "renew" || command.action === "inspect_assignment")
         return { kind: "assignment", assignment };
+      if (command.action === "publish_experience")
+        return {
+          kind: "source",
+          source: {
+            reference: { source_id: assignment.job.id, revision: String(assignment.job.attempt) },
+            label: "Experience", scope: brief.scope, kind: "tool_events", owner: "pool",
+            acquired_at: new Date().toISOString(), acquisition_method: "pi-session", precedence: null, snapshot_artifact: randomUUID(),
+          },
+        };
       if (command.action === "reserve")
         return {
           kind: "reservation",
@@ -619,6 +628,33 @@ it("refuses an application tool outside the assignment capability set", async ()
     await expect(
       attachAssignedWorker(f.assignment, f.host, f.profile, { ...f.options, tools: ["read", extra] }),
     ).rejects.toThrow(/capability/);
+  } finally {
+    await f.close();
+  }
+});
+
+it("publishes the task experience before committing the result", async () => {
+  const f = await fixture();
+  try {
+    await writeFile(join(f.directory, "evidence.txt"), "Source C");
+    f.faux.setResponses([
+      fauxAssistantMessage(fauxToolCall("read", { path: "evidence.txt" }), { stopReason: "toolUse" }),
+      fauxAssistantMessage(JSON.stringify(scriptedResult("before-correction"))),
+    ]);
+    const worker = await f.attach();
+    try {
+      expect(await worker.run()).toMatchObject({ kind: "settled" });
+      const published = f.calls.findIndex((c) => c.action === "publish_experience");
+      const completed = f.calls.findIndex((c) => c.action === "complete");
+      expect(published).toBeGreaterThan(-1);
+      expect(published).toBeLessThan(completed);
+      const events = (f.calls[published] as { events: { kind: string; content: unknown }[] }).events;
+      expect(events.map((e) => e.kind)).toContain("tool_result");
+      expect(events.at(-1)?.kind).toBe("result");
+      expect(JSON.stringify(events)).toContain("Source C");
+    } finally {
+      await worker.close();
+    }
   } finally {
     await f.close();
   }

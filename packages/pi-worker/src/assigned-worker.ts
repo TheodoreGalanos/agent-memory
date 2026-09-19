@@ -24,6 +24,7 @@ import type {
   Resources,
 } from "../../../contracts/generated/host-request.js";
 import type { HostCommands } from "../../host-client/src/client.js";
+import { experienceEvents } from "./experience.js";
 import { createWorkerHarness, toolName, type WorkerOptions } from "./harness.js";
 import { keepLease, type AssignmentLease } from "./lease.js";
 import { fenceFor } from "../../host-client/src/fence.js";
@@ -676,6 +677,22 @@ export async function attachAssignedWorker(
         }
         await finishExecution(false);
         active();
+        // A task's experience is published before its result commits, while the fence still holds:
+        // formation later works from what actually happened, not from authored candidates.
+        if (job.spec.brief.process === "investigation") {
+          const published = await host.request(
+            {
+              action: "publish_experience",
+              fence,
+              events: experienceEvents(await lane.findEntries(undefined, context), {
+                result: saved.result,
+              }),
+            },
+            context.abortSignal,
+          );
+          if (published.kind !== "source")
+            throw new Error("Host did not record the task experience");
+        }
         const committed = await host.request(
           {
             action: "complete",

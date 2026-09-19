@@ -1190,6 +1190,48 @@
       ]
     },
     {
+      "description": "A task's worker publishes the transcript of its current attempt as a tool-event source scoped\nto the brief. Idempotent per attempt; formation later forms memories from it.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "const": "publish_experience"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ToolEvent"
+          }
+        },
+        "fence": {
+          "$ref": "#/$defs/Fence"
+        }
+      },
+      "required": [
+        "action",
+        "fence",
+        "events"
+      ]
+    },
+    {
+      "description": "The experience source a settled task published, by job.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "const": "experience"
+        },
+        "job_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "action",
+        "job_id"
+      ]
+    },
+    {
       "description": "A trusted connector publishes one source revision. A JSON string is stored as\ntext; any other value is serialized JSON. The adapter follows `source.kind`.",
       "type": "object",
       "properties": {
@@ -4974,6 +5016,36 @@
         "completion_requirements",
         "expires_at",
         "retired"
+      ]
+    },
+    "ToolEvent": {
+      "type": "object",
+      "properties": {
+        "content": true,
+        "event_id": {
+          "type": "string"
+        },
+        "evidential_status": {
+          "$ref": "#/$defs/EvidentialStatus"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        }
+      },
+      "required": [
+        "event_id",
+        "observed_at",
+        "kind",
+        "origin",
+        "evidential_status",
+        "content"
       ]
     },
     "Usage": {

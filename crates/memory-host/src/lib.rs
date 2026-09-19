@@ -11,8 +11,8 @@ mod scoped;
 pub mod supervisor;
 use chrono::{DateTime, Utc};
 use memory_domain::{
-    contracts::{Authority, ContractError, ReasonCode},
-    coordination::{HostRequest, HostResponse},
+    contracts::{Authority, ContractError, Process, ReasonCode, SourceRef},
+    coordination::{Fence, HostRequest, HostResponse},
 };
 use memory_store::{Error, Store, artifacts::ArtifactService};
 use std::collections::HashMap;
@@ -23,6 +23,8 @@ use uuid::Uuid;
 const MAX_ISSUED_CREDENTIALS: usize = 10_000;
 
 /// Source snapshots accepted over HTTP; formation windows read admitted snapshots of the same size.
+/// Bounds one published transcript; the snapshot limit bounds its bytes.
+const MAX_EXPERIENCE_EVENTS: usize = 2000;
 const MAX_SOURCE_SNAPSHOT_BYTES: u32 = 1_048_576;
 
 #[derive(Clone, serde::Deserialize)]
@@ -329,6 +331,70 @@ impl Host {
         Ok(manifest)
     }
     /// Connectors publish source revisions through the adapters for each declared kind.
+    /// A worker publishes its attempt's transcript. The source is keyed by job and attempt, scoped to
+    /// the brief, and recorded durably so formation can be scheduled from it. Republishing the same
+    /// attempt returns the existing source.
+    async fn publish_experience(
+        &self,
+        auth: &Authority,
+        fence: &Fence,
+        events: Vec<memory_domain::sources::ToolEvent>,
+    ) -> Result<memory_domain::sources::SourceVersion, Error> {
+        use memory_domain::sources::{SourceKind, SourceVersion};
+        use memory_store::sources::{SourceService, ToolEventAdapter};
+        if events.is_empty() || events.len() > MAX_EXPERIENCE_EVENTS {
+            return Err(Error::Invalid(format!(
+                "An experience holds 1 to {MAX_EXPERIENCE_EVENTS} events"
+            )));
+        }
+        let job = self.store.assigned_job(auth, fence).await?;
+        if job.spec.brief.process != Process::Investigation {
+            return Err(Error::Forbidden);
+        }
+        let reference = SourceRef {
+            source_id: job.id,
+            revision: job.attempt.to_string(),
+        };
+        let narrow = Authority {
+            scope: job.spec.brief.scope.clone(),
+            ..auth.clone()
+        };
+        if self.store.experience(auth, job.id).await?.as_ref() == Some(&reference) {
+            return self.store.source_version(&narrow, &reference).await;
+        }
+        let bytes = serde_json::to_vec(&serde_json::json!({
+            "schema_version": "memory-tool-events/1",
+            "events": events,
+        }))?;
+        let sources = SourceService::new(
+            self.store.clone(),
+            self.artifacts.clone(),
+            MAX_SOURCE_SNAPSHOT_BYTES,
+        )?;
+        let source = sources
+            .ingest(
+                &narrow,
+                SourceVersion {
+                    reference: reference.clone(),
+                    label: format!("Experience: {}", job.spec.brief.purpose),
+                    scope: job.spec.brief.scope.clone(),
+                    kind: SourceKind::ToolEvents,
+                    owner: "pool".into(),
+                    acquired_at: chrono::Utc::now(),
+                    acquisition_method: "pi-session".into(),
+                    precedence: None,
+                    snapshot_artifact: None,
+                },
+                &ToolEventAdapter,
+                &bytes,
+            )
+            .await?;
+        self.store
+            .record_experience(auth, fence, &reference)
+            .await?;
+        Ok(source)
+    }
+
     async fn ingest_source(
         &self,
         auth: &Authority,
@@ -852,6 +918,19 @@ impl Host {
             R::IngestSource { source, content } => O::Source {
                 source: Box::new(self.ingest_source(auth, source, content).await?),
             },
+            R::PublishExperience { fence, events } => O::Source {
+                source: Box::new(self.publish_experience(auth, &fence, events).await?),
+            },
+            R::Experience { job_id } => {
+                let reference = self
+                    .store
+                    .experience(auth, job_id)
+                    .await?
+                    .ok_or(Error::NotFound)?;
+                O::Source {
+                    source: Box::new(self.store.source_version(auth, &reference).await?),
+                }
+            }
             R::Claim {
                 job_id,
                 lease_seconds,
@@ -1066,6 +1145,7 @@ fn authorize(role: &Role, request: &HostRequest) -> Result<(), ContractError> {
             R::Submit { .. }
                 | R::InspectJob { .. }
                 | R::IngestSource { .. }
+                | R::Experience { .. }
                 | R::Cancel { .. }
                 | R::Events { .. }
                 | R::BudgetUsage { .. }
@@ -1121,6 +1201,7 @@ fn authorize(role: &Role, request: &HostRequest) -> Result<(), ContractError> {
             | R::WaitChildren { fence, .. }
             | R::ReadInput { fence, .. }
             | R::PublishArtifact { fence, .. }
+            | R::PublishExperience { fence, .. }
             | R::InspectAssignment { fence }
             | R::Start { fence, .. }
             | R::Renew { fence, .. }

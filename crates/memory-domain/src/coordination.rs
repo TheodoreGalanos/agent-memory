@@ -420,6 +420,16 @@ pub enum HostRequest {
     IssueWorkerCredential {
         job_id: Uuid,
     },
+    /// A task's worker publishes the transcript of its current attempt as a tool-event source scoped
+    /// to the brief. Idempotent per attempt; formation later forms memories from it.
+    PublishExperience {
+        fence: Fence,
+        events: Vec<crate::sources::ToolEvent>,
+    },
+    /// The experience source a settled task published, by job.
+    Experience {
+        job_id: Uuid,
+    },
     /// A trusted connector publishes one source revision. A JSON string is stored as
     /// text; any other value is serialized JSON. The adapter follows `source.kind`.
     IngestSource {

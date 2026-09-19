@@ -277,6 +277,15 @@ export type HostRequest =
       job_id: string;
     }
   | {
+      action: "publish_experience";
+      events: ToolEvent[];
+      fence: Fence;
+    }
+  | {
+      action: "experience";
+      job_id: string;
+    }
+  | {
       action: "ingest_source";
       content: unknown;
       source: SourceVersion;
@@ -1243,6 +1252,14 @@ export interface Resources {
   sandbox_cpu_ms: number;
   sandbox_time_ms: number;
   tokens: number;
+}
+export interface ToolEvent {
+  content: unknown;
+  event_id: string;
+  evidential_status: EvidentialStatus;
+  kind: string;
+  observed_at: string;
+  origin: Origin;
 }
 export interface SourceVersion {
   acquired_at: string;
