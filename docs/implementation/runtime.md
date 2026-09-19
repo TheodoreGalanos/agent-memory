@@ -52,15 +52,20 @@ work brief and the artifact read limit of 1 MiB.
 2. A worker claims its job and receives an owner, epoch and expiring lease. Supply
    that assignment to `attachAssignedWorker`, along with `HostClient`, a trusted
    `WorkerProfile`, the matching session, model registry and execution environment.
-   The profile reference and enabled tools must match the brief. Resources and
+   The profile reference and enabled tools must match the brief. `tools` names native
+   execution tools (`read`, `write`, `edit`, `bash`, `python`) and may also carry
+   application tools as `AgentHarnessTool` objects; names are unique and an
+   application tool cannot shadow a native name. Resources and
    system prompts are supplied through `WorkerOptions`; no ambient profile loader
    or automatic model selection is assumed.
 3. `worker.run()` accepts or resumes that Pi operation. It renews ownership while
    driving, reserves each provider request and checks the final provider payload
    against the profile's byte limit. Retries and deferred provider handles become
    durable host waits, with the Pi state retained for the next assignment.
-4. Native tools use host effect records. Reads can be replayed as observations;
-   writes, edits and shell execution require receipts or reconciliation. Losing a
+4. Every tool, native or application, uses host effect records through the one
+   `wrapTool` boundary. Reads can be replayed as observations;
+   writes, edits, shell execution and application tools require receipts or
+   reconciliation. Losing a
    response does not establish that a mutation failed. An unresolved effect keeps
    the host from accepting a complete result.
 5. The worker persists the application result and a stable publication request ID

@@ -2,7 +2,11 @@ import { randomUUID } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/pi-agent-core";
+import {
+  BACKGROUND_CONTEXT as context,
+  type AgentHarnessTool,
+  type ExecutionToolContext,
+} from "@earendil-works/pi-agent-core";
 import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
 import {
   createAssistantMessageEventStream,
@@ -10,6 +14,7 @@ import {
   fauxProvider,
   fauxAssistantMessage,
   fauxToolCall,
+  Type,
 } from "@earendil-works/pi-ai";
 import { expect, it, vi } from "vitest";
 import type { Assignment } from "../../../contracts/generated/assignment.js";
@@ -559,6 +564,61 @@ it("stops its own lease keeper when the run ends", async () => {
     } finally {
       await worker.close();
     }
+  } finally {
+    await f.close();
+  }
+});
+
+it("routes an application tool through the host effect boundary like a native tool", async () => {
+  const f = await fixture();
+  try {
+    const lookup: AgentHarnessTool<ExecutionToolContext> = {
+      name: "lookup",
+      label: "Lookup",
+      description: "Returns a fixed application value.",
+      parameters: Type.Object({ key: Type.String() }),
+      replay: "never",
+      async execute(_id, args) {
+        return { content: [{ type: "text", text: `value-for-${(args as { key: string }).key}` }], details: args };
+      },
+    };
+    f.assignment.job.spec.brief.capabilities.tools = ["read", "lookup"];
+    f.faux.setResponses([
+      fauxAssistantMessage(fauxToolCall("lookup", { key: "alpha" }), { stopReason: "toolUse" }),
+      fauxAssistantMessage(JSON.stringify(scriptedResult("before-correction"))),
+    ]);
+    const worker = await attachAssignedWorker(f.assignment, f.host, f.profile, { ...f.options, tools: ["read", lookup] });
+    try {
+      expect(await worker.run()).toMatchObject({ kind: "settled" });
+      // Application effects reconcile on replay; only native reads are observations.
+      expect(f.calls.find((c) => c.action === "prepare_effect")).toMatchObject({
+        request: { kind: "lookup", replay: "reconcile", arguments: { key: "alpha" } },
+      });
+      expect(f.calls.find((c) => c.action === "report_effect")).toMatchObject({ state: "succeeded" });
+    } finally {
+      await worker.close();
+    }
+  } finally {
+    await f.close();
+  }
+});
+
+it("refuses an application tool outside the assignment capability set", async () => {
+  const f = await fixture();
+  try {
+    const extra: AgentHarnessTool<ExecutionToolContext> = {
+      name: "extra",
+      label: "Extra",
+      description: "Not granted by the brief.",
+      parameters: Type.Object({}),
+      replay: "never",
+      async execute() {
+        return { content: [{ type: "text", text: "" }], details: null };
+      },
+    };
+    await expect(
+      attachAssignedWorker(f.assignment, f.host, f.profile, { ...f.options, tools: ["read", extra] }),
+    ).rejects.toThrow(/capability/);
   } finally {
     await f.close();
   }

@@ -24,7 +24,7 @@ import type {
   Resources,
 } from "../../../contracts/generated/host-request.js";
 import type { HostCommands } from "../../host-client/src/client.js";
-import { createWorkerHarness, type WorkerOptions } from "./harness.js";
+import { createWorkerHarness, toolName, type WorkerOptions } from "./harness.js";
 import { keepLease, type AssignmentLease } from "./lease.js";
 import { fenceFor } from "../../host-client/src/fence.js";
 
@@ -68,7 +68,7 @@ export async function attachAssignedWorker(
     throw new Error("Assignment session mismatch");
   if (
     options.tools.some(
-      (name) => !job.spec.brief.capabilities.tools.includes(name),
+      (tool) => !job.spec.brief.capabilities.tools.includes(toolName(tool)),
     )
   )
     throw new Error("Tool is outside the assignment capability set");
