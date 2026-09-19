@@ -8,7 +8,7 @@ import {
 } from "@earendil-works/pi-agent-core";
 import type { Assignment } from "../../../contracts/generated/assignment.js";
 import type { ActivationQuery } from "../../../contracts/generated/activation-window.js";
-import { HostClient } from "../../pi-worker/src/host-client.js";
+import { HostClient } from "../../host-client/src/client.js";
 import { openLocalSession } from "../../pi-worker/src/local-session.js";
 import {
   workspaceFromBrief,
@@ -20,7 +20,7 @@ import {
   activationAccess,
 } from "../src/index.js";
 import probes from "../../../evals/activation/next-step-probes.json" with { type: "json" };
-import { fenceFor } from "../../judgement/src/packet.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 import type { JudgementProvider } from "../../judgement/src/index.js";
 
 it.skipIf(!process.env.MEMORY_ACTIVATION_FIXTURE)(

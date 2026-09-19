@@ -2,7 +2,7 @@ import {
   NomicEmbeddings,
   indexEmbeddingPage,
 } from "../packages/activation/src/embeddings.ts";
-import { HostClient } from "../packages/pi-worker/src/host-client.ts";
+import { HostClient } from "../packages/host-client/src/client.ts";
 
 const [command, argument] = process.argv.slice(2);
 if (!["download", "query", "index"].includes(command))

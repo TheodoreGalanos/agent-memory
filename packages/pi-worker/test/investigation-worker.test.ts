@@ -15,13 +15,11 @@ import type {
   Assignment,
   WorkResult,
 } from "../../../contracts/generated/assignment.js";
-import { HostClient } from "../src/host-client.js";
+import { HostClient } from "../../host-client/src/client.js";
 import { openLocalSession } from "../src/local-session.js";
 import { attachAssignedWorker } from "../src/assigned-worker.js";
-import {
-  inspectJson,
-  type InvestigationPlan,
-} from "../src/scoped-operation.js";
+import { inspectJson } from "../../host-client/src/artifact.js";
+import type { InvestigationPlan } from "../src/scoped-operation.js";
 
 it.skipIf(!process.env.MEMORY_INVESTIGATION_FIXTURE)(
   "expands a definition, yields, and preserves an independent child's counterexample after reopening",

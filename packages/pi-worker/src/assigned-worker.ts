@@ -23,9 +23,10 @@ import type {
   Fence,
   Resources,
 } from "../../../contracts/generated/host-request.js";
-import type { HostCommands } from "./host-client.js";
+import type { HostCommands } from "../../host-client/src/client.js";
 import { createWorkerHarness, type WorkerOptions } from "./harness.js";
-import { fenceFor, keepLease, type AssignmentLease } from "./lease.js";
+import { keepLease, type AssignmentLease } from "./lease.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 
 export interface WorkerProfile {
   id: string;

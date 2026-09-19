@@ -3,7 +3,7 @@
 import { BACKGROUND_CONTEXT, type Context } from "@earendil-works/pi-agent-core";
 import type { IssuedWorkerCredential } from "../../../contracts/generated/host-response.js";
 import type { Process } from "../../../contracts/generated/work-command.js";
-import { HostClient, type HostCommands } from "../../pi-worker/src/host-client.js";
+import { HostClient, type HostCommands } from "../../host-client/src/client.js";
 import { formationHandler, type FormationDeps } from "./formation.js";
 import { investigationHandler, type InvestigationDeps } from "./investigation.js";
 import { runAssignment, type ProcessHandler, type Work } from "./runner.js";

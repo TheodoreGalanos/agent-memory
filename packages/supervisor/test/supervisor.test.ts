@@ -14,7 +14,7 @@ import type { HostRequest, RecordDraft } from "../../../contracts/generated/host
 import type { HostResponse } from "../../../contracts/generated/host-response.js";
 import type { JudgementPacket } from "../../../contracts/generated/judgement-packet.js";
 import type { FormationEntry } from "../../../contracts/generated/formation-window.js";
-import { HostClient } from "../../pi-worker/src/host-client.js";
+import { HostClient } from "../../host-client/src/client.js";
 import { input, loadJson } from "../../pi-worker/test/fixtures.js";
 import { GenerativeProvider, type JudgementProvider } from "../../judgement/src/providers.js";
 import { maximum } from "../../judgement/test/fixtures.js";

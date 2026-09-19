@@ -1,12 +1,12 @@
 import type { Assignment } from "../../../contracts/generated/assignment.js";
-import type { HostCommands } from "../../pi-worker/src/host-client.js";
+import type { HostCommands } from "../../host-client/src/client.js";
 import {
   emptyInputs,
   reconcileWorkspace,
   type WorkspaceState,
   type WorkspaceChange,
 } from "../../pi-worker/src/workspace.js";
-import { fenceFor } from "../../judgement/src/packet.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 
 /** Call at a work checkpoint and save the returned workspace and cursor together. */
 export async function reconcileActiveWork(

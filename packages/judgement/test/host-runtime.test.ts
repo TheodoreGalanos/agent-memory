@@ -15,9 +15,10 @@ import type { JudgementPacket } from "../../../contracts/generated/judgement-pac
 import {
   HostClient,
   type HostCommands,
-} from "../../pi-worker/src/host-client.js";
+} from "../../host-client/src/client.js";
 import { openLocalSession } from "../../pi-worker/src/local-session.js";
-import { buildPacket, fenceFor, createTaskCheck } from "../src/packet.js";
+import { buildPacket, createTaskCheck } from "../src/packet.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 import { definition } from "../src/catalogue.js";
 import { JevProvider, GenerativeProvider } from "../src/providers.js";
 import { runJudgement } from "../src/runtime.js";

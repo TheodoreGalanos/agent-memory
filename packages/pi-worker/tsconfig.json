@@ -16,6 +16,8 @@
     "src/**/*.ts",
     "test/**/*.ts",
     "../../contracts/generated/**/*.ts",
+    "../host-client/src/**/*.ts",
+    "../host-client/test/**/*.ts",
     "../judgement/src/**/*.ts",
     "../judgement/test/**/*.ts",
     "../formation/src/**/*.ts",

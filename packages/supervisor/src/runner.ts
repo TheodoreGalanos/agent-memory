@@ -5,7 +5,7 @@ import { withCancel, type Context, type Session } from "@earendil-works/pi-agent
 import type { Assignment } from "../../../contracts/generated/assignment.js";
 import type { IssuedWorkerCredential } from "../../../contracts/generated/host-response.js";
 import type { Process } from "../../../contracts/generated/work-command.js";
-import type { HostCommands } from "../../pi-worker/src/host-client.js";
+import type { HostCommands } from "../../host-client/src/client.js";
 import { keepLease, type AssignmentLease } from "../../pi-worker/src/lease.js";
 import { openLocalSession } from "../../pi-worker/src/local-session.js";
 

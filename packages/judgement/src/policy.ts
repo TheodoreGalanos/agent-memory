@@ -7,7 +7,7 @@ import type {
   JudgementDecision,
   PolicyAction,
 } from "../../../contracts/generated/judgement-decision.js";
-import { permits } from "../../pi-worker/src/workspace.js";
+import { permits } from "../../host-client/src/scope.js";
 import { catalogue } from "./catalogue.js";
 
 export interface Qualification {

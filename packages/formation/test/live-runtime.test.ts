@@ -9,7 +9,7 @@ import { BACKGROUND_CONTEXT as context } from "@earendil-works/pi-agent-core";
 import type { Assignment } from "../../../contracts/generated/assignment.js";
 import type { FormationWindow } from "../../../contracts/generated/formation-window.js";
 import type { JudgementPacket } from "../../../contracts/generated/judgement-packet.js";
-import { HostClient } from "../../pi-worker/src/host-client.js";
+import { HostClient } from "../../host-client/src/client.js";
 import { openLocalSession } from "../../pi-worker/src/local-session.js";
 import {
   GenerativeProvider,
@@ -18,7 +18,7 @@ import {
   type ProviderReply,
 } from "../../judgement/src/providers.js";
 import { questionMap } from "../../judgement/src/validation.js";
-import { fenceFor } from "../../judgement/src/packet.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 import { runFormation } from "../src/index.js";
 import dataset from "../../../evals/formation/live/cases.json" with { type: "json" };
 

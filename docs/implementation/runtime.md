@@ -312,7 +312,10 @@ recover selected data; they do not undo file mutations or settle uncertain effec
 Pi conventional-model adapters, and the assigned-job runtime. Select the relevant
 families with `definition("J01")` etc.; the runtime does not run all 29 by default.
 A family can contain several independent questions. For example, J19 checks
-conditions, uncertainty, conflicts, obligations and checks separately.
+conditions, uncertainty, conflicts, obligations and checks separately. Judgement
+depends on the Host protocol only: `packages/host-client` holds the `HostClient`
+transport and `HostCommands` interface, `fenceFor`, the `permits` scope predicate and
+`inspectJson` artifact reads, shared with the Pi worker and every process runtime.
 
 Call `buildPacket` with the assignment, named artifact fields, selected questions,
 provider disclosure grants and expiry. It reads the actual JSON values and the

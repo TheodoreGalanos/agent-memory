@@ -13,9 +13,9 @@ import type {
 } from "../../../contracts/generated/judgement-packet.js";
 import type { SemanticAssessment } from "../../../contracts/generated/semantic-assessment.js";
 import type { JudgementDecision } from "../../../contracts/generated/judgement-decision.js";
-import type { HostCommands } from "../../pi-worker/src/host-client.js";
-import { permits } from "../../pi-worker/src/workspace.js";
-import { fenceFor } from "./packet.js";
+import type { HostCommands } from "../../host-client/src/client.js";
+import { permits } from "../../host-client/src/scope.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 import {
   decide,
   qualified,

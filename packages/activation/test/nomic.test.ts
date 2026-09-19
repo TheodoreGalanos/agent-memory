@@ -10,8 +10,8 @@ import type {
   Embedding,
 } from "../../../contracts/generated/activation-window.js";
 import type { MemoryRef } from "../../../contracts/generated/host-response.js";
-import { HostClient } from "../../pi-worker/src/host-client.js";
-import { fenceFor } from "../../judgement/src/packet.js";
+import { HostClient } from "../../host-client/src/client.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 import {
   NomicEmbeddings,
   indexEmbeddingPage,

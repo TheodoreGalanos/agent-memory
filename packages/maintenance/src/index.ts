@@ -9,14 +9,14 @@ import type { Assignment } from "../../../contracts/generated/assignment.js";
 import type { MaintenanceRequest } from "../../../contracts/generated/maintenance-review.js";
 import type { IntentionCheckKind } from "../../../contracts/generated/intention-check.js";
 import type { JudgementDefinition } from "../../../contracts/generated/judgement-packet.js";
-import type { HostCommands } from "../../pi-worker/src/host-client.js";
+import type { HostCommands } from "../../host-client/src/client.js";
 import {
   buildPacket,
   definition,
   runJudgement,
   type JudgementOptions,
 } from "../../judgement/src/index.js";
-import { fenceFor } from "../../judgement/src/packet.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 
 interface State {
   input: unknown;

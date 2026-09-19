@@ -1,3 +1,5 @@
+// ABOUTME: HTTP client for the Rust Host command endpoint and the HostCommands interface every process
+// ABOUTME: runtime, judgement and the pool program against. Loopback or HTTPS only; bounded responses.
 import type { HostRequest } from "../../../contracts/generated/host-request.js";
 import type { HostResponse } from "../../../contracts/generated/host-response.js";
 

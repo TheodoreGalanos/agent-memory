@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import type { HostRequest, Scope, SourceVersion } from "../contracts/generated/host-request.js";
 import type { HostResponse, Job } from "../contracts/generated/host-response.js";
 import type { WorkResult } from "../contracts/generated/work-result.js";
-import { HostClient } from "../packages/pi-worker/src/host-client.js";
+import { HostClient } from "../packages/host-client/src/client.js";
 import { findingsToToolEvents, formatManifest } from "./live-walkthrough-support.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");

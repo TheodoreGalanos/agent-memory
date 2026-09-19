@@ -6,7 +6,7 @@ import { loadEnvFile } from "node:process";
 import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/pi-agent-core";
 import { createModels } from "@earendil-works/pi-ai";
 import { azureOpenAIResponsesProvider } from "@earendil-works/pi-ai/providers/azure-openai-responses";
-import { HostClient } from "../../pi-worker/src/host-client.js";
+import { HostClient } from "../../host-client/src/client.js";
 import { GenerativeProvider, JevProvider, type JudgementProvider } from "../../judgement/src/providers.js";
 import { SUPPORTED_PROCESSES, processHandlers, runSupervisor, type SupportedProcess } from "./index.js";
 

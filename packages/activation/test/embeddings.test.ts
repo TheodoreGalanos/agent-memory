@@ -1,5 +1,5 @@
 import { expect, it, vi, beforeEach } from "vitest";
-import type { HostCommands } from "../../pi-worker/src/host-client.js";
+import type { HostCommands } from "../../host-client/src/client.js";
 import type { HostRequest } from "../../../contracts/generated/host-request.js";
 import {
   NomicEmbeddings,

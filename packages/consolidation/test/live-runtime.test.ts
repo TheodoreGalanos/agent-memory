@@ -12,9 +12,9 @@ import type {
   ConsolidationWindow,
   MemoryRef,
 } from "../../../contracts/generated/consolidation-review.js";
-import { HostClient } from "../../pi-worker/src/host-client.js";
+import { HostClient } from "../../host-client/src/client.js";
 import { openLocalSession } from "../../pi-worker/src/local-session.js";
-import { fenceFor } from "../../judgement/src/packet.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 import {
   GenerativeProvider,
   JevProvider,

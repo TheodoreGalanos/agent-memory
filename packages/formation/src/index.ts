@@ -10,14 +10,14 @@ import type {
   FormationEntry,
 } from "../../../contracts/generated/formation-window.js";
 import type { FormationResult } from "../../../contracts/generated/formation-result.js";
-import type { HostCommands } from "../../pi-worker/src/host-client.js";
+import type { HostCommands } from "../../host-client/src/client.js";
 import {
   buildPacket,
   definition,
   runJudgement,
   type JudgementOptions,
 } from "../../judgement/src/index.js";
-import { fenceFor } from "../../judgement/src/packet.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 
 export function selected(entry: FormationEntry): boolean {
   return (

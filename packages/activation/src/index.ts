@@ -13,18 +13,18 @@ import type {
 } from "../../../contracts/generated/activation-window.js";
 import type { TextEmbeddings } from "./embeddings.js";
 import type { ContextPackage } from "../../../contracts/generated/context-package.js";
-import type { HostCommands } from "../../pi-worker/src/host-client.js";
+import type { HostCommands } from "../../host-client/src/client.js";
 import {
   buildPacket,
   definition,
   runJudgement,
   type JudgementOptions,
 } from "../../judgement/src/index.js";
-import { fenceFor } from "../../judgement/src/packet.js";
-import {
-  permits,
-  type WorkspaceAccess,
-  type WorkspaceState,
+import { fenceFor } from "../../host-client/src/fence.js";
+import { permits } from "../../host-client/src/scope.js";
+import type {
+  WorkspaceAccess,
+  WorkspaceState,
 } from "../../pi-worker/src/workspace.js";
 
 interface ActivationState {

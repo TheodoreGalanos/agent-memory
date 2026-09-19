@@ -3,13 +3,8 @@
 import { withCancel, type Context } from "@earendil-works/pi-agent-core";
 import type { Assignment } from "../../../contracts/generated/assignment.js";
 import type { Fence } from "../../../contracts/generated/host-request.js";
-import type { HostCommands } from "./host-client.js";
-
-export const fenceFor = (assignment: Assignment): Fence => ({
-  job_id: assignment.job.id,
-  owner_id: assignment.owner_id,
-  epoch: assignment.epoch,
-});
+import type { HostCommands } from "../../host-client/src/client.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 
 export type Unsubscribe = () => void;
 
