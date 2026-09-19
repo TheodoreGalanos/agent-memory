@@ -109,6 +109,9 @@ export const catalogueResponseTable: Record<string, Record<string, Record<string
   J28: {
     assessment: { requires_intent: "request_input", evidence_can_resolve: "retrieve_further", other: "investigate" }
   },
+  J30: {
+    role: { other: "investigate" }
+  },
   J29: {
     interpretation: { yes: "investigate" },
     evidence: { yes: "investigate" },

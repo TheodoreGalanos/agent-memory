@@ -32,8 +32,8 @@ it.each(fixtures)(
     expect(p.questions[0].definition.fallback).toContain("conventional-model");
   },
 );
-it("defines 29 families with explicit field paths and separates overlapping properties", () => {
-  expect(catalogue).toHaveLength(29);
+it("defines 30 families with explicit field paths and separates overlapping properties", () => {
+  expect(catalogue).toHaveLength(30);
   for (const d of catalogue)
     for (const q of d.questions) expect(q.instructions).toContain("`evidence.");
   expect(

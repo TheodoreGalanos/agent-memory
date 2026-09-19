@@ -137,6 +137,15 @@ export interface FormationWindow {
   after: number;
   cutoff: string;
   entries: FormationEntry[];
+  /**
+   * Spans of an experience window that judgement found to hold no durable content; they count as
+   * examined when this window commits.
+   */
+  examined_without_candidate?: string[];
+  /**
+   * The experience window this candidate window was constructed from, if any.
+   */
+  experience_window?: string | null;
   id: string;
   job_id: string;
   operation: string;

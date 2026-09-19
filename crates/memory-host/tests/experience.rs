@@ -220,12 +220,17 @@ async fn a_worker_publishes_its_experience_once_per_attempt_and_clients_find_it_
     else {
         panic!("expected the published source");
     };
-    // The source is scoped to the brief's task, keyed by the job and its attempt, and ready to read.
+    // The source is keyed by the job and its attempt, scoped to the project rather than the executing
+    // task so later tasks can form from it, and ready to read.
     assert_eq!(source.reference.source_id, job);
     assert_eq!(source.reference.revision, "1");
-    assert_eq!(
-        source.scope,
-        store.job(&auth, job).await.unwrap().spec.brief.scope
+    let brief_scope = store.job(&auth, job).await.unwrap().spec.brief.scope;
+    assert_eq!(source.scope.task_id, None);
+    assert_eq!(source.scope.project_id, brief_scope.project_id);
+    assert!(
+        source
+            .label
+            .contains(&brief_scope.task_id.unwrap().to_string())
     );
     assert!(source.snapshot_artifact.is_some());
     assert_eq!(source.acquisition_method, "pi-session");

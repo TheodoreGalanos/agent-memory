@@ -687,6 +687,28 @@
       ]
     },
     {
+      "description": "A worker turns an admitted experience window into a candidate window from its role decisions.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "const": "propose_candidates"
+        },
+        "fence": {
+          "$ref": "#/$defs/Fence"
+        },
+        "request": {
+          "$ref": "#/$defs/CandidateCommit"
+        }
+      },
+      "required": [
+        "action",
+        "fence",
+        "request"
+      ]
+    },
+    {
+      "description": "A bounded window over a source for formation. A source of authored candidates yields a\n`FormationWindow`; a published task experience yields an `ExperienceWindow` of spans first.",
       "type": "object",
       "properties": {
         "action": {
@@ -1982,6 +2004,68 @@
         "pricing_revision"
       ]
     },
+    "CandidateCommit": {
+      "description": "Turns an experience window into a candidate window: proposals for spans with a role, and the role\ndecisions for spans judged to hold nothing durable.",
+      "type": "object",
+      "properties": {
+        "candidate_window_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "examined": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ExaminedSpan"
+          }
+        },
+        "proposals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CandidateProposal"
+          }
+        },
+        "window_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "window_id",
+        "candidate_window_id",
+        "proposals",
+        "examined"
+      ]
+    },
+    "CandidateProposal": {
+      "description": "One candidate constructed from a span: the role decision that selected its family, the attribution it\nadopts from the span, and the input copied or transformed from the span's own material.",
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "evidential_status": {
+          "$ref": "#/$defs/EvidentialStatus"
+        },
+        "input": {
+          "$ref": "#/$defs/FormationInput"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "span": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "span",
+        "decision",
+        "origin",
+        "evidential_status",
+        "input"
+      ]
+    },
     "Capabilities": {
       "type": "object",
       "properties": {
@@ -2767,6 +2851,24 @@
         "simulation"
       ]
     },
+    "ExaminedSpan": {
+      "description": "A span whose role was judged without producing a candidate; the decision records why.",
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "span": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "span",
+        "decision"
+      ]
+    },
     "Fence": {
       "type": "object",
       "properties": {
@@ -2852,6 +2954,91 @@
       "required": [
         "window_id",
         "decisions"
+      ]
+    },
+    "FormationInput": {
+      "description": "Supplied by the source connector or explicit contribution UI, not inferred\nfrom text claiming to be a user or an observation.",
+      "type": "object",
+      "properties": {
+        "actor_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "based_on": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "boundary_explicit": {
+          "type": "boolean"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "content": {
+          "$ref": "#/$defs/MemoryContent"
+        },
+        "corrects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "episode": {
+          "type": "string"
+        },
+        "evidence": true,
+        "explicit_contribution": {
+          "type": "boolean"
+        },
+        "explicitly_selected": {
+          "type": "boolean"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "retention": {
+          "$ref": "#/$defs/Retention"
+        },
+        "source_locators": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "uncertainty": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "episode",
+        "objective",
+        "conditions",
+        "boundary_explicit",
+        "retention",
+        "explicitly_selected",
+        "explicit_contribution",
+        "content",
+        "evidence",
+        "source_locators",
+        "corrects",
+        "uncertainty",
+        "coverage"
       ]
     },
     "IntentionCheckKind": {
@@ -4630,6 +4817,14 @@
         "sandbox_cpu_ms",
         "sandbox_time_ms",
         "output_bytes"
+      ]
+    },
+    "Retention": {
+      "type": "string",
+      "enum": [
+        "required",
+        "optional",
+        "temporary"
       ]
     },
     "RetentionBoundary": {

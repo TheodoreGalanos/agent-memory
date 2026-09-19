@@ -8,7 +8,7 @@ export {
   GenerativeProvider,
   type JudgementProvider,
 } from "./providers.js";
-export { runJudgement, type DecisionMode, type JudgementOptions } from "./runtime.js";
+export { runJudgement, selectedAssessment, type DecisionMode, type JudgementOptions } from "./runtime.js";
 export { catalogueResponses, catalogueResponseTable } from "./responses.js";
 export {
   admissible,

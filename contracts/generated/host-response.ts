@@ -74,6 +74,10 @@ export type HostResponse =
       window: FormationWindow;
     }
   | {
+      kind: "experience_window";
+      window: ExperienceWindow;
+    }
+  | {
       kind: "formation_result";
       result: FormationResult;
     }
@@ -1122,6 +1126,15 @@ export interface FormationWindow {
   after: number;
   cutoff: string;
   entries: FormationEntry[];
+  /**
+   * Spans of an experience window that judgement found to hold no durable content; they count as
+   * examined when this window commits.
+   */
+  examined_without_candidate?: string[];
+  /**
+   * The experience window this candidate window was constructed from, if any.
+   */
+  experience_window?: string | null;
   id: string;
   job_id: string;
   operation: string;
@@ -1178,6 +1191,43 @@ export interface DeferredContribution {
   event_id: string;
   reason: string;
   required: boolean;
+}
+/**
+ * A bounded, host-admitted window over a published task experience, before any candidate exists.
+ */
+export interface ExperienceWindow {
+  after: number;
+  context: ExperienceContext;
+  cutoff: string;
+  id: string;
+  job_id: string;
+  operation: string;
+  policy: ConfigRef;
+  remaining: boolean;
+  scope: Scope;
+  source: SourceRef;
+  spans: ExperienceSpan[];
+  through: number;
+}
+/**
+ * The task's framing for judging spans of its experience: what it set out to do and how it ended.
+ */
+export interface ExperienceContext {
+  objective: string;
+  result_status?: string | null;
+}
+/**
+ * A bounded run of experience events judged together: a tool call with its result, or one message.
+ */
+export interface ExperienceSpan {
+  end: number;
+  events: ToolEvent[];
+  index: number;
+  kind: string;
+  /**
+   * One-based event positions in the source, inclusive.
+   */
+  start: number;
 }
 export interface FormationResult {
   common_source_groups: SupportGroup[];

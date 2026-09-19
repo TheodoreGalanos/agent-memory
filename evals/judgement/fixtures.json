@@ -401,5 +401,22 @@
     },
     "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
     "expected_action": "investigate"
+  },
+  {
+    "family": "J30",
+    "subject": "A tool result reporting a measured 2 metre clearance during a task about the beam clearance.",
+    "fields": {
+      "span": {
+        "kind": "exchange",
+        "events": [
+          { "kind": "tool_call", "content": { "tool": "read", "arguments": { "path": "site-notes.txt" } } },
+          { "kind": "tool_result", "content": { "tool": "read", "text": "Site observation 12 May: clearance under beam B3 measured at 2.0 m." } }
+        ]
+      },
+      "context": { "objective": "Establish the clearance under beam B3 for the crane route.", "result_status": "complete" }
+    },
+    "answers": { "role": "knowledge" },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "qualify"
   }
 ]

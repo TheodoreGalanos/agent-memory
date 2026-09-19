@@ -17,6 +17,23 @@
         "$ref": "#/$defs/FormationEntry"
       }
     },
+    "examined_without_candidate": {
+      "description": "Spans of an experience window that judgement found to hold no durable content; they count as\nexamined when this window commits.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
+    "experience_window": {
+      "description": "The experience window this candidate window was constructed from, if any.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid",
+      "default": null
+    },
     "id": {
       "type": "string",
       "format": "uuid"

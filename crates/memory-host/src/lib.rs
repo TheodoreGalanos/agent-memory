@@ -355,8 +355,14 @@ impl Host {
             source_id: job.id,
             revision: job.attempt.to_string(),
         };
+        // The task executed the work; the experience belongs to the project so later tasks under the
+        // same policy can form from and retrieve it. Task provenance stays on the job link and label.
+        let scope = memory_domain::contracts::Scope {
+            task_id: None,
+            ..job.spec.brief.scope.clone()
+        };
         let narrow = Authority {
-            scope: job.spec.brief.scope.clone(),
+            scope: scope.clone(),
             ..auth.clone()
         };
         if self.store.experience(auth, job.id).await?.as_ref() == Some(&reference) {
@@ -376,8 +382,11 @@ impl Host {
                 &narrow,
                 SourceVersion {
                     reference: reference.clone(),
-                    label: format!("Experience: {}", job.spec.brief.purpose),
-                    scope: job.spec.brief.scope.clone(),
+                    label: format!(
+                        "Experience of task {}: {}",
+                        job.spec.brief.task_id, job.spec.brief.purpose
+                    ),
+                    scope,
                     kind: SourceKind::ToolEvents,
                     owner: "pool".into(),
                     acquired_at: chrono::Utc::now(),
@@ -893,11 +902,19 @@ impl Host {
                 source,
                 operation,
                 limit,
-            } => O::FormationWindow {
-                window: Box::new(
-                    self.capture_window(auth, &fence, id, source, operation, limit)
-                        .await?,
-                ),
+            } => match self
+                .capture_window(auth, &fence, id, source, operation, limit)
+                .await?
+            {
+                formation::CapturedWindow::Candidates(window) => O::FormationWindow {
+                    window: Box::new(window),
+                },
+                formation::CapturedWindow::Experience(window) => O::ExperienceWindow {
+                    window: Box::new(window),
+                },
+            },
+            R::ProposeCandidates { fence, request } => O::FormationWindow {
+                window: Box::new(self.propose_candidates(auth, &fence, request).await?),
             },
             R::CommitFormation { fence, request } => O::FormationResult {
                 result: Box::new(self.form_memories(auth, &fence, *request).await?),
@@ -1182,6 +1199,7 @@ fn authorize(role: &Role, request: &HostRequest) -> Result<(), ContractError> {
             | R::Activate { fence, .. }
             | R::SelectActivation { fence, .. }
             | R::FormationWindow { fence, .. }
+            | R::ProposeCandidates { fence, .. }
             | R::CommitFormation { fence, .. }
             | R::AdmitJudgement { fence, .. }
             | R::CheckJudgement { fence, .. }

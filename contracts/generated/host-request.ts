@@ -161,6 +161,11 @@ export type HostRequest =
       reference: MemoryRef;
     }
   | {
+      action: "propose_candidates";
+      fence: Fence;
+      request: CandidateCommit;
+    }
+  | {
       action: "formation_window";
       fence: Fence;
       id: string;
@@ -694,6 +699,7 @@ export type IntentionCheckKind =
   | {
       kind: "completion";
     };
+export type Retention = "required" | "optional" | "temporary";
 export type JudgementAnswer =
   | {
       choice: string;
@@ -1143,6 +1149,59 @@ export interface ActivationSelection {
   };
   window_id: string;
 }
+/**
+ * Turns an experience window into a candidate window: proposals for spans with a role, and the role
+ * decisions for spans judged to hold nothing durable.
+ */
+export interface CandidateCommit {
+  candidate_window_id: string;
+  examined: ExaminedSpan[];
+  proposals: CandidateProposal[];
+  window_id: string;
+}
+/**
+ * A span whose role was judged without producing a candidate; the decision records why.
+ */
+export interface ExaminedSpan {
+  decision: string;
+  span: number;
+}
+/**
+ * One candidate constructed from a span: the role decision that selected its family, the attribution it
+ * adopts from the span, and the input copied or transformed from the span's own material.
+ */
+export interface CandidateProposal {
+  decision: string;
+  evidential_status: EvidentialStatus;
+  input: FormationInput;
+  origin: Origin;
+  span: number;
+}
+/**
+ * Supplied by the source connector or explicit contribution UI, not inferred
+ * from text claiming to be a user or an observation.
+ */
+export interface FormationInput {
+  actor_id?: string | null;
+  based_on?: string[];
+  boundary_explicit: boolean;
+  conditions: string[];
+  content: MemoryContent;
+  corrects: string[];
+  coverage: Coverage;
+  episode: string;
+  evidence: unknown;
+  explicit_contribution: boolean;
+  explicitly_selected: boolean;
+  objective: string;
+  retention: Retention;
+  source_locators: string[];
+  uncertainty: string[];
+}
+export interface Coverage {
+  examined: string[];
+  unexamined: string[];
+}
 export interface FormationCommit {
   /**
    * One selected judgement decision per candidate event.
@@ -1285,10 +1344,6 @@ export interface WorkResult {
   status: WorkStatus;
   unresolved_work: string[];
   usage: Usage;
-}
-export interface Coverage {
-  examined: string[];
-  unexamined: string[];
 }
 export interface Finding {
   applicability: Scope;

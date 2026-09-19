@@ -99,6 +99,15 @@ async function world(): Promise<World> {
     async close() { host.kill("SIGINT"); await once(host, "exit"); await rm(base, { recursive: true, force: true }); },
   };
 }
+/** Scripted answers: a candidate's own evidential status for J01, support for J02, and for J30 a role by
+ * what the span is (a tool exchange or an assistant statement holds knowledge; everything else is none). */
+function scriptedChoice(packet: JudgementPacket, key: string): string {
+  const span = packet.evidence.find((e) => e.name === "span")?.content as { kind: string; events: { content: { role?: string } }[] } | undefined;
+  if (key === "J30.role") return span && (span.kind === "exchange" || span.events[0]?.content.role === "assistant") ? "knowledge" : "none";
+  const entry = packet.evidence.find((e) => e.name === "candidate")!.content as unknown as FormationEntry;
+  const choices: Record<string, string> = { "J01.assessment": entry.event.evidential_status, "J01.faithfulness": "yes", "J02.assessment": "supports", "J03.assessment": "boundary", "J04.assessment": "conditional_method", "J05.assessment": "commitment", "J27.assessment": "task_local" };
+  return choices[key];
+}
 /** Scripted judgement reference answering from each candidate's own evidential status. `onCall` may
  * delay or fail the call; it receives the provider's abort signal. */
 function scriptedReference(faux: ReturnType<typeof fauxProvider>, models: ReturnType<typeof createModels>, onCall?: (signal: AbortSignal) => void | Promise<void>): JudgementProvider {
@@ -107,9 +116,7 @@ function scriptedReference(faux: ReturnType<typeof fauxProvider>, models: Return
     id: generative.id, model: generative.model, release: generative.release, maximum, distributions: false,
     async evaluate(packet: JudgementPacket, signal: AbortSignal) {
       await onCall?.(signal);
-      const entry = packet.evidence.find((e) => e.name === "candidate")!.content as unknown as FormationEntry;
-      const choices: Record<string, string> = { "J01.assessment": entry.event.evidential_status, "J01.faithfulness": "yes", "J02.assessment": "supports", "J03.assessment": "correction", "J04.assessment": "conditional_method", "J05.assessment": "commitment", "J27.assessment": "task_local" };
-      const answers = Object.fromEntries(packet.questions.flatMap((d) => d.definition.questions.map((q) => [`${d.definition.id}.${q.key}`, { type: "choice", choice: choices[`${d.definition.id}.${q.key}`] }])));
+      const answers = Object.fromEntries(packet.questions.flatMap((d) => d.definition.questions.map((q) => [`${d.definition.id}.${q.key}`, { type: "choice", choice: scriptedChoice(packet, `${d.definition.id}.${q.key}`) }])));
       faux.setResponses([fauxAssistantMessage(JSON.stringify({ answers }))]);
       return generative.evaluate(packet, signal);
     },
@@ -179,9 +186,7 @@ it("a pool claims, drives and settles investigation and formation jobs through a
       id: generative.id, model: generative.model, release: generative.release, maximum, distributions: false,
       async evaluate(packet: JudgementPacket, signal: AbortSignal) {
         judgementCalls++;
-        const entry = packet.evidence.find((e) => e.name === "candidate")!.content as unknown as FormationEntry;
-        const choices: Record<string, string> = { "J01.assessment": entry.event.evidential_status, "J01.faithfulness": "yes", "J02.assessment": "supports", "J03.assessment": "correction", "J04.assessment": "conditional_method", "J05.assessment": "commitment", "J27.assessment": "task_local" };
-        const answers = Object.fromEntries(packet.questions.flatMap((d) => d.definition.questions.map((q) => [`${d.definition.id}.${q.key}`, { type: "choice", choice: choices[`${d.definition.id}.${q.key}`] }])));
+        const answers = Object.fromEntries(packet.questions.flatMap((d) => d.definition.questions.map((q) => [`${d.definition.id}.${q.key}`, { type: "choice", choice: scriptedChoice(packet, `${d.definition.id}.${q.key}`) }])));
         // The task model reply is consumed first; judgement replies are queued per packet.
         faux.setResponses([fauxAssistantMessage(JSON.stringify({ answers }))]);
         return generative.evaluate(packet, signal);
@@ -211,7 +216,7 @@ it("a pool claims, drives and settles investigation and formation jobs through a
     // The task's experience was published as a source scoped to the task, keyed by job and attempt.
     const experience = expectKind(await client.request({ action: "experience", job_id: investigation.id }), "source").source;
     expect(experience.reference).toEqual({ source_id: investigation.id, revision: "1" });
-    expect(experience.scope).toEqual(investigation.spec.brief.scope);
+    expect(experience.scope).toEqual({ ...investigation.spec.brief.scope, task_id: null });
     expect(experience.kind).toBe("tool_events");
     const doneFormation = expectKind(await client.request({ action: "inspect_job", job_id: formation.id }), "job").job;
     expect(doneFormation.composition).toBe(composition.identity);
@@ -359,6 +364,48 @@ it("cancelling a running formation job settles it as cancelled rather than a fai
     expect(done.attempt).toBe(1);
     expect(events.some((e) => e.includes("cancelled"))).toBe(true);
     expect(events.filter((e) => e.includes(`job ${job.id} failed`))).toEqual([]);
+  } finally {
+    await w.close();
+  }
+}, 120_000);
+
+it("formation over a task's published experience judges span roles, constructs candidates from the spans and retains them", async () => {
+  const w = await world();
+  try {
+    // Task A: a scripted model answers the brief; its experience is published when it settles.
+    const task = await w.submit("investigation", {});
+    const faux = fauxProvider(), models = createModels();
+    models.setProvider(faux.provider);
+    const taskResult = { schema_version: "1", status: "complete", examined_scope: task.spec.brief.scope, inputs: task.spec.brief.inputs, findings: [], coverage: { examined: ["Read the site notes: clearance under beam B3 measured at 2.0 m"], unexamined: [] }, unresolved_work: [], proposed_changes: [], child_outputs: [], known_effects: [], usage: { status: "unknown", input_tokens: null, output_tokens: null, cost: null } };
+    faux.setResponses([fauxAssistantMessage(JSON.stringify(taskResult))]);
+    const reference = scriptedReference(faux, models);
+    const run = async (jobId: string, ...processes: ("investigation" | "formation")[]) => runSupervisor({
+      host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 60, sessionsDirectory: join(w.base, "sessions"),
+      composition: compose({ taskModel: taskService(models, faux), judgement: { primary: reference, maximum } }, ...processes), log: (line) => log.push(line),
+      until: async () => SETTLED.includes((await w.job(jobId)).state),
+    }, context);
+    const log: string[] = [];
+    await run(task.id, "investigation");
+    expect((await w.job(task.id)).state).toBe("completed");
+    const experience = expectKind(await w.client.request({ action: "experience", job_id: task.id }), "source").source;
+
+    // Formation over that experience: no authored candidates exist anywhere.
+    const formation = await w.submit("formation", { inputs: { memories: [], sources: [experience.reference], artifacts: [] }, capabilities: { sources: [experience.reference], queries: [], tools: [] } });
+    await run(formation.id, "formation");
+    const done = await w.job(formation.id);
+    expect(["completed", "partial"], log.join("\n")).toContain(done.state);
+    // Spans judged to hold nothing durable are examined, not silently dropped.
+    expect(done.result?.coverage.examined.some((line) => /span-\d+ \(none\): examined, no candidate/.test(line))).toBe(true);
+    const records = expectKind(await w.client.request({ action: "user", request: { action: "browse", query: { include_inactive: false, limit: 50 } } }), "user").result;
+    if (records.kind !== "records") throw new Error("records");
+    // The assistant's statement became a knowledge candidate copied from the span, attributed as the span was.
+    expect(records.records.length).toBeGreaterThan(0);
+    const formed = records.records[0].record;
+    expect(formed.content.family).toBe("knowledge");
+    expect(formed.origin).toBe("agent_generated");
+    expect(formed.evidential_status).toBe("inference");
+    expect(formed.content.family === "knowledge" && formed.content.statement).toContain("clearance under beam B3");
+    expect(formed.source_locators.length).toBeGreaterThan(0);
   } finally {
     await w.close();
   }

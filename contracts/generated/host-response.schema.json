@@ -304,6 +304,22 @@
       "properties": {
         "kind": {
           "type": "string",
+          "const": "experience_window"
+        },
+        "window": {
+          "$ref": "#/$defs/ExperienceWindow"
+        }
+      },
+      "required": [
+        "kind",
+        "window"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
           "const": "formation_result"
         },
         "result": {
@@ -2277,6 +2293,123 @@
         "simulation"
       ]
     },
+    "ExperienceContext": {
+      "description": "The task's framing for judging spans of its experience: what it set out to do and how it ended.",
+      "type": "object",
+      "properties": {
+        "objective": {
+          "type": "string"
+        },
+        "result_status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "objective"
+      ]
+    },
+    "ExperienceSpan": {
+      "description": "A bounded run of experience events judged together: a tool call with its result, or one message.",
+      "type": "object",
+      "properties": {
+        "end": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ToolEvent"
+          }
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kind": {
+          "type": "string"
+        },
+        "start": {
+          "description": "One-based event positions in the source, inclusive.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "index",
+        "start",
+        "end",
+        "kind",
+        "events"
+      ]
+    },
+    "ExperienceWindow": {
+      "description": "A bounded, host-admitted window over a published task experience, before any candidate exists.",
+      "type": "object",
+      "properties": {
+        "after": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "context": {
+          "$ref": "#/$defs/ExperienceContext"
+        },
+        "cutoff": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "job_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/ConfigRef"
+        },
+        "remaining": {
+          "type": "boolean"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "source": {
+          "$ref": "#/$defs/SourceRef"
+        },
+        "spans": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ExperienceSpan"
+          }
+        },
+        "through": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id",
+        "job_id",
+        "source",
+        "operation",
+        "policy",
+        "scope",
+        "after",
+        "through",
+        "cutoff",
+        "context",
+        "spans",
+        "remaining"
+      ]
+    },
     "Exploration": {
       "type": "object",
       "properties": {
@@ -2595,6 +2728,23 @@
           "items": {
             "$ref": "#/$defs/FormationEntry"
           }
+        },
+        "examined_without_candidate": {
+          "description": "Spans of an experience window that judgement found to hold no durable content; they count as\nexamined when this window commits.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "experience_window": {
+          "description": "The experience window this candidate window was constructed from, if any.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "default": null
         },
         "id": {
           "type": "string",

@@ -70,6 +70,19 @@ interface RunState {
   comparisonDone?: boolean;
 }
 
+/** The assessment a packet's recorded decision selected, from this session's persisted attempts;
+ * undefined when the run is unfinished or resolved nothing. */
+export async function selectedAssessment(
+  session: Session,
+  packetId: string,
+  context: Context,
+): Promise<SemanticAssessment | undefined> {
+  const state = (await session.getValue(value<RunState>("memory.judgement", packetId), context))?.value;
+  const selected = state?.decision?.selected_assessment;
+  if (!selected) return undefined;
+  return state!.attempts.find((a) => a.assessment?.id === selected)?.assessment;
+}
+
 /** Run under the assigned worker's lease keeper. Each network attempt has its
  * own reservation; saved replies can be finalised without another provider call. */
 export async function runJudgement(

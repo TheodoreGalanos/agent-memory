@@ -41,6 +41,8 @@ fn explicit_user_claims_do_not_become_shared_preferences_under_a_broad_grant() {
         cutoff: entry.event.observed_at,
         entries: vec![entry.clone()],
         remaining: false,
+        examined_without_candidate: vec![],
+        experience_window: None,
     };
     let decision = PolicyDecision {
         policy: window.policy.clone(),

@@ -75,6 +75,116 @@ pub struct FormationWindow {
     pub cutoff: DateTime<Utc>,
     pub entries: Vec<FormationEntry>,
     pub remaining: bool,
+    /// Spans of an experience window that judgement found to hold no durable content; they count as
+    /// examined when this window commits.
+    #[serde(default)]
+    pub examined_without_candidate: Vec<String>,
+    /// The experience window this candidate window was constructed from, if any.
+    #[serde(default)]
+    pub experience_window: Option<Uuid>,
+}
+
+/// The task's framing for judging spans of its experience: what it set out to do and how it ended.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ExperienceContext {
+    pub objective: String,
+    pub result_status: Option<String>,
+}
+/// A bounded run of experience events judged together: a tool call with its result, or one message.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ExperienceSpan {
+    pub index: u32,
+    /// One-based event positions in the source, inclusive.
+    pub start: u32,
+    pub end: u32,
+    pub kind: String,
+    pub events: Vec<ToolEvent>,
+}
+impl ExperienceSpan {
+    /// Every string the span actually contains, whitespace-normalised. Candidate text must come from here.
+    pub fn corpus(&self) -> String {
+        fn leaves(value: &serde_json::Value, out: &mut Vec<String>) {
+            match value {
+                serde_json::Value::String(s) => out.push(s.clone()),
+                serde_json::Value::Array(items) => items.iter().for_each(|v| leaves(v, out)),
+                serde_json::Value::Object(map) => {
+                    for (key, v) in map {
+                        if key == "arguments" {
+                            out.push(serde_json::to_string(v).unwrap_or_default());
+                        }
+                        leaves(v, out);
+                    }
+                }
+                _ => {}
+            }
+        }
+        let mut out = Vec::new();
+        for event in &self.events {
+            out.push(event.kind.clone());
+            leaves(&event.content, &mut out);
+        }
+        normalise(&out.join(
+            "
+",
+        ))
+    }
+    pub fn contains(&self, text: &str) -> bool {
+        let needle = normalise(text);
+        !needle.is_empty() && self.corpus().contains(&needle)
+    }
+    /// The origin and status pairs the span's own events carry; a candidate must adopt one of them.
+    pub fn attributions(
+        &self,
+    ) -> Vec<(crate::contracts::Origin, crate::contracts::EvidentialStatus)> {
+        self.events
+            .iter()
+            .map(|e| (e.origin, e.evidential_status))
+            .collect()
+    }
+}
+fn normalise(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+/// A bounded, host-admitted window over a published task experience, before any candidate exists.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ExperienceWindow {
+    pub id: Uuid,
+    pub job_id: Uuid,
+    pub source: SourceRef,
+    pub operation: String,
+    pub policy: ConfigRef,
+    pub scope: Scope,
+    pub after: u32,
+    pub through: u32,
+    pub cutoff: DateTime<Utc>,
+    pub context: ExperienceContext,
+    pub spans: Vec<ExperienceSpan>,
+    pub remaining: bool,
+}
+/// One candidate constructed from a span: the role decision that selected its family, the attribution it
+/// adopts from the span, and the input copied or transformed from the span's own material.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CandidateProposal {
+    pub span: u32,
+    pub decision: Uuid,
+    pub origin: crate::contracts::Origin,
+    pub evidential_status: crate::contracts::EvidentialStatus,
+    pub input: FormationInput,
+}
+/// Turns an experience window into a candidate window: proposals for spans with a role, and the role
+/// decisions for spans judged to hold nothing durable.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CandidateCommit {
+    pub window_id: Uuid,
+    pub candidate_window_id: Uuid,
+    pub proposals: Vec<CandidateProposal>,
+    pub examined: Vec<ExaminedSpan>,
+}
+/// A span whose role was judged without producing a candidate; the decision records why.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ExaminedSpan {
+    pub span: u32,
+    pub decision: Uuid,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct FormationCommit {

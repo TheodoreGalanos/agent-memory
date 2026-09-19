@@ -320,6 +320,13 @@ pub enum HostRequest {
         reference: crate::contracts::MemoryRef,
         embedding: crate::activation::Embedding,
     },
+    /// A worker turns an admitted experience window into a candidate window from its role decisions.
+    ProposeCandidates {
+        fence: Fence,
+        request: crate::formation::CandidateCommit,
+    },
+    /// A bounded window over a source for formation. A source of authored candidates yields a
+    /// `FormationWindow`; a published task experience yields an `ExperienceWindow` of spans first.
     FormationWindow {
         fence: Fence,
         id: Uuid,
@@ -583,6 +590,9 @@ pub enum HostResponse {
     },
     FormationWindow {
         window: Box<crate::formation::FormationWindow>,
+    },
+    ExperienceWindow {
+        window: Box<crate::formation::ExperienceWindow>,
     },
     FormationResult {
         result: Box<crate::formation::FormationResult>,
