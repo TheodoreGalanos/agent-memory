@@ -25,7 +25,7 @@ import { runJudgement } from "../src/runtime.js";
 import { fixtures, maximum, reply } from "./fixtures.js";
 
 it.skipIf(!process.env.MEMORY_JUDGEMENT_FIXTURE)(
-  "runs all families through Rust admission, Pi reference and Jev HTTP; preserves reuse boundaries",
+  "runs all families through Rust admission with Jev primary and a Pi fallback; preserves reuse boundaries",
   async () => {
     const f = JSON.parse(
       await readFile(process.env.MEMORY_JUDGEMENT_FIXTURE!, "utf8"),
@@ -139,7 +139,7 @@ it.skipIf(!process.env.MEMORY_JUDGEMENT_FIXTURE)(
         f.assignment,
         local.session,
         p,
-        { reference, disclosure },
+        { primary: reference, disclosure },
         context,
       );
     }
@@ -150,7 +150,7 @@ it.skipIf(!process.env.MEMORY_JUDGEMENT_FIXTURE)(
         expect(d.selected_assessment).toBeTruthy();
         expect(d.decisions[fixture.family].reason).not.toContain("unavailable");
       }
-      // Different families sharing one evidence artifact are one Jev request.
+      // Different families sharing one evidence artifact are one Jev request; the fallback is idle.
       const batchBase = await build("J01");
       const batch = {
         ...batchBase,
@@ -180,10 +180,11 @@ it.skipIf(!process.env.MEMORY_JUDGEMENT_FIXTURE)(
         f.assignment,
         local.session,
         current,
-        { reference, jev, disclosure },
+        { primary: jev, fallback: reference, disclosure },
         context,
       );
       expect(calls - batchCalls).toBe(1);
+      expect(batched.mode).toBe("primary");
       expect(Object.keys(batched.decisions)).toEqual(["J01", "J07"]);
       expect(batched.decisions.J07.action).toBe("retrieve_further");
       calls = 0;
@@ -194,17 +195,18 @@ it.skipIf(!process.env.MEMORY_JUDGEMENT_FIXTURE)(
           JSON.stringify({ answers: reply(current).answers }),
         ),
       ]);
+      // Rate limits retry within the primary's own attempts; the fallback is never needed.
       const shadow = await runJudgement(
         host,
         f.assignment,
         local.session,
         current,
-        { reference, jev, disclosure },
+        { primary: jev, fallback: reference, disclosure },
         context,
       );
       expect(calls).toBe(3);
-      expect(shadow.assessment_ids).toHaveLength(4);
-      expect(shadow.mode).toBe("shadow");
+      expect(shadow.assessment_ids).toHaveLength(3);
+      expect(shadow.mode).toBe("primary");
       const count = faux.state.callCount;
       expect(
         await runJudgement(
@@ -212,7 +214,7 @@ it.skipIf(!process.env.MEMORY_JUDGEMENT_FIXTURE)(
           f.assignment,
           local.session,
           current,
-          { reference, jev, disclosure },
+          { primary: jev, fallback: reference, disclosure },
           context,
         ),
       ).toEqual(shadow);
@@ -244,10 +246,9 @@ it.skipIf(!process.env.MEMORY_JUDGEMENT_FIXTURE)(
         local.session,
         admitted.packet,
         {
-          reference,
-          jev,
+          primary: jev,
+          fallback: reference,
           disclosure,
-          mode: "qualified",
           reuseAssessmentId: firstId,
           qualifications: [
             {
@@ -263,6 +264,8 @@ it.skipIf(!process.env.MEMORY_JUDGEMENT_FIXTURE)(
         context,
       );
       expect(adopted.selected_assessment).toBe(firstId);
+      expect(adopted.mode).toBe("primary");
+      expect(adopted.decisions.J02.constraints.join(" ")).toMatch(/Evaluation status: qualified/);
       expect(calls).toBe(beforeReuse);
       for (const changed of [
         { ...same, id: randomUUID(), frame: "Different interpretation" },
@@ -325,7 +328,7 @@ it.skipIf(!process.env.MEMORY_JUDGEMENT_FIXTURE)(
           f.assignment,
           local.session,
           { ...current, id: randomUUID() },
-          { reference, jev, disclosure: { ...disclosure, providers: [] } },
+          { primary: jev, fallback: reference, disclosure: { ...disclosure, providers: [] } },
           context,
         ),
       ).rejects.toThrow("disclosure");
@@ -390,7 +393,7 @@ it.skipIf(!process.env.MEMORY_JUDGEMENT_FIXTURE)(
         f.assignment,
         local.session,
         checkAdmission.packet,
-        { reference, disclosure },
+        { primary: reference, disclosure },
         context,
       );
       expect(checkDecision.decisions["task.check"].action).toBe("investigate");
@@ -401,7 +404,7 @@ it.skipIf(!process.env.MEMORY_JUDGEMENT_FIXTURE)(
           f.assignment,
           local.session,
           checkAdmission.packet,
-          { reference, disclosure },
+          { primary: reference, disclosure },
           context,
         ),
       ).rejects.toThrow();
@@ -418,15 +421,17 @@ it.skipIf(!process.env.MEMORY_JUDGEMENT_FIXTURE)(
           ),
         ]);
         const before = calls;
+        // A failed or malformed primary reply hands the packet to the declared fallback.
         const d = await runJudgement(
           host,
           f.assignment,
           local.session,
           current,
-          { reference, jev, disclosure },
+          { primary: jev, fallback: reference, disclosure },
           context,
         );
         expect(calls - before).toBe(1);
+        expect(d.mode).toBe("fallback");
         expect(d.selected_assessment).toBe(d.assessment_ids[1]);
       }
       // Lose the acknowledgement after the host has stored the assessment.
@@ -458,7 +463,7 @@ it.skipIf(!process.env.MEMORY_JUDGEMENT_FIXTURE)(
           f.assignment,
           local.session,
           recoveryPacket,
-          { reference, disclosure },
+          { primary: reference, disclosure },
           context,
         ),
       ).rejects.toThrow("Lost acknowledgement");
@@ -467,7 +472,7 @@ it.skipIf(!process.env.MEMORY_JUDGEMENT_FIXTURE)(
         f.assignment,
         local.session,
         recoveryPacket,
-        { reference, disclosure },
+        { primary: reference, disclosure },
         context,
       );
       expect(recovered.selected_assessment).toBeTruthy();

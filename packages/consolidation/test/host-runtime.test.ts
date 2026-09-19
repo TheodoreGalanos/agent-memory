@@ -164,7 +164,7 @@ it.skipIf(!process.env.MEMORY_CONSOLIDATION_FIXTURE)(
       members: f.cases.slice(0, 2),
     };
     const options = {
-      reference: provider,
+      primary: provider,
       maxAttempts: 1,
       disclosure: {
         policy: brief.disclosure_policy,

@@ -135,7 +135,7 @@ it.skipIf(!process.env.MEMORY_ACTIVATION_FIXTURE)(
       context_bytes: 20000,
     };
     const options = {
-      reference,
+      primary: reference,
       embeddings: {
         document: vi.fn(),
         query: vi.fn(async () => ({

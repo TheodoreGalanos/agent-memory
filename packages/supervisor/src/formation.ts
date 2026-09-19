@@ -7,6 +7,7 @@ import type { FormationWindow } from "../../../contracts/generated/formation-win
 import type { HostResponse } from "../../../contracts/generated/host-response.js";
 import type { WorkResult } from "../../../contracts/generated/work-result.js";
 import type { JudgementOptions } from "../../judgement/src/runtime.js";
+import { catalogueResponses } from "../../judgement/src/responses.js";
 import { runFormation } from "../../formation/src/index.js";
 import type { ProcessModule, Services } from "./composition.js";
 import type { ProcessHandler, ProcessRun } from "./runner.js";
@@ -59,15 +60,17 @@ async function runFormationJob(run: ProcessRun, deps: FormationDeps) {
   const input = formationInput(assignment);
   if (assignment.job.state !== "running")
     await host.request({ action: "start", fence, composition: run.composition }, context.abortSignal);
+  const { primary, fallback, comparison } = deps.judgement;
   const judgement: JudgementOptions = {
-    reference: observeProvider(deps.judgement.reference, "reference", log),
-    jev: deps.judgement.jev ? observeProvider(deps.judgement.jev, "shadow", log) : undefined,
-    mode: deps.judgement.mode,
+    primary: observeProvider(primary, "primary", log),
+    fallback: fallback ? observeProvider(fallback, "fallback", log) : undefined,
+    comparison: comparison ? { provider: observeProvider(comparison.provider, "comparison", log) } : undefined,
     maxAttempts: 1,
+    responses: catalogueResponses,
     disclosure: {
       policy: brief.disclosure_policy,
       scope: brief.scope,
-      providers: [deps.judgement.reference.id, ...(deps.judgement.jev ? [deps.judgement.jev.id] : [])],
+      providers: [primary.id, ...(fallback ? [fallback.id] : []), ...(comparison ? [comparison.provider.id] : [])],
     },
   };
   const results: FormationResult[] = [];

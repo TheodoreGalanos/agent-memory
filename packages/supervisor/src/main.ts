@@ -1,5 +1,5 @@
-// ABOUTME: Process entry for a worker pool child started by the Host. Reads its pool identity from
-// ABOUTME: the environment and provider settings from a worker configuration file; runs until SIGTERM.
+// ABOUTME: Process entry for a worker pool child started by the Host. Reads its pool identity from the
+// ABOUTME: environment and worker.json, installs only the services the enabled processes need, and runs until SIGTERM.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadEnvFile } from "node:process";
@@ -8,76 +8,72 @@ import { createModels } from "@earendil-works/pi-ai";
 import { azureOpenAIResponsesProvider } from "@earendil-works/pi-ai/providers/azure-openai-responses";
 import { HostClient } from "../../host-client/src/client.js";
 import { GenerativeProvider, JevProvider, type JudgementProvider } from "../../judgement/src/providers.js";
-import { POOL_MODULES, SUPPORTED_PROCESSES, composeApplication, runSupervisor, type SupportedProcess } from "./index.js";
-
-interface WorkerConfiguration {
-  /** Path to a dotenv file with provider credentials; relative paths resolve from the config file. */
-  env_file?: string;
-  sessions_directory: string;
-  concurrency?: number | { interactive?: number; deferred?: number };
-  poll_ms?: number;
-  lease_seconds?: number;
-  /** How long running work may finish after SIGTERM before it is cancelled. */
-  drain_ms?: number;
-  max_payload_bytes?: number;
-  task_reservation_cost_microunits?: number;
-  processes?: SupportedProcess[];
-  task_model: { provider: string; model: string };
-  reference_model: { provider: string; model: string };
-  jev?: { model: string } | null;
-  judgement_mode?: "reference" | "shadow";
-  judgement_maximum?: { tokens: number; cost_microunits: number };
-}
+import { credentialsRequired, migrateWorkerConfiguration, type JudgementRoute } from "./configuration.js";
+import { POOL_MODULES, SUPPORTED_PROCESSES, composeApplication, runSupervisor, type Services, type SupportedProcess } from "./index.js";
 
 async function main() {
   const configPath = process.argv[2];
   if (!configPath) throw new Error("Usage: supervisor WORKER_CONFIG.json (pool identity comes from the environment)");
   const hostUrl = process.env.MEMORY_HOST_URL, token = process.env.MEMORY_POOL_TOKEN;
   if (!hostUrl || !token) throw new Error("MEMORY_HOST_URL and MEMORY_POOL_TOKEN are required");
-  const config = JSON.parse(readFileSync(configPath, "utf8")) as WorkerConfiguration;
+  const say = (line: string) => console.log(`pool ${process.env.MEMORY_POOL_INDEX ?? ""}: ${line}`);
+  const { config, migrated, notes } = migrateWorkerConfiguration(JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>);
+  if (migrated) for (const note of notes) say(`configuration: ${note} Update ${configPath} to the judgement block to silence this notice.`);
   const base = resolve(configPath, "..");
   if (config.env_file) loadEnvFile(resolve(base, config.env_file));
-  if (config.task_model.provider !== "azure-openai-responses" || config.reference_model.provider !== "azure-openai-responses")
-    throw new Error("This pool supports the azure-openai-responses provider for task and reference models");
-  if (!process.env.AZURE_OPENAI_API_KEY) throw new Error("AZURE_OPENAI_API_KEY is required for the configured models");
+  const processes = config.processes ?? SUPPORTED_PROCESSES;
+  const unsupported = processes.filter((p) => !SUPPORTED_PROCESSES.includes(p));
+  if (unsupported.length) throw new Error(`This pool supports ${SUPPORTED_PROCESSES.join(", ")} only; not ${unsupported.join(", ")}`);
+  const missing = credentialsRequired(config, processes).filter((name) => !process.env[name]);
+  if (missing.length) throw new Error(`${missing.join(", ")} ${missing.length > 1 ? "are" : "is"} required for the configured routes`);
   const models = createModels();
   models.setProvider(azureOpenAIResponsesProvider());
-  const taskModel = models.getModel(config.task_model.provider, config.task_model.model);
-  const referenceModel = models.getModel(config.reference_model.provider, config.reference_model.model);
-  if (!taskModel || !referenceModel) throw new Error("Configured model is not in the installed Pi catalog");
+  const generativeModel = (route: { provider: string; model: string }) => {
+    if (route.provider !== "azure-openai-responses") throw new Error("This pool supports the azure-openai-responses provider for generative models");
+    const model = models.getModel(route.provider, route.model);
+    if (!model) throw new Error(`Model ${route.provider}/${route.model} is not in the installed Pi catalog`);
+    return model;
+  };
   const maximum = {
-    tokens: config.judgement_maximum?.tokens ?? 30_000,
+    tokens: config.judgement.maximum?.tokens ?? 30_000,
     provider_calls: 1,
-    cost_microunits: config.judgement_maximum?.cost_microunits ?? 30_000,
+    cost_microunits: config.judgement.maximum?.cost_microunits ?? 30_000,
     sandbox_time_ms: 0,
     sandbox_cpu_ms: 0,
     output_bytes: 0,
   };
-  const reference = new GenerativeProvider("azure-reference", models, referenceModel, maximum, 2048);
-  let jev: JudgementProvider | undefined;
-  if (config.jev) {
-    if (!process.env.JEV_API_KEY) throw new Error("JEV_API_KEY is required when jev is configured");
-    jev = new JevProvider("jev", config.jev.model, maximum, () => process.env.JEV_API_KEY!);
+  const provider = (route: JudgementRoute, id: string): JudgementProvider =>
+    route.kind === "jev"
+      ? new JevProvider(id, route.model, maximum, () => process.env.JEV_API_KEY!)
+      : new GenerativeProvider(id, models, generativeModel(route), maximum, 2048);
+  const services: Services = {};
+  if (processes.includes("investigation")) {
+    const taskModel = generativeModel(config.task_model);
+    services.taskModel = { models, model: taskModel, maxPayloadBytes: config.max_payload_bytes ?? 100_000, reservationCost: config.task_reservation_cost_microunits };
   }
-  const processes = config.processes ?? SUPPORTED_PROCESSES;
-  const unsupported = processes.filter((p) => !SUPPORTED_PROCESSES.includes(p));
-  if (unsupported.length) throw new Error(`This pool supports ${SUPPORTED_PROCESSES.join(", ")} only; not ${unsupported.join(", ")}`);
+  if (processes.includes("formation")) {
+    const { primary, fallback, comparison } = config.judgement;
+    services.judgement = {
+      primary: provider(primary, `primary:${primary.kind}`),
+      fallback: fallback ? provider(fallback, `fallback:${fallback.kind}`) : undefined,
+      comparison: comparison ? { provider: provider(comparison, `comparison:${comparison.kind}`) } : undefined,
+      maximum,
+    };
+  }
   // Composition is validated here, before the pool credential claims anything.
   const composition = composeApplication(
-    {
-      taskModel: { models, model: taskModel, maxPayloadBytes: config.max_payload_bytes ?? 100_000, reservationCost: config.task_reservation_cost_microunits },
-      judgement: { reference, jev, mode: config.judgement_mode ?? (jev ? "shadow" : "reference"), maximum },
-    },
+    services,
     POOL_MODULES.filter((module) => module.declaration.operations.some((op) => processes.includes(op as SupportedProcess))),
   );
   const classes = (process.env.MEMORY_POOL_CLASSES ?? "").split(",").filter(Boolean);
   const controller = new AbortController();
   for (const signal of ["SIGTERM", "SIGINT"] as const)
     process.on(signal, () => {
-      console.log(`pool ${process.env.MEMORY_POOL_INDEX ?? ""}: ${signal} received; finishing current work`);
+      say(`${signal} received; finishing current work`);
       controller.abort();
     });
-  console.log(`pool ${process.env.MEMORY_POOL_INDEX ?? ""}: classes ${classes.join(",") || "?"}; composition ${composition.identity}; task ${taskModel.provider}/${taskModel.id}; reference ${referenceModel.id}; jev ${jev ? config.jev!.model : "off"}`);
+  const route = (r?: JudgementRoute) => (r ? `${r.kind}/${r.model}` : "off");
+  say(`classes ${classes.join(",") || "?"}; composition ${composition.identity}; task ${services.taskModel ? `${services.taskModel.model.provider}/${services.taskModel.model.id}` : "off"}; judgement primary ${route(config.judgement.primary)}, fallback ${route(config.judgement.fallback)}, comparison ${route(config.judgement.comparison)}`)
   await runSupervisor(
     {
       host: new HostClient(hostUrl, token),
@@ -88,7 +84,7 @@ async function main() {
       leaseSeconds: config.lease_seconds ?? 120,
       drainMs: config.drain_ms ?? 5_000,
       sessionsDirectory: resolve(base, config.sessions_directory),
-      log: (line) => console.log(`pool ${process.env.MEMORY_POOL_INDEX ?? ""}: ${line}`),
+      log: say,
     },
     withAbortSignal(controller.signal, BACKGROUND_CONTEXT),
   );

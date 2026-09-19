@@ -3,15 +3,16 @@ import { randomUUID } from "node:crypto";
 import { catalogue } from "../src/catalogue.js";
 import { validateResponse } from "../src/validation.js";
 import { decide, qualified } from "../src/policy.js";
+import { catalogueResponses } from "../src/responses.js";
 import { fixtures, packet, reply, assessment } from "./fixtures.js";
 
 it.each(fixtures)(
-  "$family has typed answers, missing-evidence disposition and service-failure fallback",
+  "$family has typed answers, an explicit response rule, and distinct missing-evidence and failure outcomes",
   (f) => {
     const p = packet(f.family),
       a = assessment(p);
     expect(validateResponse(p, reply(p), true).answers).toEqual(a.answers);
-    const normal = decide(p, randomUUID(), [a], a, "reference");
+    const normal = decide(p, randomUUID(), [a], a, "primary", catalogueResponses);
     expect(normal.decisions[f.family].action).toBe(f.expected_action);
     expect(normal.decisions[f.family].reason).not.toContain("unavailable");
     expect(normal.decisions[f.family].constraints.join(" ")).toContain(
@@ -19,13 +20,13 @@ it.each(fixtures)(
     );
     a.answers = validateResponse(p, reply(p, true), true).answers;
     expect(
-      decide(p, randomUUID(), [a], a, "reference").decisions[f.family].action,
+      decide(p, randomUUID(), [a], a, "primary", catalogueResponses).decisions[f.family].action,
     ).toBe("retrieve_further");
     a.status = "invalid_response";
     a.answers = {};
     a.failure = "Wrong answer type";
     expect(
-      decide(p, randomUUID(), [a], undefined, "reference").decisions[f.family]
+      decide(p, randomUUID(), [a], undefined, "unresolved", catalogueResponses).decisions[f.family]
         .action,
     ).toBe("defer");
     expect(p.questions[0].definition.fallback).toContain("conventional-model");

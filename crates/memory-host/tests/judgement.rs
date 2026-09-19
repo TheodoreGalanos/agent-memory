@@ -164,7 +164,9 @@ async fn semantic_judgement_through_http_and_pi() {
         .budget_usage(&auth, job.spec.brief.limits.root_budget_id)
         .await
         .unwrap();
-    assert_eq!(usage.unresolved.provider_calls, 43);
+    // Jev-first routing: the fallback is reserved only when the primary yields no usable answer,
+    // so the batch and the rate-limited run each cost one provider call fewer than paired calls.
+    assert_eq!(usage.unresolved.provider_calls, 41);
     assert_eq!(usage.committed.provider_calls, 0);
     let artifacts = ArtifactService::local(store.clone(), root).await.unwrap();
     let evidence_id = Uuid::parse_str(result["evidence"].as_str().unwrap()).unwrap();

@@ -98,7 +98,7 @@ it.skipIf(!process.env.MEMORY_FORMATION_FIXTURE)(
       },
     };
     const options = {
-      reference,
+      primary: reference,
       disclosure: {
         policy: brief.disclosure_policy,
         scope: brief.scope,

@@ -193,7 +193,7 @@ it("a pool claims, drives and settles investigation and formation jobs through a
       const states = await Promise.all([investigation.id, formation.id, stale.id].map(jobState));
       return states.every((state) => ["completed", "partial", "failed"].includes(state));
     };
-    const composition = compose({ taskModel: taskService(models, faux), judgement: { reference, mode: "reference", maximum } }, "investigation", "formation");
+    const composition = compose({ taskModel: taskService(models, faux), judgement: { primary: reference, maximum } }, "investigation", "formation");
     expect(composition.identity).toMatch(/^investigation@1\+formation@1#[0-9a-f]{12}$/);
     await runSupervisor({
       host: new HostClient(url, tokens.pool), hostUrl: url, concurrency: { interactive: 1, deferred: 1 }, pollMs: 50, leaseSeconds: 60,
@@ -279,7 +279,7 @@ it("fault: a judgement provider outage defers the candidates with a recorded rea
     const reference = scriptedReference(faux, models, () => { calls++; if (outage) throw new Error("provider unavailable"); });
     const run = async (jobId: string) => runSupervisor({
       host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 60, sessionsDirectory: join(w.base, "sessions"),
-      composition: compose({ judgement: { reference, mode: "reference", maximum } }, "formation"),
+      composition: compose({ judgement: { primary: reference, maximum } }, "formation"),
       log: () => {},
       until: async () => SETTLED.includes((await w.job(jobId)).state),
     }, context);
@@ -317,7 +317,7 @@ it("a formation window slower than its lease completes because the runner renews
     const reference = scriptedReference(faux, models, () => new Promise((done) => setTimeout(done, 2_500)));
     await runSupervisor({
       host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 2, sessionsDirectory: join(w.base, "sessions"),
-      composition: compose({ judgement: { reference, mode: "reference", maximum } }, "formation"),
+      composition: compose({ judgement: { primary: reference, maximum } }, "formation"),
       log: () => {}, until: async () => SETTLED.includes((await w.job(job.id)).state),
     }, context);
     const done = await w.job(job.id);
@@ -346,7 +346,7 @@ it("cancelling a running formation job settles it as cancelled rather than a fai
     const events: string[] = [];
     await runSupervisor({
       host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 3, sessionsDirectory: join(w.base, "sessions"),
-      composition: compose({ judgement: { reference, mode: "reference", maximum } }, "formation"),
+      composition: compose({ judgement: { primary: reference, maximum } }, "formation"),
       log: (line) => events.push(line), until: async () => ["cancelled", ...SETTLED].includes((await w.job(job.id)).state),
     }, context);
     const done = await w.job(job.id);

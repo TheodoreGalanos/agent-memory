@@ -89,7 +89,7 @@ it.skipIf(!process.env.MEMORY_MAINTENANCE_FIXTURE)(
       },
     };
     const options = {
-      reference: provider,
+      primary: provider,
       maxAttempts: 1,
       disclosure: {
         policy: assignment.job.spec.brief.disclosure_policy,

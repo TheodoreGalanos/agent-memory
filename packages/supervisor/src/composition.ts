@@ -17,10 +17,7 @@ export interface Services {
     /** Cost reservation per task provider call, in microunits. Settles to observed usage. */
     reservationCost?: number;
   };
-  judgement?: {
-    reference: JudgementProvider;
-    jev?: JudgementProvider;
-    mode?: JudgementOptions["mode"];
+  judgement?: Pick<JudgementOptions, "primary" | "fallback" | "comparison"> & {
     maximum: JudgementProvider["maximum"];
   };
 }
