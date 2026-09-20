@@ -189,7 +189,7 @@ async function runInvestigation(run: ProcessRun, deps: InvestigationDeps) {
   try {
     // Hook failures fail the provider call; name them so an operator sees why a task went partial.
     worker.harness.events.on("handler_error", (event) => {
-      log(`job ${assignment.job.id} harness ${event.kind} error: ${event.error instanceof Error ? event.error.message : String(event.error)}`);
+      log(`job ${assignment.job.id} harness ${event.kind} error: ${String(event.error)}`);
     });
     if (model.api === "azure-openai-responses")
       worker.harness.hooks.on("before_payload", async ({ payload }) => ({ payload: constrainToWorkResult(payload) }));
