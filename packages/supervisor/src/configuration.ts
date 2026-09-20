@@ -5,7 +5,10 @@ import type { SupportedProcess } from "./index.js";
 
 export type JudgementRoute =
   | { kind: "jev"; model: string }
-  | { kind: "generative"; provider: string; model: string };
+  | { kind: "generative"; provider: string; model: string }
+  /** Test-only: answers every judgement question from a flat `{"family.key": "choice"}` JSON file.
+   * `main.ts` refuses this route unless `MEMORY_TEST_SCRIPTED=1` is set. */
+  | { kind: "scripted"; answers_file: string };
 
 export interface JudgementConfiguration {
   /** The operational provider for every configured structured judgement. Jev by default. */
@@ -15,6 +18,14 @@ export interface JudgementConfiguration {
   /** Separately budgeted evaluation work recorded after each decision; never selected. */
   comparison?: JudgementRoute;
   maximum?: { tokens: number; cost_microunits: number };
+}
+
+/** Test-only: replies to every task model call in order (the last reply repeats once exhausted) from
+ * a JSON array of already-serialized assistant reply strings. `main.ts` refuses this route unless
+ * `MEMORY_TEST_SCRIPTED=1` is set. */
+export interface FauxTaskModel {
+  provider: "faux";
+  replies_file: string;
 }
 
 export interface WorkerConfiguration {
@@ -29,7 +40,7 @@ export interface WorkerConfiguration {
   max_payload_bytes?: number;
   task_reservation_cost_microunits?: number;
   processes?: SupportedProcess[];
-  task_model: { provider: string; model: string };
+  task_model: { provider: string; model: string } | FauxTaskModel;
   judgement: JudgementConfiguration;
   /** Where investigation's granted native tools run. Absent means investigation tasks are tool-less. */
   execution?:
@@ -89,14 +100,16 @@ export function migrateWorkerConfiguration(
 
 /** Environment variables the composed processes need: Azure for any generative model in use, Jev for any Jev route.
  * An `asp` execution service needs no additional environment credential: its SSH identity is a trusted file
- * reference carried in the binding itself, not an ambient secret. */
+ * reference carried in the binding itself, not an ambient secret. The test-only `scripted`/`faux` routes need
+ * no credential at all — that is their entire point. */
 export function credentialsRequired(config: WorkerConfiguration, processes: SupportedProcess[]): string[] {
   const judgementProcesses: SupportedProcess[] = ["formation", "consolidation", "maintenance", "activation"];
   const routes = processes.some((p) => judgementProcesses.includes(p))
     ? [config.judgement.primary, config.judgement.fallback, config.judgement.comparison].filter((r): r is JudgementRoute => !!r)
     : [];
+  const wantsTaskModel = processes.includes("investigation") || processes.includes("consolidation") || processes.includes("evaluation");
   const required = new Set<string>();
-  if (processes.includes("investigation") || processes.includes("consolidation") || processes.includes("evaluation") || routes.some((r) => r.kind === "generative")) required.add("AZURE_OPENAI_API_KEY");
+  if ((wantsTaskModel && config.task_model.provider !== "faux") || routes.some((r) => r.kind === "generative")) required.add("AZURE_OPENAI_API_KEY");
   if (routes.some((r) => r.kind === "jev")) required.add("JEV_API_KEY");
   return [...required].sort();
 }
