@@ -493,7 +493,10 @@ impl Host {
                 duplicate_records: None,
                 previous_deferral: None,
                 event: ToolEvent {
-                    event_id: format!("span-{span_index}"),
+                    // The source-wide position, not the span's window-local index: a later window
+                    // over the same operation restarts local indices at zero, and a local index
+                    // would collide with an earlier window's event_id and duplicate-detection key.
+                    event_id: format!("span-{}", span.start),
                     observed_at: span.events[0].observed_at,
                     kind: "candidate".into(),
                     origin: proposal.origin,
