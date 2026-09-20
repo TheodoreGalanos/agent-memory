@@ -7,7 +7,7 @@ use memory_domain::{
         Authority, Command, ConfigRef, Process, Scope, WireVersion, WorkBrief, WorkInputs,
     },
     coordination::{Job, SubmitJob},
-    records::{Qualification, RecordDraft},
+    records::{MemoryContent, Qualification, RecordDraft},
     scheduling::ScheduledWorkMark,
 };
 use sqlx::Row;
@@ -385,6 +385,110 @@ impl Store {
             .submit_scheduled(
                 authority,
                 cohort_id,
+                brief,
+                deadline,
+                origin.spec.retain_until.max(deadline + Duration::days(1)),
+            )
+            .await?;
+        Ok(job.id)
+    }
+
+    /// Schedules one qualification/evaluation job for each consolidation commit that produced a
+    /// candidate procedure, once. Adoption itself stays on the existing `AdoptProcedure` check;
+    /// this only starts the job whose worker drives that check when its report lands.
+    pub async fn schedule_qualification(&self, authority: &Authority, limit: u16) -> Result<u32> {
+        let limit = limit.clamp(1, 100);
+        let rows = sqlx::query(
+            "SELECT id,job_id,result FROM consolidation_reviews WHERE tenant_id=$1 AND result IS NOT NULL ORDER BY id LIMIT 500",
+        )
+        .bind(authority.tenant_id.to_string())
+        .fetch_all(&self.pool)
+        .await?;
+        let mut scheduled = 0u32;
+        for row in rows {
+            if scheduled >= u32::from(limit) {
+                break;
+            }
+            let review_id: Uuid = id(row.try_get("id")?)?;
+            let job_id: Uuid = id(row.try_get("job_id")?)?;
+            let result: memory_domain::consolidation::ConsolidationResult =
+                serde_json::from_str(row.try_get("result")?)?;
+            let Some(candidate) = result.record else {
+                continue;
+            };
+            if !matches!(candidate.record.content, MemoryContent::Procedure { .. })
+                || !matches!(candidate.record.qualification, Qualification::Candidate)
+            {
+                continue;
+            }
+            let trigger_id = candidate.reference.memory_id;
+            if self
+                .scheduled_work(authority, "qualification", trigger_id)
+                .await?
+                .is_some()
+            {
+                continue;
+            }
+            let mut connection = self.pool.acquire().await?;
+            if crate::access::read_scope(&mut connection, authority, trigger_id)
+                .await
+                .is_err()
+            {
+                continue; // Another authority's scope; its own timer schedules it.
+            }
+            drop(connection);
+            let outcome = ScheduleOutcome::from_result(
+                self.schedule_one_qualification(authority, review_id, job_id, &candidate)
+                    .await,
+            )?
+            .causal(Some(job_id));
+            if outcome.job_id.is_some() {
+                scheduled += 1;
+            }
+            self.mark_scheduled(
+                authority,
+                "qualification",
+                trigger_id,
+                &review_id.to_string(),
+                outcome,
+            )
+            .await?;
+        }
+        Ok(scheduled)
+    }
+
+    async fn schedule_one_qualification(
+        &self,
+        authority: &Authority,
+        review_id: Uuid,
+        consolidation_job_id: Uuid,
+        candidate: &memory_domain::records::MemoryVersion,
+    ) -> Result<Uuid> {
+        let origin = self.job(authority, consolidation_job_id).await?;
+        let deadline = self
+            .scheduled_deadline(authority, origin.spec.brief.limits.root_budget_id)
+            .await?;
+        let (task_id, scope) = scoped_task(&candidate.record.scope);
+        let mut brief = origin.spec.brief.clone();
+        brief.process = Process::Consolidation;
+        brief.purpose = format!("qualify procedure {}", candidate.reference.label);
+        brief.task_id = task_id;
+        brief.scope = scope;
+        brief.inputs = WorkInputs {
+            sources: vec![],
+            memories: vec![candidate.reference.clone()],
+            artifacts: origin.spec.brief.inputs.artifacts.clone(),
+        };
+        brief.known_conflicts = vec![];
+        brief.evidence_cutoff = Utc::now();
+        brief.output_criteria = vec![
+            "Build a held-out evaluation suite and qualify the candidate procedure by comparison against episode and summary baselines"
+                .into(),
+        ];
+        let job = self
+            .submit_scheduled(
+                authority,
+                review_id,
                 brief,
                 deadline,
                 origin.spec.retain_until.max(deadline + Duration::days(1)),

@@ -149,6 +149,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 {
                     eprintln!("Consolidation scheduling failed; retrying on the next tick");
                 }
+                // A committed candidate procedure gets a bounded qualification job.
+                if tick % RECOVERY_TICKS == 0
+                    && timer_store
+                        .schedule_qualification(authority, 10)
+                        .await
+                        .is_err()
+                {
+                    eprintln!("Qualification scheduling failed; retrying on the next tick");
+                }
             }
         }
     });

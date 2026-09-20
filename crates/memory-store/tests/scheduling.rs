@@ -1,5 +1,5 @@
-// ABOUTME: Store-level TDD coverage for the consolidation cohort scheduling sweep: idempotent on
-// ABOUTME: repeat, nothing before the configured minimum, correct brief, distinct task per cohort.
+// ABOUTME: Store-level TDD coverage for the scheduling sweeps: consolidation cohorts and the
+// ABOUTME: procedure qualification job scheduled once a commit produces a candidate procedure.
 use chrono::{Duration, Utc};
 use memory_domain::{consolidation::*, contracts::*, coordination::*, records::*};
 use memory_store::Store;
@@ -292,9 +292,178 @@ async fn consolidation_cohort(store: &Store) {
     );
 }
 
+async fn qualification_after_consolidation(store: &Store, raw: &sqlx::AnyPool) {
+    let f = setup(store).await;
+    let task_id = Uuid::now_v7();
+    let mut scoped = f.project_scope.clone();
+    scoped.task_id = Some(task_id);
+    let mut draft = candidate(&scoped, &f.policy, "procedure");
+    draft.content = procedure_content();
+    let candidate_version = store.create_memory(&f.auth, draft).await.unwrap();
+    let consolidation_job = submit_job(
+        store,
+        &f.auth,
+        base_brief(&f.auth, &f.policy, scoped.clone(), task_id),
+        f.budget_id,
+        Utc::now() + Duration::minutes(30),
+    )
+    .await;
+    let review_id = Uuid::now_v7();
+    let result = ConsolidationResult {
+        review_id,
+        record: Some(candidate_version.clone()),
+        deferred: vec![],
+        independent_sources: 1,
+        coverage: Coverage {
+            examined: vec!["fixture".into()],
+            unexamined: vec![],
+        },
+    };
+    insert_consolidation_review(raw, &f.auth, review_id, consolidation_job, &result).await;
+    assert_eq!(store.schedule_qualification(&f.auth, 10).await.unwrap(), 1);
+    let mark = store
+        .scheduled_work(
+            &f.auth,
+            "qualification",
+            candidate_version.reference.memory_id,
+        )
+        .await
+        .unwrap()
+        .expect("qualification trigger recorded");
+    let job_id = mark.job_id.expect("qualification job scheduled");
+    let job = store.job(&f.auth, job_id).await.unwrap();
+    assert_eq!(job.spec.brief.process, Process::Consolidation);
+    assert_eq!(
+        job.spec.brief.inputs.memories,
+        vec![candidate_version.reference.clone()]
+    );
+    assert_eq!(job.spec.brief.limits.root_budget_id, f.budget_id);
+    // Idempotent: the same candidate does not get a second qualification job.
+    assert_eq!(store.schedule_qualification(&f.auth, 10).await.unwrap(), 0);
+    assert_eq!(
+        store
+            .scheduled_work(
+                &f.auth,
+                "qualification",
+                candidate_version.reference.memory_id
+            )
+            .await
+            .unwrap()
+            .unwrap()
+            .job_id,
+        Some(job_id)
+    );
+}
+
+async fn qualification_unschedulable_on_expired_budget(store: &Store, raw: &sqlx::AnyPool) {
+    let f = setup(store).await;
+    let task_id = Uuid::now_v7();
+    let mut scoped = f.project_scope.clone();
+    scoped.task_id = Some(task_id);
+    let mut draft = candidate(&scoped, &f.policy, "procedure-expiring");
+    draft.content = procedure_content();
+    let candidate_version = store.create_memory(&f.auth, draft).await.unwrap();
+    // A budget whose deadline leaves no working time for a newly scheduled job.
+    let tight_budget = store
+        .create_budget(
+            &f.auth,
+            Budget {
+                id: Uuid::now_v7(),
+                scope: scoped.clone(),
+                limit: Resources {
+                    tokens: 1000,
+                    provider_calls: 4,
+                    output_bytes: 1024,
+                    ..Default::default()
+                },
+                final_result_reserve: Resources {
+                    tokens: 10,
+                    output_bytes: 128,
+                    ..Default::default()
+                },
+                deadline: Utc::now() + Duration::seconds(5),
+                max_child_depth: 1,
+                max_child_concurrency: 1,
+                pricing_revision: "test/no-charge".into(),
+            },
+        )
+        .await
+        .unwrap();
+    let consolidation_job = submit_job(
+        store,
+        &f.auth,
+        base_brief(&f.auth, &f.policy, scoped.clone(), task_id),
+        tight_budget.id,
+        tight_budget.deadline,
+    )
+    .await;
+    let review_id = Uuid::now_v7();
+    let result = ConsolidationResult {
+        review_id,
+        record: Some(candidate_version.clone()),
+        deferred: vec![],
+        independent_sources: 1,
+        coverage: Coverage {
+            examined: vec![],
+            unexamined: vec![],
+        },
+    };
+    insert_consolidation_review(raw, &f.auth, review_id, consolidation_job, &result).await;
+    assert_eq!(store.schedule_qualification(&f.auth, 10).await.unwrap(), 0);
+    let mark = store
+        .scheduled_work(
+            &f.auth,
+            "qualification",
+            candidate_version.reference.memory_id,
+        )
+        .await
+        .unwrap()
+        .expect("trigger recorded even when unschedulable");
+    assert!(mark.job_id.is_none());
+    assert!(mark.unschedulable.is_some());
+}
+
+fn procedure_content() -> MemoryContent {
+    MemoryContent::Procedure {
+        purpose: "Look up a rated pressure".into(),
+        capabilities: vec![],
+        applicability: vec![],
+        exclusions: vec![],
+        method: ProcedureForm::Advisory {
+            steps: vec!["Read the field".into()],
+            evidence_criteria: vec!["Field value observed directly".into()],
+        },
+        counterexamples: vec![],
+        contract: None,
+    }
+}
+async fn insert_consolidation_review(
+    raw: &sqlx::AnyPool,
+    auth: &Authority,
+    review_id: Uuid,
+    job_id: Uuid,
+    result: &ConsolidationResult,
+) {
+    sqlx::query(
+        "INSERT INTO consolidation_reviews(tenant_id,id,job_id,data,result) VALUES($1,$2,$3,$4,$5)",
+    )
+    .bind(auth.tenant_id.to_string())
+    .bind(review_id.to_string())
+    .bind(job_id.to_string())
+    .bind("{}")
+    .bind(serde_json::to_string(result).unwrap())
+    .execute(raw)
+    .await
+    .unwrap();
+}
+
 async fn suite(url: &str) {
     let store = Store::connect(url).await.unwrap();
+    let raw = sqlx::AnyPool::connect(url).await.unwrap();
     consolidation_cohort(&store).await;
+    qualification_after_consolidation(&store, &raw).await;
+    qualification_unschedulable_on_expired_budget(&store, &raw).await;
+    raw.close().await;
     store.close().await;
 }
 
