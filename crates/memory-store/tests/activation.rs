@@ -392,6 +392,20 @@ async fn activation_migration_indexes_existing_records() {
             .await
             .unwrap();
     }
+    // Later migrations add tables and columns to pre-existing tables; a replay from 7 must not
+    // find them already present. Keep this list in step with crates/memory-store/migrations.
+    for table in ["job_experiences", "experience_windows"] {
+        sqlx::query(&format!("DROP TABLE {table}"))
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
+    for column in ["composition", "validation"] {
+        sqlx::query(&format!("ALTER TABLE jobs DROP COLUMN {column}"))
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
     sqlx::query("DELETE FROM schema_migrations WHERE version>=7")
         .execute(&pool)
         .await

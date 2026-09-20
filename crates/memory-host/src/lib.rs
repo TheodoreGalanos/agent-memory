@@ -356,9 +356,12 @@ impl Host {
             revision: job.attempt.to_string(),
         };
         // The task executed the work; the experience belongs to the project so later tasks under the
-        // same policy can form from and retrieve it. Task provenance stays on the job link and label.
+        // same policy can form from and retrieve it. It is a new source about the task, not one of the
+        // task's input source versions, so that restriction does not carry over. Task provenance stays
+        // on the job link and label.
         let scope = memory_domain::contracts::Scope {
             task_id: None,
+            source_versions: vec![],
             ..job.spec.brief.scope.clone()
         };
         let narrow = Authority {
