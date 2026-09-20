@@ -14,6 +14,7 @@ import { EXECUTION_TOOLS, toolName, type ExecutionTool, type WorkerTool } from "
 import { InterpreterClient } from "../../pi-worker/src/interpreter-client.js";
 import { workspaceFromBrief } from "../../pi-worker/src/workspace.js";
 import type { HostCommands } from "../../host-client/src/client.js";
+import { selectAdapter } from "./adapter.js";
 import type { ProcessModule, Services } from "./composition.js";
 import type { ProcessHandler, ProcessRun } from "./runner.js";
 import { windowId } from "./formation.js";
@@ -32,16 +33,19 @@ export interface InvestigationDeps {
   judgement?: Services["judgement"];
   /** Where the task's granted native tools run. Absent means the task is tool-less. */
   execution?: Services["execution"];
+  /** Installed task adapters a brief's profile label may select; absent uses only the default. */
+  adapters?: Services["adapters"];
 }
 
 /** Investigation drives the task model; offered tools are attached when the brief grants them. */
 export const investigationModule: ProcessModule = {
-  declaration: { id: "investigation", version: "3", requires: ["taskModel"], optional: ["judgement", "execution"], operations: ["investigation"] },
+  declaration: { id: "investigation", version: "3", requires: ["taskModel"], optional: ["judgement", "execution", "adapters"], operations: ["investigation"] },
   attach: (services: Services, offered) => {
     const task = services.taskModel!;
     return [investigationHandler({
       models: task.models, taskModel: task.model, maxPayloadBytes: task.maxPayloadBytes,
       taskReservationCost: task.reservationCost, tools: offered, judgement: services.judgement, execution: services.execution,
+      adapters: services.adapters,
     })];
   },
 };
@@ -155,6 +159,7 @@ async function runInvestigation(run: ProcessRun, deps: InvestigationDeps) {
   const { env, interpreter, native } = await resolveExecution(deps.execution, {
     host, assignment, sessionsDirectory: run.sessionsDirectory, log,
   });
+  const adapter = selectAdapter(brief, deps.adapters);
   // The worker follows the runner's lease keeper and owns Pi's cancellation protocol (abort the
   // operation, then acknowledge), so it runs under the lease context rather than the cancel-aborting run context.
   const worker = await attachAssignedWorker(assignment, host, investigationProfile(assignment, deps), {
@@ -167,6 +172,13 @@ async function runInvestigation(run: ProcessRun, deps: InvestigationDeps) {
     systemPrompt: taskSystemPrompt(brief),
     lease,
     composition: run.composition,
+    // An independent adapter validates the result before it commits; the model's own claims about
+    // its status or coverage are never taken as proof of meeting the brief's output criteria.
+    beforeComplete: async (result, experience, hookContext) => {
+      const { verdict, reasons } = adapter.validate(brief, result, experience);
+      const recorded = await host.request({ action: "record_validation", fence, verdict, reasons }, hookContext.abortSignal);
+      if (recorded.kind !== "job") throw new Error("Host did not record the validation verdict");
+    },
     ...(activated
       ? {
           workspace: { initial: applyActivation(initial, activated) },

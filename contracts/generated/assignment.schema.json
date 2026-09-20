@@ -222,6 +222,17 @@
         "state": {
           "$ref": "#/$defs/JobState"
         },
+        "validation": {
+          "description": "An independent output-validator's verdict on the settled result, recorded before it commits.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Validation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "wait_reason": {
           "type": [
             "string",
@@ -461,6 +472,32 @@
       "enum": [
         "known",
         "partial",
+        "unknown"
+      ]
+    },
+    "Validation": {
+      "type": "object",
+      "properties": {
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "verdict": {
+          "$ref": "#/$defs/ValidationVerdict"
+        }
+      },
+      "required": [
+        "verdict",
+        "reasons"
+      ]
+    },
+    "ValidationVerdict": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "failed",
         "unknown"
       ]
     },

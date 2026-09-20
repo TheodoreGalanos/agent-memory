@@ -13,7 +13,7 @@ use crate::{
 use chrono::{DateTime, Duration, Utc};
 use memory_domain::{
     contracts::{Authority, Command, Process, WorkResult, WorkStatus},
-    coordination::{Assignment, Fence, Job, JobState, SubmitJob},
+    coordination::{Assignment, Fence, Job, JobState, SubmitJob, Validation, ValidationVerdict},
 };
 use sqlx::{AnyConnection, Row};
 use uuid::Uuid;
@@ -250,6 +250,39 @@ impl Store {
         current.composition = composition.map(str::to_owned);
         sqlx::query("UPDATE jobs SET state='running',composition=$1 WHERE tenant_id=$2 AND id=$3")
             .bind(&current.composition)
+            .bind(authority.tenant_id.to_string())
+            .bind(current.id.to_string())
+            .execute(&mut *tx)
+            .await?;
+        tx.commit().await?;
+        Ok(current)
+    }
+
+    pub async fn record_validation(
+        &self,
+        authority: &Authority,
+        permit: &Fence,
+        verdict: ValidationVerdict,
+        reasons: Vec<String>,
+    ) -> Result<Job> {
+        if reasons.len() > 50
+            || reasons
+                .iter()
+                .any(|reason| reason.trim().is_empty() || reason.chars().count() > 2000)
+        {
+            return Err(Error::Invalid(
+                "Validation reasons must be 1 to 50 short, non-empty strings".into(),
+            ));
+        }
+        let (mut tx, position) = self.begin_write().await?;
+        let mut current = fence(&mut tx, authority, permit, position.recorded_at).await?;
+        if current.cancel_requested {
+            return Err(Error::Conflict);
+        }
+        let validation = Validation { verdict, reasons };
+        current.validation = Some(validation.clone());
+        sqlx::query("UPDATE jobs SET validation=$1 WHERE tenant_id=$2 AND id=$3")
+            .bind(serde_json::to_string(&validation)?)
             .bind(authority.tenant_id.to_string())
             .bind(current.id.to_string())
             .execute(&mut *tx)

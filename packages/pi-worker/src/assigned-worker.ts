@@ -19,6 +19,7 @@ import type {
   Assignment,
   WorkResult,
 } from "../../../contracts/generated/assignment.js";
+import type { ToolEvent } from "../../../contracts/generated/formation-window.js";
 import type {
   Fence,
   Resources,
@@ -62,6 +63,13 @@ export interface AttachedWorkerOptions {
   /** Trusted pool code may widen the brief's read grant, for example to memories activation
    * selected for this task. Never derived from model output. */
   grant?: (base: WorkspaceAccess) => WorkspaceAccess;
+  /** Runs once the result is ready and its experience is published, but before `complete` commits
+   * it, while the fence still holds. Used to record an independent validator's verdict durably. */
+  beforeComplete?: (
+    result: WorkResult,
+    experience: ToolEvent[],
+    context: Context,
+  ) => Promise<void>;
 }
 
 export async function attachAssignedWorker(
@@ -691,18 +699,17 @@ export async function attachAssignedWorker(
         // A task's experience is published before its result commits, while the fence still holds:
         // formation later works from what actually happened, not from authored candidates.
         if (job.spec.brief.process === "investigation") {
+          const experience = experienceEvents(await lane.findEntries(undefined, context), {
+            result: saved.result,
+          });
           const published = await host.request(
-            {
-              action: "publish_experience",
-              fence,
-              events: experienceEvents(await lane.findEntries(undefined, context), {
-                result: saved.result,
-              }),
-            },
+            { action: "publish_experience", fence, events: experience },
             context.abortSignal,
           );
           if (published.kind !== "source")
             throw new Error("Host did not record the task experience");
+          if (options.beforeComplete)
+            await options.beforeComplete(saved.result, experience, context);
         }
         const committed = await host.request(
           {

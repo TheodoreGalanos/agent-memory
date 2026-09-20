@@ -32,6 +32,18 @@ pub struct SubmitJob {
     pub max_attempts: u16,
     pub retain_until: DateTime<Utc>,
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ValidationVerdict {
+    Passed,
+    Failed,
+    Unknown,
+}
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Validation {
+    pub verdict: ValidationVerdict,
+    pub reasons: Vec<String>,
+}
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Job {
     pub id: Uuid,
@@ -49,6 +61,8 @@ pub struct Job {
     pub result: Option<WorkResult>,
     /// Identity of the pool composition that started the current attempt, as the pool reported it.
     pub composition: Option<String>,
+    /// An independent output-validator's verdict on the settled result, recorded before it commits.
+    pub validation: Option<Validation>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Assignment {
@@ -469,6 +483,12 @@ pub enum HostRequest {
     },
     AcknowledgeCancellation {
         fence: Fence,
+    },
+    /// An independent output-validator's verdict, recorded before the worker's `complete` commits.
+    RecordValidation {
+        fence: Fence,
+        verdict: ValidationVerdict,
+        reasons: Vec<String>,
     },
     Complete {
         request_id: Uuid,

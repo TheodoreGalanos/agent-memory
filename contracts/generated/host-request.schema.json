@@ -1415,6 +1415,34 @@
       ]
     },
     {
+      "description": "An independent output-validator's verdict, recorded before the worker's `complete` commits.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "const": "record_validation"
+        },
+        "fence": {
+          "$ref": "#/$defs/Fence"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "verdict": {
+          "$ref": "#/$defs/ValidationVerdict"
+        }
+      },
+      "required": [
+        "action",
+        "fence",
+        "verdict",
+        "reasons"
+      ]
+    },
+    {
       "type": "object",
       "properties": {
         "action": {
@@ -5864,6 +5892,14 @@
             "kind"
           ]
         }
+      ]
+    },
+    "ValidationVerdict": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "failed",
+        "unknown"
       ]
     },
     "WireVersion": {
