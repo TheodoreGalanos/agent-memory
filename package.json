@@ -29,7 +29,6 @@
     "test:daytona": "python3 scripts/test-daytona.py",
     "embeddings": "node --experimental-strip-types scripts/embeddings.ts",
     "memory": "node --experimental-strip-types packages/cli/src/main.ts",
-    "live": "node --import ./scripts/ts-loader.mjs examples/live-walkthrough.ts",
     "pool": "node --import ./scripts/ts-loader.mjs packages/supervisor/src/main.ts"
   },
   "devDependencies": {
