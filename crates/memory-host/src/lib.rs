@@ -989,6 +989,17 @@ impl Host {
             R::AcknowledgeCancellation { fence } => O::Job {
                 job: Box::new(self.store.acknowledge_cancellation(auth, &fence).await?),
             },
+            R::RecordValidation {
+                fence,
+                verdict,
+                reasons,
+            } => O::Job {
+                job: Box::new(
+                    self.store
+                        .record_validation(auth, &fence, verdict, reasons)
+                        .await?,
+                ),
+            },
             R::Complete {
                 request_id,
                 fence,
@@ -1225,6 +1236,7 @@ fn authorize(role: &Role, request: &HostRequest) -> Result<(), ContractError> {
             | R::Renew { fence, .. }
             | R::Wait { fence, .. }
             | R::AcknowledgeCancellation { fence }
+            | R::RecordValidation { fence, .. }
             | R::Complete { fence, .. }
             | R::Reserve {
                 fence,

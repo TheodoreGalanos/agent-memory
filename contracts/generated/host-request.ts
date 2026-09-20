@@ -332,6 +332,12 @@ export type HostRequest =
       fence: Fence;
     }
   | {
+      action: "record_validation";
+      fence: Fence;
+      reasons: string[];
+      verdict: ValidationVerdict;
+    }
+  | {
       action: "complete";
       fence: Fence;
       request_id: string;
@@ -726,6 +732,7 @@ export type JudgementAnswer =
     };
 export type AssessmentStatus = "answered" | "invalid_response" | "unavailable";
 export type SourceKind = "document" | "table" | "model" | "tool_events";
+export type ValidationVerdict = "passed" | "failed" | "unknown";
 export type EffectStatus = "confirmed" | "not_performed" | "unknown";
 export type WorkStatus = "complete" | "partial" | "blocked";
 export type UsageStatus = "known" | "partial" | "unknown";

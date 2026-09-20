@@ -98,7 +98,7 @@ it("a task granted read runs it against a real node execution environment and th
     const cwd = await mkdtemp(join(tmpdir(), "memory-execution-cwd-"));
     const fileText = "Inspection note: torque on bolt A7 measured 42 Nm.";
     await writeFile(join(cwd, "note.txt"), fileText);
-    const task = await w.submit("investigation", { capabilities: { sources: [], queries: [], tools: ["read"] } });
+    const task = await w.submit("investigation", { capabilities: { sources: [], queries: [], tools: ["read"] }, output_criteria: [fileText] });
     const faux = fauxProvider(), models = createModels();
     models.setProvider(faux.provider);
     const answer = {
@@ -121,6 +121,10 @@ it("a task granted read runs it against a real node execution environment and th
     const done = await w.job(task.id);
     expect(done.state, log.join("\n")).toBe("completed");
     expect(done.result?.coverage.examined.join(" ")).toContain(fileText);
+    // The independent adapter validated the settled result against the brief's own output criteria
+    // before `complete` committed it, not from the model's self-reported status alone.
+    expect(done.validation?.verdict).toBe("passed");
+    expect(done.validation?.reasons).toEqual([]);
 
     // The published experience is the durable proof the `read` tool actually ran against the real
     // file: its tool_result event carries the file's own content, not something the model invented.

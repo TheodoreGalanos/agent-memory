@@ -7,6 +7,7 @@ import type { JudgementProvider } from "../../judgement/src/providers.js";
 import type { JudgementOptions } from "../../judgement/src/runtime.js";
 import type { SandboxBinding } from "../../pi-worker/src/asp-execution-env.js";
 import { EXECUTION_TOOLS, toolName, type WorkerTool } from "../../pi-worker/src/harness.js";
+import type { TaskAdapter } from "./adapter.js";
 import type { ProcessHandler } from "./runner.js";
 
 /** Services a deployment installs once; modules declare which of them they require. */
@@ -26,6 +27,9 @@ export interface Services {
   execution?:
     | { kind: "node"; cwd?: string }
     | { kind: "asp"; binding: SandboxBinding; helperPath?: string };
+  /** Installed task adapters a brief's profile label may select; absent means every investigation
+   * uses the deterministic default (`criteriaAdapter`). */
+  adapters?: TaskAdapter[];
 }
 export type Capability = keyof Services;
 

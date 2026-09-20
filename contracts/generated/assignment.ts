@@ -8,6 +8,7 @@ export type WorkStatus = "complete" | "partial" | "blocked";
 export type UsageStatus = "known" | "partial" | "unknown";
 export type Process = "formation" | "activation" | "consolidation" | "maintenance" | "investigation" | "evaluation";
 export type JobState = "queued" | "leased" | "running" | "waiting" | "completed" | "partial" | "failed" | "cancelled";
+export type ValidationVerdict = "passed" | "failed" | "unknown";
 
 export interface Assignment {
   epoch: number;
@@ -32,6 +33,10 @@ export interface Job {
   session_id: string;
   spec: SubmitJob;
   state: JobState;
+  /**
+   * An independent output-validator's verdict on the settled result, recorded before it commits.
+   */
+  validation?: Validation | null;
   wait_reason?: string | null;
 }
 export interface WorkResult {
@@ -144,4 +149,8 @@ export interface ConfigRef {
   id: string;
   label: string;
   revision: number;
+}
+export interface Validation {
+  reasons: string[];
+  verdict: ValidationVerdict;
 }

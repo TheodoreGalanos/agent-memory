@@ -360,6 +360,7 @@ export type EffectStatus = "confirmed" | "not_performed" | "unknown";
 export type WorkStatus = "complete" | "partial" | "blocked";
 export type UsageStatus = "known" | "partial" | "unknown";
 export type JobState = "queued" | "leased" | "running" | "waiting" | "completed" | "partial" | "failed" | "cancelled";
+export type ValidationVerdict = "passed" | "failed" | "unknown";
 export type EvidenceExposure = "parent_read" | "delegated_finding" | "not_read";
 export type WorkspaceKind =
   "goal" | "constraint" | "observation" | "hypothesis" | "plan" | "obligation" | "dependency" | "artifact" | "memory";
@@ -665,6 +666,10 @@ export interface Job {
   session_id: string;
   spec: SubmitJob;
   state: JobState;
+  /**
+   * An independent output-validator's verdict on the settled result, recorded before it commits.
+   */
+  validation?: Validation | null;
   wait_reason?: string | null;
 }
 export interface WorkResult {
@@ -710,6 +715,10 @@ export interface SubmitJob {
   max_attempts: number;
   parent_id?: string | null;
   retain_until: string;
+}
+export interface Validation {
+  reasons: string[];
+  verdict: ValidationVerdict;
 }
 export interface RenderManifest {
   access_revision: string;
