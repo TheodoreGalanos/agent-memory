@@ -137,6 +137,32 @@ pub struct WorkBrief {
     pub profile: ConfigRef,
     pub retention_policy: String,
     pub disclosure_policy: String,
+    /// Structured trigger data the Host's own scheduler attached when a job's inputs alone
+    /// cannot carry it (never smuggled through `purpose` or another string). Absent for jobs a
+    /// session submitted itself; the scheduler sets exactly the variant matching its trigger.
+    /// Boxed like every other heavy nested payload in this crate (see `coordination.rs`), so an
+    /// absent trigger costs `WorkBrief` (cloned through every scheduling and validation path)
+    /// only a pointer.
+    #[serde(default)]
+    pub scheduled: Option<Box<ScheduledInputs>>,
+}
+
+/// One typed payload per kind of trigger the scheduler can carry directly on a `WorkBrief`,
+/// for data a scheduled job's handler needs but that cannot be derived from `inputs` alone and
+/// that the scheduler (which holds no job fence and so cannot publish an artifact) cannot attach
+/// any other way.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ScheduledInputs {
+    /// A memory correction notice's propagation to its dependents: derived entirely from the
+    /// notice and the affected records, so the maintenance handler needs no manifest artifact.
+    MaintenanceCorrection {
+        request: Box<crate::maintenance::MaintenanceRequest>,
+    },
+    /// A source revision's propagation to the records that depend on it.
+    MaintenanceSource {
+        request: Box<crate::maintenance::MaintenanceRequest>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

@@ -26,9 +26,10 @@ export const maintenanceModule: ProcessModule = {
 };
 
 /** What a maintenance job's manifest artifact (the brief's first input artifact) names: a correction to
- * apply and propagate, or an intention occurrence transition to check. Lane B's Host-timer scheduler is
- * expected to publish this manifest when it schedules the job, mirroring how qualification already
- * carries its manifest in `inputs.artifacts[0]` (see `packages/consolidation/src/qualification.ts`). */
+ * apply and propagate, or an intention occurrence transition to check. An interactive session publishes
+ * this manifest as an artifact; the Host's own scheduler instead carries the same `MaintenanceRequest`
+ * directly on `brief.scheduled` (it holds no job fence and so cannot publish an artifact), naming a
+ * correction's or a source revision's propagation to the records that depend on it. */
 export type MaintenanceManifest =
   | { kind: "correction"; id: string; request: MaintenanceRequest }
   | { kind: "intention_check"; id: string; occurrence_id: string; check: IntentionCheckKind };
@@ -54,8 +55,13 @@ export async function maintenanceInput(host: HostCommands, assignment: Assignmen
   const brief = assignment.job.spec.brief;
   if (brief.process !== "maintenance") throw new Error("Maintenance input needs a maintenance assignment");
   const manifestId = brief.inputs.artifacts[0];
-  if (!manifestId) throw new Error("Maintenance needs a manifest artifact naming the correction or intention check to run");
-  return validateManifest(await inspectJson(host, fenceFor(assignment), manifestId, "", context));
+  if (manifestId) return validateManifest(await inspectJson(host, fenceFor(assignment), manifestId, "", context));
+  const scheduled = brief.scheduled;
+  if (scheduled?.kind === "maintenance_correction" || scheduled?.kind === "maintenance_source") {
+    const id = windowId(assignment.job.id, { source_id: scheduled.kind, revision: String(assignment.job.attempt) });
+    return { kind: "correction", id, request: scheduled.request };
+  }
+  throw new Error("Maintenance needs a manifest artifact, or a scheduled request, naming the correction or intention check to run");
 }
 
 export function maintenanceHandler(deps: MaintenanceDeps): ProcessHandler<"maintenance"> {

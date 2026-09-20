@@ -4,8 +4,8 @@ use crate::{Error, Result, Store, access::predicate, database::id};
 use chrono::{DateTime, Duration, Utc};
 use memory_domain::{
     contracts::{
-        Authority, Capabilities, Command, ConfigRef, Process, Scope, WireVersion, WorkBrief,
-        WorkInputs,
+        Authority, Capabilities, Command, ConfigRef, Process, ScheduledInputs, Scope, WireVersion,
+        WorkBrief, WorkInputs,
     },
     coordination::{Job, SubmitJob},
     records::{MemoryContent, Qualification, RecordDraft, RelationKind},
@@ -22,6 +22,13 @@ const UNSCHEDULABLE: &str = "unschedulable";
 const SCHEDULING_WINDOW: Duration = Duration::minutes(30);
 /// Bound on how many memory_versions candidates a single consolidation sweep inspects.
 const CANDIDATE_SCAN: i64 = 500;
+
+/// Which kind of change a scheduled maintenance job propagates, matching the `ScheduledInputs`
+/// variant its brief carries, together with the reason for that change.
+enum MaintenanceTrigger {
+    Correction(String),
+    Source(String),
+}
 
 /// What a sweep decided about one trigger, recorded in `scheduled_work` either way: a submitted
 /// job, or why it could not be scheduled (with the causal job responsible, when there is one).
@@ -395,8 +402,12 @@ impl Store {
     }
 
     /// Schedules one qualification/evaluation job for each consolidation commit that produced a
-    /// candidate procedure, once. Adoption itself stays on the existing `AdoptProcedure` check;
-    /// this only starts the job whose worker drives that check when its report lands.
+    /// candidate procedure, once. This is a best-effort, unattended trial: it runs a real held-out
+    /// comparison only when the originating consolidation job already carried a suite artifact, and
+    /// reports a clear partial result otherwise. Adoption stays a deliberate action on the existing
+    /// `AdoptProcedure` check, which needs a live fence on the still-open job that produced the
+    /// candidate; a session that wants adoption drives `start_qualification`/`adopt_procedure`
+    /// itself on that fence, exactly as before this scheduler existed.
     pub async fn schedule_qualification(&self, authority: &Authority, limit: u16) -> Result<u32> {
         let limit = limit.clamp(1, 100);
         let rows = sqlx::query(
@@ -471,7 +482,11 @@ impl Store {
             .await?;
         let (task_id, scope) = scoped_task(&candidate.record.scope);
         let mut brief = origin.spec.brief.clone();
-        brief.process = Process::Consolidation;
+        // The evaluation pool module (not consolidation's) runs a qualification job; it reads the
+        // candidate from `inputs.memories[0]` and, when the originating consolidation job carried a
+        // held-out suite artifact, forwards it unchanged so a real comparison can run. Without one it
+        // reports a clear partial result rather than fabricating held-out cases (see evaluation.ts).
+        brief.process = Process::Evaluation;
         brief.purpose = format!("qualify procedure {}", candidate.reference.label);
         brief.task_id = task_id;
         brief.scope = scope;
@@ -613,6 +628,8 @@ impl Store {
                     notice_id,
                     &current.record.decision.policy,
                     &members,
+                    &current.record,
+                    MaintenanceTrigger::Correction(notice.reason.clone()),
                 )
                 .await,
             )?
@@ -712,6 +729,7 @@ impl Store {
             }
             let mut members = vec![];
             let mut policy = None;
+            let mut before_record = None;
             let mut readable = true;
             for row in &member_rows {
                 let memory_id = id(row.try_get("id")?)?;
@@ -728,6 +746,7 @@ impl Store {
                 }
                 drop(connection);
                 policy.get_or_insert_with(|| record.decision.policy.clone());
+                before_record.get_or_insert_with(|| record.clone());
                 members.push(memory_domain::contracts::MemoryRef {
                     memory_id,
                     revision: NonZeroU32::new(revision)
@@ -744,9 +763,19 @@ impl Store {
                 .collect::<Vec<_>>()
                 .join(",");
             let Some(policy) = policy else { continue };
+            let Some(before_record) = before_record else {
+                continue;
+            };
             let outcome = ScheduleOutcome::from_result(
-                self.schedule_one_maintenance(authority, event_id, &policy, &members)
-                    .await,
+                self.schedule_one_maintenance(
+                    authority,
+                    event_id,
+                    &policy,
+                    &members,
+                    &before_record,
+                    MaintenanceTrigger::Source(format!("Source {source_id} was revised")),
+                )
+                .await,
             )?;
             if outcome.job_id.is_some() {
                 scheduled += 1;
@@ -769,13 +798,46 @@ impl Store {
         trigger_id: Uuid,
         policy: &ConfigRef,
         members: &[memory_domain::contracts::MemoryRef],
+        before_record: &RecordDraft,
+        trigger: MaintenanceTrigger,
     ) -> Result<Uuid> {
-        let policy_version = self.policy(authority, policy).await?;
-        let (task_id, scope) = scoped_task(&policy_version.scope);
+        // Validates the policy exists and is current; scoped_task below uses the affected record's own
+        // scope instead of the policy's: a project-wide policy's consolidation cohort can invent a
+        // fresh task for its new candidate, but maintenance revises an *existing* record, whose own
+        // scope a freshly-invented task would not permit writing to.
+        self.policy(authority, policy).await?;
+        let (task_id, scope) = scoped_task(&before_record.scope);
         let origin = self.recent_contributing_job(authority, &scope).await?;
         let deadline = self
             .scheduled_deadline(authority, origin.spec.brief.limits.root_budget_id)
             .await?;
+        // The maintenance handler (packages/supervisor/src/maintenance.ts) needs a `MaintenanceRequest`
+        // to review; the scheduler builds it directly from the trigger and the already-loaded affected
+        // records rather than smuggling it through a string, since it holds no job fence and so cannot
+        // publish a manifest artifact the way an interactive session would. A request needs a proposed
+        // revision or a removed source (`review_maintenance` rejects a bare revalidation); since the
+        // scheduler has no way to author a substantive content change, `after` repeats `before`'s own
+        // content with only the decision reason updated — a wording-only revision that still runs J13
+        // through J16 review of the affected record and its dependents against the trigger.
+        let [before, candidates @ ..] = members else {
+            return Err(Error::Invalid(
+                "Maintenance needs at least one affected record".into(),
+            ));
+        };
+        let reason = match &trigger {
+            MaintenanceTrigger::Correction(reason) | MaintenanceTrigger::Source(reason) => {
+                reason.clone()
+            }
+        };
+        let mut after = before_record.clone();
+        after.decision.reason = reason.clone();
+        let request = memory_domain::maintenance::MaintenanceRequest {
+            before: before.clone(),
+            after: Some(after),
+            removed_sources: vec![],
+            candidates: candidates.to_vec(),
+            reason,
+        };
         let mut brief = origin.spec.brief.clone();
         brief.process = Process::Maintenance;
         brief.purpose = format!("maintain affected records for trigger {trigger_id}");
@@ -798,6 +860,11 @@ impl Store {
             "Review the affected records against current support and propose a maintained revision or removal"
                 .into(),
         ];
+        let request = Box::new(request);
+        brief.scheduled = Some(Box::new(match trigger {
+            MaintenanceTrigger::Correction(_) => ScheduledInputs::MaintenanceCorrection { request },
+            MaintenanceTrigger::Source(_) => ScheduledInputs::MaintenanceSource { request },
+        }));
         let job = self
             .submit_scheduled(
                 authority,

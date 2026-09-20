@@ -331,10 +331,70 @@ async fn suite(store: &Store) {
     assert!(vector(vec![0., 0.]).validate().is_err());
     assert!(vector(vec![1.]).validate().is_err());
 }
+/// A memory that revises after other records already derive from it (e.g. adoption committing an
+/// evaluated procedure over its own pre-adoption candidate) keeps its old derivation edges: they
+/// still name the superseded revision. A group whose traversal reaches that stale endpoint through
+/// a memory it already resolved at its *current* revision must stay complete, not deferred, since
+/// the record is genuinely present in the group, just not at that exact old revision.
+async fn revised_memory_with_stale_derivation_edges_stays_complete(store: &Store) {
+    let (auth, policy) = seed(store).await;
+    let support = store
+        .create_memory(&auth, draft(&auth, &policy, "Held-out cohort evidence"))
+        .await
+        .unwrap();
+    let mut candidate_draft = draft(&auth, &policy, "Recovery method candidate");
+    candidate_draft.derived_from = vec![support.reference.clone()];
+    let candidate = store.create_memory(&auth, candidate_draft).await.unwrap();
+    store
+        .save_embedding(&auth, &candidate.reference, vector(vec![1., 0.]))
+        .await
+        .unwrap();
+    // Simulate adoption: a new revision of the same memory, still derived from the same support,
+    // recorded exactly as `adopt_procedure` does (unchanged `derived_from`, no self-reference).
+    let mut adopted_draft = draft(&auth, &policy, "Recovery method (adopted)");
+    adopted_draft.derived_from = vec![support.reference.clone()];
+    let adopted = store
+        .revise_memory(&auth, &candidate.reference, adopted_draft)
+        .await
+        .unwrap();
+    let mut q = query(&auth, "Recovery");
+    q.exact.push(candidate.reference.memory_id);
+    let result = store
+        .activation(&auth, Uuid::now_v7(), q, None)
+        .await
+        .unwrap();
+    let group = result
+        .groups
+        .iter()
+        .find(|g| {
+            g.members
+                .iter()
+                .any(|m| m.memory_id == candidate.reference.memory_id)
+        })
+        .expect("a group containing the adopted candidate");
+    assert!(
+        group.complete,
+        "adoption's stale derivation edge should not defer the group: {group:?}"
+    );
+    assert!(
+        group
+            .members
+            .iter()
+            .any(|m| m.memory_id == support.reference.memory_id)
+    );
+    assert!(
+        group
+            .members
+            .iter()
+            .any(|m| m.memory_id == candidate.reference.memory_id
+                && m.revision == adopted.reference.revision)
+    );
+}
 #[tokio::test]
 async fn sqlite_activation_contract() {
     let store = Store::connect("sqlite::memory:").await.unwrap();
     suite(&store).await;
+    revised_memory_with_stale_derivation_edges_stays_complete(&store).await;
     store.close().await;
 }
 #[tokio::test]
@@ -344,6 +404,7 @@ async fn postgres_activation_contract() {
         .await
         .unwrap();
     suite(&store).await;
+    revised_memory_with_stale_derivation_edges_stays_complete(&store).await;
     store.close().await;
 }
 

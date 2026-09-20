@@ -733,6 +733,47 @@
         "form"
       ]
     },
+    "MaintenanceRequest": {
+      "type": "object",
+      "properties": {
+        "after": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RecordDraft"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "before": {
+          "$ref": "#/$defs/MemoryRef"
+        },
+        "candidates": {
+          "description": "Bounded retrieval shortlist for indirect dependencies; J16 decides relevance.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MemoryRef"
+          }
+        },
+        "reason": {
+          "type": "string"
+        },
+        "removed_sources": {
+          "description": "Explicit removed source snapshots; the Host verifies their unavailable state.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          }
+        }
+      },
+      "required": [
+        "before",
+        "removed_sources",
+        "candidates",
+        "reason"
+      ]
+    },
     "MemoryContent": {
       "oneOf": [
         {
@@ -1532,6 +1573,45 @@
         "reconcile"
       ]
     },
+    "ScheduledInputs": {
+      "description": "One typed payload per kind of trigger the scheduler can carry directly on a `WorkBrief`,\nfor data a scheduled job's handler needs but that cannot be derived from `inputs` alone and\nthat the scheduler (which holds no job fence and so cannot publish an artifact) cannot attach\nany other way.",
+      "oneOf": [
+        {
+          "description": "A memory correction notice's propagation to its dependents: derived entirely from the\nnotice and the affected records, so the maintenance handler needs no manifest artifact.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "maintenance_correction"
+            },
+            "request": {
+              "$ref": "#/$defs/MaintenanceRequest"
+            }
+          },
+          "required": [
+            "kind",
+            "request"
+          ]
+        },
+        {
+          "description": "A source revision's propagation to the records that depend on it.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "maintenance_source"
+            },
+            "request": {
+              "$ref": "#/$defs/MaintenanceRequest"
+            }
+          },
+          "required": [
+            "kind",
+            "request"
+          ]
+        }
+      ]
+    },
     "Scope": {
       "description": "Absent dimensions are unrestricted. An assigned restriction cannot be removed\nby leaving that dimension out of a request. Tenant is checked separately.",
       "type": "object",
@@ -1701,6 +1781,18 @@
         },
         "retention_policy": {
           "type": "string"
+        },
+        "scheduled": {
+          "description": "Structured trigger data the Host's own scheduler attached when a job's inputs alone\ncannot carry it (never smuggled through `purpose` or another string). Absent for jobs a\nsession submitted itself; the scheduler sets exactly the variant matching its trigger.\nBoxed like every other heavy nested payload in this crate (see `coordination.rs`), so an\nabsent trigger costs `WorkBrief` (cloned through every scheduling and validation path)\nonly a pointer.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScheduledInputs"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "schema_version": {
           "$ref": "#/$defs/WireVersion"

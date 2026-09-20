@@ -2,6 +2,147 @@
 
 export type WireVersion = "1";
 export type Process = "formation" | "activation" | "consolidation" | "maintenance" | "investigation" | "evaluation";
+/**
+ * One typed payload per kind of trigger the scheduler can carry directly on a `WorkBrief`,
+ * for data a scheduled job's handler needs but that cannot be derived from `inputs` alone and
+ * that the scheduler (which holds no job fence and so cannot publish an artifact) cannot attach
+ * any other way.
+ */
+export type ScheduledInputs =
+  | {
+      kind: "maintenance_correction";
+      request: MaintenanceRequest;
+    }
+  | {
+      kind: "maintenance_source";
+      request: MaintenanceRequest;
+    };
+export type Availability = "routine" | "historical" | "retired" | "quarantined";
+export type MemoryContent =
+  | {
+      actions: string[];
+      corrections: string[];
+      family: "episode";
+      initial_conditions: string[];
+      objective: string;
+      observations: string[];
+      outcome: string;
+      uncertainty: string[];
+      verification: string[];
+    }
+  | {
+      examined_coverage: string[];
+      family: "knowledge";
+      predicate?: string | null;
+      statement: string;
+      subject?: string | null;
+      uncertainty: string[];
+    }
+  | {
+      applicability: string[];
+      capabilities: string[];
+      contract?: ProcedureContract | null;
+      counterexamples: MemoryRef[];
+      exclusions: string[];
+      family: "procedure";
+      method: ProcedureForm;
+      purpose: string;
+    }
+  | {
+      completion: string[];
+      expires_at?: string | null;
+      family: "intention";
+      notification_policy: string;
+      owner_id: string;
+      plan?: IntentionPlan | null;
+      purpose: string;
+      readiness: string[];
+      recurrence?: string | null;
+      trigger: string;
+    };
+export type QuestionForm =
+  | {
+      criteria: {
+        [k: string]: string;
+      };
+      type: "choice";
+    }
+  | {
+      criteria: {
+        [k: string]: string;
+      };
+      type: "noul";
+    }
+  | {
+      criteria: string[];
+      type: "score";
+    };
+export type ReplayClass = "observation" | "remote_idempotent" | "reconcile";
+export type ProcedureForm =
+  | {
+      evidence_criteria: string[];
+      form: "advisory";
+      steps: string[];
+    }
+  | {
+      artifact_id: string;
+      entrypoint: string;
+      form: "executable";
+      inputs: string[];
+      outputs: string[];
+    };
+export type IntentionTrigger =
+  | {
+      at: string;
+      kind: "time";
+    }
+  | {
+      event_kind: string;
+      kind: "event";
+      resource_id: string;
+    }
+  | {
+      after_revision: string;
+      kind: "source_revision";
+      source_id: string;
+    }
+  | {
+      job_id: string;
+      kind: "result";
+    }
+  | {
+      definition: JudgementDefinition;
+      kind: "semantic";
+      matched_choice: string;
+    };
+export type PolicyAction =
+  "retain" | "qualify" | "retrieve_further" | "investigate" | "revise" | "defer" | "retire" | "request_input";
+export type EvidentialStatus = "observation" | "attributed_statement" | "inference" | "assumption" | "simulation";
+export type Origin = "observed" | "activated" | "agent_generated";
+export type Qualification =
+  | {
+      status: "candidate";
+    }
+  | {
+      conditions: string[];
+      evaluation_artifact?: string | null;
+      evaluator_profile?: ConfigRef | null;
+      evidence: MemoryRef[];
+      status: "evaluated";
+    }
+  | {
+      reason: string;
+      status: "withdrawn";
+    };
+export type ValidTime =
+  | {
+      kind: "unknown";
+    }
+  | {
+      from?: string | null;
+      kind: "interval";
+      to?: string | null;
+    };
 
 export interface Command {
   actor_id: string;
@@ -41,6 +182,15 @@ export interface WorkBrief {
   profile: ConfigRef;
   purpose: string;
   retention_policy: string;
+  /**
+   * Structured trigger data the Host's own scheduler attached when a job's inputs alone
+   * cannot carry it (never smuggled through `purpose` or another string). Absent for jobs a
+   * session submitted itself; the scheduler sets exactly the variant matching its trigger.
+   * Boxed like every other heavy nested payload in this crate (see `coordination.rs`), so an
+   * absent trigger costs `WorkBrief` (cloned through every scheduling and validation path)
+   * only a pointer.
+   */
+  scheduled?: ScheduledInputs | null;
   schema_version: WireVersion;
   scope: Scope;
   task_id: string;
@@ -71,6 +221,98 @@ export interface ConfigRef {
   id: string;
   label: string;
   revision: number;
+}
+export interface MaintenanceRequest {
+  after?: RecordDraft | null;
+  before: MemoryRef;
+  /**
+   * Bounded retrieval shortlist for indirect dependencies; J16 decides relevance.
+   */
+  candidates: MemoryRef[];
+  reason: string;
+  /**
+   * Explicit removed source snapshots; the Host verifies their unavailable state.
+   */
+  removed_sources: SourceRef[];
+}
+export interface RecordDraft {
+  availability: Availability;
+  content: MemoryContent;
+  decision: PolicyDecision;
+  derived_from: MemoryRef[];
+  evidential_status: EvidentialStatus;
+  label: string;
+  origin: Origin;
+  qualification: Qualification;
+  scope: Scope;
+  source_locators: string[];
+  valid_time: ValidTime;
+}
+export interface ProcedureContract {
+  checks: string[];
+  decision_points: string[];
+  effects: string[];
+  parameters: {
+    [k: string]: string;
+  };
+  recognition: RecognitionCriterion[];
+  replay_class: ReplayClass;
+  stopping_criteria: string[];
+}
+export interface RecognitionCriterion {
+  definition: JudgementDefinition;
+  model: string;
+  model_release: string;
+  policy: ConfigRef;
+}
+export interface JudgementDefinition {
+  applicability: string;
+  evaluation_refs: string[];
+  fallback: string;
+  id: string;
+  input_requirements: string[];
+  owner: string;
+  permitted_uses: string[];
+  questions: JudgementQuestion[];
+  revision: number;
+}
+export interface JudgementQuestion {
+  form: QuestionForm;
+  instructions: string;
+  key: string;
+}
+export interface IntentionPlan {
+  completion: CompletionRule;
+  execution: WorkBrief;
+  ready_artifacts: string[];
+  ready_memories: MemoryRef[];
+  /**
+   * Fixed intervals only; missed windows expire without a backlog of executions.
+   */
+  recurrence_seconds?: number | null;
+  trigger: IntentionTrigger;
+}
+export interface CompletionRule {
+  confirmation_owner?: string | null;
+  /**
+   * When set, a host-recorded job completion before expiry can be delivered within this grace.
+   */
+  delivery_grace_seconds?: number | null;
+  equals: unknown;
+  /**
+   * Invocation IDs within the execution job. The Host supplies the operation prefix.
+   */
+  required_effects: string[];
+  result_pointer: string;
+  semantic_conditions: string[];
+}
+export interface PolicyDecision {
+  action: PolicyAction;
+  constraints: string[];
+  expires_at?: string | null;
+  policy: ConfigRef;
+  reason: string;
+  required_evidence: string[];
 }
 /**
  * Absent dimensions are unrestricted. An assigned restriction cannot be removed

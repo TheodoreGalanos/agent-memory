@@ -326,8 +326,14 @@ it("forms, consolidates, qualifies, adopts, retrieves and maintains memory acros
     // Several related knowledge/episode records exist, formed automatically from ordinary task experience.
     const members = await formCohort(w, judgementFaux, judgementModels);
 
-    // TODO(4c): scheduled by the Host once lane B lands — a cohort scheduler would select this cohort and
-    // submit the consolidation job itself; here it is submitted by hand in its place.
+    // Cohort scheduling: `schedule_consolidation` (crates/memory-store/src/scheduling.rs) now groups
+    // retained candidates per policy and submits the cohort job itself once a policy's minimum is met —
+    // proven directly against the Store in `crates/memory-store/tests/scheduling.rs`. This proof keeps
+    // its own submission explicit instead, because it needs the formed cohort under a *specific* policy
+    // (one with `consolidation` and a known `evaluator_profile`) and a specific task/scope to drive the
+    // rest of the proof deterministically; letting the scheduler pick a cohort here would leave which
+    // records it selected, and under which of formation's incidental policies, up to the pool's own
+    // timing rather than this test's.
     const learningTaskId = randomUUID();
     const learningScope = { ...w.scope, task_id: learningTaskId };
     const suite = {
@@ -377,8 +383,10 @@ it("forms, consolidates, qualifies, adopts, retrieves and maintains memory acros
     expect(resumed.record?.reference).toEqual(candidate.reference);
     expect(judgementFaux.state.callCount).toBe(judgementCallsBefore);
 
-    // TODO(4c): scheduled by the Host once lane B lands — a qualification scheduler would call
-    // start_qualification itself once a candidate procedure exists; here it is called by hand.
+    // Adoption remains a deliberate decision on the still-open consolidation job's own fence (the
+    // `AdoptProcedure` check `schedule_qualification`'s own doc comment describes): a session that wants
+    // the candidate adopted drives `start_qualification`/`adopt_procedure` itself, building the real
+    // manifest that combines this consolidation's review, its candidate and the held-out suite above.
     const started = expectKind(await w.admin.request({
       action: "start_qualification", fence: consolidationFence, request_id: randomUUID(), review_id: result.review_id, suite_id: suiteArtifact.id,
     }), "job");
@@ -404,6 +412,42 @@ it("forms, consolidates, qualifies, adopts, retrieves and maintains memory acros
     });
     await session.close();
 
+    // The Host's own scheduler already reacted to this committed candidate, unattended: it found the
+    // consolidation review through `consolidation_reviews` and submitted a companion `evaluation` job
+    // by itself (`Store::schedule_qualification`) — find it through durable events, as `scenario.test.ts`
+    // does for formation, rather than submitting it. (It shares the consolidation job's session, so the
+    // pool can only claim it once that job's own lease is released — exactly why this comes after the
+    // consolidation job settles above, rather than racing the interactive qualification against it.) It
+    // carries no manifest (this consolidation job's own `inputs.artifacts` names a bare suite, not the
+    // `QualificationInput` a manifest needs to combine that suite with the review and candidate), so
+    // `evaluationModule` settles it safely as a clear partial rather than fabricating a comparison — the
+    // scheduling wiring proven end to end, with no manual submission, independent of the interactive
+    // qualification that already adopted this same candidate above.
+    const scheduledEvaluation = async () => {
+      const page = expectKind(await w.client.request({ action: "events", after: 0, limit: 500 }), "events").page;
+      for (const event of page.events.filter((e) => e.kind === "job_accepted")) {
+        const job = await w.job(event.resource_id);
+        if (job.spec.brief.process === "evaluation" && job.spec.brief.inputs.memories.some((m) => m.memory_id === candidate.reference.memory_id)) return job;
+      }
+      return undefined;
+    };
+    const scheduleStarted = Date.now();
+    let autoEvaluation = await scheduledEvaluation();
+    while (!autoEvaluation) {
+      if (Date.now() - scheduleStarted > 30_000) throw new Error("the Host did not schedule an evaluation job for the committed candidate");
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      autoEvaluation = await scheduledEvaluation();
+    }
+    const autoLogs: string[] = [];
+    await runSupervisor({
+      host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 60, sessionsDirectory: join(w.base, "sessions"),
+      composition: compose({}, "evaluation"),
+      log: (l) => autoLogs.push(l), until: async () => SETTLED.includes((await w.job(autoEvaluation!.id)).state),
+    }, context);
+    const autoEvaluationDone = await w.job(autoEvaluation.id);
+    expect(autoEvaluationDone.state, autoLogs.join("\n")).toBe("partial");
+    expect(autoEvaluationDone.result?.unresolved_work.join(" ")).toContain(candidate.reference.label);
+
     // A later task's activation retrieves the adopted method in the same task scope the method was
     // adopted into — cross-task promotion to project scope is a maintenance/policy concern outside this
     // pipeline's proof. Adoption revised the candidate (candidate -> evaluated), which leaves its original
@@ -425,26 +469,42 @@ it("forms, consolidates, qualifies, adopts, retrieves and maintains memory acros
     expect(["completed", "partial"], activationLogs.join("\n")).toContain(activationDone.state);
     expect(activationLogs.some((l) => l.includes("J07") && l.includes("relevant")), activationLogs.join("\n")).toBe(true);
 
-    // A source revision triggers a maintenance job that re-checks the affected record.
-    // TODO(4c): scheduled by the Host once lane B lands — a maintenance scheduler would watch the
-    // memory_maintained/source-revision events and submit this job itself; here it is submitted by hand.
+    // A correction to a task-scoped record triggers a maintenance job that reviews it: find the job the
+    // Host's own scheduler (`Store::schedule_maintenance`) submits for it — through durable events, not
+    // by hand. Its `MaintenanceRequest` is carried on `brief.scheduled` (no manifest artifact, since the
+    // scheduler holds no job fence to publish one); `maintenanceInput` derives the same manifest shape
+    // from it, repeating the already-corrected record's own content with only the reason updated
+    // (`review_maintenance` needs a proposed revision or a removed source; the scheduler cannot author a
+    // substantive one) so this job reviews the record rather than proposing a second correction.
     const maintenanceTaskId = randomUUID();
-    const before = await w.contribute(
+    const base = await w.contribute(
       { label: "Lease timeout default", content: { family: "knowledge", statement: "The default lease timeout is 120 seconds.", uncertainty: [], examined_coverage: [] } },
       maintenanceTaskId,
     );
-    const after = structuredClone(before.record);
-    after.label = "Corrected lease timeout default";
-    if (after.content.family === "knowledge") after.content.statement = "The default lease timeout is 90 seconds, per the corrected configuration.";
-    const manifest: MaintenanceManifest = { kind: "correction", id: randomUUID(), request: { before: before.reference, after, removed_sources: [], candidates: [], reason: "Corrected configuration default" } };
-    const manifestArtifact = await w.publishArtifact("Maintenance manifest", manifest, maintenanceTaskId);
-    const maintenanceJob = await w.submit("maintenance", {
-      task_id: manifestArtifact.task_id, scope: manifestArtifact.scope,
-      inputs: { memories: [before.reference], sources: [], artifacts: [manifestArtifact.id] }, capabilities: { sources: [], queries: [], tools: [] },
+    const corrected = structuredClone(base.record);
+    if (corrected.content.family === "knowledge") corrected.content.statement = "The default lease timeout is 90 seconds, per the corrected configuration.";
+    await w.client.request({
+      action: "user",
+      request: { action: "mutate", request_id: randomUUID(), mutation: { action: "correct", expected: base.reference, record: corrected } },
     });
+    const scheduledMaintenance = async () => {
+      const page = expectKind(await w.client.request({ action: "events", after: 0, limit: 500 }), "events").page;
+      for (const event of page.events.filter((e) => e.kind === "job_accepted")) {
+        const job = await w.job(event.resource_id);
+        if (job.spec.brief.process === "maintenance" && job.spec.brief.scheduled?.kind === "maintenance_correction") return job;
+      }
+      return undefined;
+    };
+    const maintenanceScheduleStarted = Date.now();
+    let maintenanceJob = await scheduledMaintenance();
+    while (!maintenanceJob) {
+      if (Date.now() - maintenanceScheduleStarted > 30_000) throw new Error("the Host did not schedule maintenance for the correction");
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      maintenanceJob = await scheduledMaintenance();
+    }
     // Restart safety at the pool level: a worker that claims and then dies (no start, no result) loses
     // its lease; the Host's recovery timer requeues the job and a second attempt completes it exactly
-    // once, rather than the correction (or its judgement) happening twice.
+    // once, rather than the review (or its judgement) happening twice.
     const deadClaim = expectKind(await w.pool.request({ action: "claim_next", processes: ["maintenance"], lease_seconds: 2 }), "work");
     expect(deadClaim.assignment.job.id).toBe(maintenanceJob.id);
     expect((await w.job(maintenanceJob.id)).state).toBe("leased");
@@ -457,15 +517,18 @@ it("forms, consolidates, qualifies, adopts, retrieves and maintains memory acros
     await runSupervisor({
       host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 60, sessionsDirectory: join(w.base, "sessions"),
       composition: compose({ judgement: { primary: scriptedJudgement(judgementFaux, judgementModels), maximum } }, "maintenance"),
-      log: (l) => maintenanceLogs.push(l), until: async () => SETTLED.includes((await w.job(maintenanceJob.id)).state),
+      log: (l) => maintenanceLogs.push(l), until: async () => SETTLED.includes((await w.job(maintenanceJob!.id)).state),
     }, context);
     const maintenanceDone = await w.job(maintenanceJob.id);
     expect(maintenanceDone.state, maintenanceLogs.join("\n")).toBe("completed");
+    // The review happened exactly once even though the job was claimed twice.
     expect(maintenanceDone.attempt).toBe(2);
-    const history = expectKind(await w.client.request({ action: "user", request: { action: "history", memory_id: before.reference.memory_id, after_revision: 0, limit: 10 } }), "user").result;
+    const history = expectKind(await w.client.request({ action: "user", request: { action: "history", memory_id: base.reference.memory_id, after_revision: 0, limit: 10 } }), "user").result;
     if (history.kind !== "history") throw new Error("Expected memory history");
-    // The correction happened exactly once even though the job was claimed twice: revision 2, not 3.
-    expect(history.records.map((r) => r.reference.revision).sort()).toEqual([1, 2]);
+    // Revision 1 is the contribution, revision 2 the manual correction above, and revision 3 this
+    // scheduled review's own wording-only revision (the corrected content, an updated reason), applied
+    // exactly once despite the job being claimed twice.
+    expect(history.records.map((r) => r.reference.revision).sort()).toEqual([1, 2, 3]);
   } finally {
     await w.close();
   }

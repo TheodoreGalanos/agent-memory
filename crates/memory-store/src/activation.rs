@@ -330,7 +330,24 @@ impl Store {
                     .await
                 {
                     Ok(m) if eligible(&m, &query, cutoff) => m,
-                    Ok(_) | Err(Error::NotFound) => {
+                    Ok(_) => {
+                        group.complete = false;
+                        continue;
+                    }
+                    // A relation can still name a memory's superseded revision (a later revision of
+                    // the same memory, e.g. one adoption committed, keeps derivation edges recorded
+                    // against the revision that existed when they were created). If this group already
+                    // resolved that memory's *current* revision elsewhere, the endpoint is redundant,
+                    // not missing evidence: the record is present, just not at this exact old revision.
+                    Err(Error::NotFound)
+                        if group
+                            .members
+                            .iter()
+                            .any(|m| m.memory_id == reference.memory_id) =>
+                    {
+                        continue;
+                    }
+                    Err(Error::NotFound) => {
                         group.complete = false;
                         continue;
                     }

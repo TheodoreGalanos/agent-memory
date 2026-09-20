@@ -148,6 +148,7 @@ fn base_brief(_auth: &Authority, policy: &ConfigRef, mut scope: Scope, task_id: 
         profile: profile(),
         retention_policy: "test".into(),
         disclosure_policy: "test".into(),
+        scheduled: None,
     }
 }
 
@@ -332,7 +333,7 @@ async fn qualification_after_consolidation(store: &Store, raw: &sqlx::AnyPool) {
         .expect("qualification trigger recorded");
     let job_id = mark.job_id.expect("qualification job scheduled");
     let job = store.job(&f.auth, job_id).await.unwrap();
-    assert_eq!(job.spec.brief.process, Process::Consolidation);
+    assert_eq!(job.spec.brief.process, Process::Evaluation);
     assert_eq!(
         job.spec.brief.inputs.memories,
         vec![candidate_version.reference.clone()]
@@ -498,6 +499,26 @@ async fn maintenance_on_correction_and_causal_skip(store: &Store, raw: &sqlx::An
         .collect();
     assert!(members.contains(&base.reference.memory_id));
     assert!(members.contains(&dependent.reference.memory_id));
+    // The scheduler carries a fully-derived `MaintenanceRequest` directly on the brief (no manifest
+    // artifact, since it holds no job fence to publish one): the already-corrected record is `before`,
+    // its dependent is a held-out `candidate`. `review_maintenance` rejects a bare revalidation with no
+    // proposed revision, so `after` repeats `before`'s own content with only the reason updated — a
+    // wording-only revision that still runs a fresh J13-J16 review of the record and its dependents.
+    match job.spec.brief.scheduled.as_deref() {
+        Some(ScheduledInputs::MaintenanceCorrection { request }) => {
+            assert_eq!(request.before.memory_id, base.reference.memory_id);
+            let after = request.after.as_ref().expect("a wording-only revision");
+            assert_eq!(after.label, base.record.label);
+            assert_eq!(after.decision.reason, request.reason);
+            assert_eq!(request.candidates.len(), 1);
+            assert_eq!(
+                request.candidates[0].memory_id,
+                dependent.reference.memory_id
+            );
+            assert!(!request.reason.trim().is_empty());
+        }
+        other => panic!("expected a scheduled maintenance correction request, got {other:?}"),
+    }
     // Idempotent: the same correction does not schedule a second job.
     assert_eq!(store.schedule_maintenance(&f.auth, 10).await.unwrap(), 0);
 
@@ -618,6 +639,15 @@ async fn maintenance_on_source_revision(store: &Store) {
             .iter()
             .any(|m| m.memory_id == sourced.reference.memory_id)
     );
+    match job.spec.brief.scheduled.as_deref() {
+        Some(ScheduledInputs::MaintenanceSource { request }) => {
+            assert_eq!(request.before.memory_id, sourced.reference.memory_id);
+            let after = request.after.as_ref().expect("a wording-only revision");
+            assert_eq!(after.decision.reason, request.reason);
+            assert!(!request.reason.trim().is_empty());
+        }
+        other => panic!("expected a scheduled maintenance source request, got {other:?}"),
+    }
     assert_eq!(store.schedule_maintenance(&f.auth, 10).await.unwrap(), 0);
 }
 
