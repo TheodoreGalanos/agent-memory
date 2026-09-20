@@ -20,6 +20,7 @@ import type { ProcessHandler, ProcessRun } from "./runner.js";
 import { windowId } from "./formation.js";
 import { constrainToWorkResult, deliverInputMemories, taskSystemPrompt } from "./task.js";
 import { observeProvider } from "./trace.js";
+import { checkResultCoverage, reactiveDecisionHint } from "./decision.js";
 
 export interface InvestigationDeps {
   models: Models;
@@ -130,9 +131,10 @@ async function runInvestigation(run: ProcessRun, deps: InvestigationDeps) {
   // Retrieve what the project already knows before the model runs. Nothing retrieved, or context
   // judged sufficient, is a valid outcome; an unavailable retrieval is reported and the task proceeds.
   let activated: ContextPackage | undefined;
+  let judgement: JudgementOptions | undefined;
   if (deps.judgement) {
     const { primary, fallback, comparison } = deps.judgement;
-    const judgement: JudgementOptions = {
+    judgement = {
       primary: observeProvider(primary, "primary", log),
       fallback: fallback ? observeProvider(fallback, "fallback", log) : undefined,
       comparison: comparison ? { provider: observeProvider(comparison.provider, "comparison", log) } : undefined,
@@ -160,6 +162,7 @@ async function runInvestigation(run: ProcessRun, deps: InvestigationDeps) {
     host, assignment, sessionsDirectory: run.sessionsDirectory, log,
   });
   const adapter = selectAdapter(brief, deps.adapters);
+  const decides = brief.capabilities.tools.includes("decide") && (deps.tools ?? []).some((tool) => toolName(tool) === "decide");
   // The worker follows the runner's lease keeper and owns Pi's cancellation protocol (abort the
   // operation, then acknowledge), so it runs under the lease context rather than the cancel-aborting run context.
   const worker = await attachAssignedWorker(assignment, host, investigationProfile(assignment, deps), {
@@ -175,9 +178,20 @@ async function runInvestigation(run: ProcessRun, deps: InvestigationDeps) {
     // An independent adapter validates the result before it commits; the model's own claims about
     // its status or coverage are never taken as proof of meeting the brief's output criteria.
     beforeComplete: async (result, experience, hookContext) => {
-      const { verdict, reasons } = adapter.validate(brief, result, experience);
+      // With the decision attachment granted, a coverage check compares the result's claims against
+      // what actually happened; a concern is appended as unresolved work rather than blocking.
+      let checked = result;
+      if (decides && judgement) {
+        try {
+          checked = await checkResultCoverage(host, assignment, session, result, experience, judgement, hookContext);
+        } catch (error) {
+          log(`job ${assignment.job.id} coverage check unavailable: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+      const { verdict, reasons } = adapter.validate(brief, checked, experience);
       const recorded = await host.request({ action: "record_validation", fence, verdict, reasons }, hookContext.abortSignal);
       if (recorded.kind !== "job") throw new Error("Host did not record the validation verdict");
+      return checked === result ? undefined : checked;
     },
     ...(activated
       ? {
@@ -193,6 +207,8 @@ async function runInvestigation(run: ProcessRun, deps: InvestigationDeps) {
     });
     if (model.api === "azure-openai-responses")
       worker.harness.hooks.on("before_payload", async ({ payload }) => ({ payload: constrainToWorkResult(payload) }));
+    // Repeated failing or identical tool calls prompt the model to ask the decision attachment.
+    if (decides) worker.harness.hooks.on("transform_context", reactiveDecisionHint());
     if (brief.inputs.memories.length) {
       const delivered = await host.request(
         { action: "current_memories", fence, references: brief.inputs.memories },

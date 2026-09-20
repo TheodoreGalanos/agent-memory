@@ -64,12 +64,13 @@ export interface AttachedWorkerOptions {
    * selected for this task. Never derived from model output. */
   grant?: (base: WorkspaceAccess) => WorkspaceAccess;
   /** Runs once the result is ready and its experience is published, but before `complete` commits
-   * it, while the fence still holds. Used to record an independent validator's verdict durably. */
+   * it, while the fence still holds. Used to record an independent validator's verdict durably and to
+   * append checks' unresolved findings; a returned result replaces the one committed. */
   beforeComplete?: (
     result: WorkResult,
     experience: ToolEvent[],
     context: Context,
-  ) => Promise<void>;
+  ) => Promise<WorkResult | void>;
 }
 
 export async function attachAssignedWorker(
@@ -709,8 +710,13 @@ export async function attachAssignedWorker(
           );
           if (published.kind !== "source")
             throw new Error("Host did not record the task experience");
-          if (options.beforeComplete)
-            await options.beforeComplete(saved.result, experience, context);
+          if (options.beforeComplete) {
+            const amended = await options.beforeComplete(saved.result, experience, context);
+            if (amended) {
+              saved = { ...saved, result: amended };
+              await options.session.setValue(resultAddress, saved, context);
+            }
+          }
         }
         const committed = await host.request(
           {

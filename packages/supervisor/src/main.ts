@@ -67,7 +67,13 @@ async function main() {
   // Composition is validated here, before the pool credential claims anything.
   const composition = composeApplication(
     services,
-    POOL_MODULES.filter((module) => module.declaration.operations.some((op) => processes.includes(op as SupportedProcess))),
+    // Process modules follow the enabled processes; a module that only offers tools (no operations)
+    // joins whenever the services it requires are installed.
+    POOL_MODULES.filter((module) =>
+      module.declaration.operations.length
+        ? module.declaration.operations.some((op) => processes.includes(op as SupportedProcess))
+        : module.declaration.requires.every((capability) => services[capability] != null),
+    ),
   );
   const classes = (process.env.MEMORY_POOL_CLASSES ?? "").split(",").filter(Boolean);
   const controller = new AbortController();
