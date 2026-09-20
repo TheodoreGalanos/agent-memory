@@ -27,6 +27,7 @@
     "test:asp": "MEMORY_TEST_SSH=1 vitest run packages/pi-worker/test/asp.test.ts",
     "test:docker": "python3 scripts/test-docker.py",
     "test:daytona": "python3 scripts/test-daytona.py",
+    "test:deploy": "python3 scripts/smoke-deploy.py",
     "embeddings": "node --experimental-strip-types scripts/embeddings.ts",
     "memory": "node --experimental-strip-types packages/cli/src/main.ts",
     "live": "node --import ./scripts/ts-loader.mjs examples/live-walkthrough.ts",

@@ -7,11 +7,19 @@ COPY crates ./crates
 COPY evals/property-location ./evals/property-location
 COPY evals/formation ./evals/formation
 COPY evals/judgement ./evals/judgement
+# memory-host embeds the judgement catalogue and the generated request/response schemas with
+# include_str! at their real repository paths; both must be present in the build context.
+COPY packages/judgement/src/catalogue-data.json ./packages/judgement/src/catalogue-data.json
+COPY contracts/generated/host-request.schema.json ./contracts/generated/host-request.schema.json
+COPY contracts/generated/host-response.schema.json ./contracts/generated/host-response.schema.json
 RUN cargo build --release -p memory-host
 
 FROM node:22-bookworm-slim AS runtime
-ENV NODE_ENV=production
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates python3 tini && rm -rf /var/lib/apt/lists/*
+# wget is required by HEALTHCHECK below; node:22-bookworm-slim does not include it by default.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates python3 tini wget && rm -rf /var/lib/apt/lists/*
+# node:22-bookworm-slim bundles an older npm than the frozen version matrix (RELEASE.md pins
+# 11.17.0); older npm cannot reconcile this lockfile with workspaces and --omit=dev.
+RUN npm install -g npm@11.17.0
 WORKDIR /app
 # The pinned Pi source is fetched by `npm run setup` on the build machine and copied in.
 COPY package.json package-lock.json ./
@@ -20,10 +28,14 @@ COPY packages ./packages
 COPY contracts ./contracts
 COPY scripts ./scripts
 COPY evals/property-location ./evals/property-location
-RUN npm ci --ignore-scripts --omit=dev && npm run build:pi
+# build:pi's workspace scripts run tsgo (@typescript/native-preview, a root devDependency) to
+# compile the pinned Pi packages. NODE_ENV must not be "production" yet: npm otherwise omits
+# devDependencies (so tsgo is missing) regardless of --omit=dev being absent from this command.
+RUN npm ci --ignore-scripts && npm run build:pi && npm prune --omit=dev
 COPY --from=host-build /src/target/release/memory-host /usr/local/bin/memory-host
 RUN useradd --system --home /app --uid 10001 memory && chown -R memory:memory /app
 USER memory
+ENV NODE_ENV=production
 EXPOSE 7331
 HEALTHCHECK --interval=30s --timeout=5s CMD ["sh", "-c", "wget -qO- http://127.0.0.1:7331/readyz || exit 1"]
 ENTRYPOINT ["/usr/bin/tini", "--"]

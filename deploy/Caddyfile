@@ -1,4 +1,6 @@
 # ABOUTME: TLS termination in front of the loopback-only Host (§20.2). Replace the hostname.
+# Caddy shares the "host" container's network namespace (see compose.yaml), so the Host's
+# loopback listener is reachable at 127.0.0.1, not at the "host:7331" service DNS name.
 memory.example.internal {
-	reverse_proxy host:7331
+	reverse_proxy 127.0.0.1:7331
 }
