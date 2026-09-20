@@ -366,6 +366,13 @@ pub enum HostRequest {
         fence: Fence,
         check: Box<crate::judgement::TaskLocalCheck>,
     },
+    /// Rechecks a Jev-picked next operation against the job, its target's current state and the
+    /// budget before the `decide` tool acts on it.
+    CheckDecision {
+        fence: Fence,
+        candidate_set_id: String,
+        choice: crate::decision::DecisionChoice,
+    },
     InspectTaskCheck {
         fence: Fence,
         id: Uuid,
@@ -608,6 +615,10 @@ pub enum HostResponse {
     },
     TaskCheck {
         check: Box<crate::judgement::TaskLocalCheck>,
+    },
+    DecisionCheck {
+        accepted: bool,
+        reasons: Vec<String>,
     },
     ArtifactData {
         text: String,

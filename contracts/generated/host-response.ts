@@ -98,6 +98,11 @@ export type HostResponse =
       kind: "task_check";
     }
   | {
+      accepted: boolean;
+      kind: "decision_check";
+      reasons: string[];
+    }
+  | {
       kind: "artifact_data";
       text: string;
     }

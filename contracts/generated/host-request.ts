@@ -213,6 +213,12 @@ export type HostRequest =
       fence: Fence;
     }
   | {
+      action: "check_decision";
+      candidate_set_id: string;
+      choice: DecisionChoice;
+      fence: Fence;
+    }
+  | {
       action: "inspect_task_check";
       fence: Fence;
       id: string;
@@ -725,6 +731,21 @@ export type JudgementAnswer =
       type: "score";
     };
 export type AssessmentStatus = "answered" | "invalid_response" | "unavailable";
+/**
+ * What a chosen operation would act on, checked against the current store before it executes.
+ */
+export type DecisionTarget =
+  | {
+      kind: "none";
+    }
+  | {
+      kind: "memory";
+      reference: MemoryRef;
+    }
+  | {
+      artifact_id: string;
+      kind: "artifact";
+    };
 export type SourceKind = "document" | "table" | "model" | "tool_events";
 export type EffectStatus = "confirmed" | "not_performed" | "unknown";
 export type WorkStatus = "complete" | "partial" | "blocked";
@@ -1293,6 +1314,13 @@ export interface TaskLocalCheck {
   retired: boolean;
   scope: Scope;
   task_id: string;
+}
+/**
+ * Jev's pick from the bounded candidate set the `decide` tool offered, sent back for the Host's recheck.
+ */
+export interface DecisionChoice {
+  operation: string;
+  target?: DecisionTarget | null;
 }
 export interface Budget {
   deadline: string;

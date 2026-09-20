@@ -1,5 +1,6 @@
 pub mod contracts;
 pub mod coordination;
+pub mod decision;
 pub mod formation;
 pub mod judgement;
 pub mod records;

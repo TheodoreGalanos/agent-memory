@@ -902,6 +902,31 @@
       ]
     },
     {
+      "description": "Rechecks a Jev-picked next operation against the job, its target's current state and the\nbudget before the `decide` tool acts on it.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "const": "check_decision"
+        },
+        "candidate_set_id": {
+          "type": "string"
+        },
+        "choice": {
+          "$ref": "#/$defs/DecisionChoice"
+        },
+        "fence": {
+          "$ref": "#/$defs/Fence"
+        }
+      },
+      "required": [
+        "action",
+        "fence",
+        "candidate_set_id",
+        "choice"
+      ]
+    },
+    {
       "type": "object",
       "properties": {
         "action": {
@@ -2589,6 +2614,78 @@
       "enum": [
         "approve",
         "decline"
+      ]
+    },
+    "DecisionChoice": {
+      "description": "Jev's pick from the bounded candidate set the `decide` tool offered, sent back for the Host's recheck.",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DecisionTarget"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "operation"
+      ]
+    },
+    "DecisionTarget": {
+      "description": "What a chosen operation would act on, checked against the current store before it executes.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "none"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "memory"
+            },
+            "reference": {
+              "$ref": "#/$defs/MemoryRef"
+            }
+          },
+          "required": [
+            "kind",
+            "reference"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "artifact_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "kind": {
+              "type": "string",
+              "const": "artifact"
+            }
+          },
+          "required": [
+            "kind",
+            "artifact_id"
+          ]
+        }
       ]
     },
     "DeferredContext": {

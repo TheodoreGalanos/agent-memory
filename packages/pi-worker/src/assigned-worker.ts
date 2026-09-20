@@ -145,6 +145,7 @@ export async function attachAssignedWorker(
   const created = await createWorkerHarness(
     {
       ...options,
+      toolContextExtra: { host, assignment, session: options.session, ...options.toolContextExtra },
       workspace: {
         ...options.workspace,
         initial:

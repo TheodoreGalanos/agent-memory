@@ -418,5 +418,25 @@
     "answers": { "role": "knowledge" },
     "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
     "expected_action": "qualify"
+  },
+  {
+    "family": "J31",
+    "subject": "A task mid-investigation with one candidate procedure activated and no unresolved conflicts.",
+    "fields": {
+      "options": [
+        { "operation": "continue", "target": null, "preconditions": [], "cost_class": "none" },
+        { "operation": "inspect_further", "target": "site-notes.txt", "preconditions": [], "cost_class": "low" },
+        { "operation": "return_unresolved", "target": null, "preconditions": [], "cost_class": "none" }
+      ],
+      "state": {
+        "workspace": "Clearance under beam B3 is measured at 2.0 m; no open questions remain.",
+        "recent_tool_results": ["read site-notes.txt: clearance 2.0 m"],
+        "activated": [],
+        "unresolved_work": []
+      }
+    },
+    "answers": { "next": "continue" },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "qualify"
   }
 ]

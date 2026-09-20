@@ -39,6 +39,9 @@ export type WorkerOptions = Pick<
   /** Every tool, native or application, reaches the model through this one harness and the
    * same `wrapTool` boundary. Names are unique; application tools cannot shadow a native name. */
   tools: WorkerTool[];
+  /** Merged into every application tool's `toolContext` alongside `env`, so a shared tool
+   * declared once for the whole pool can still reach this job's host, assignment and session. */
+  toolContextExtra?: Record<string, unknown>;
   systemPrompt?: string;
   resources?: AgentHarnessOptions<ExecutionToolContext>["resources"];
   entryProjectors?: AgentHarnessOptions<ExecutionToolContext>["entryProjectors"];
@@ -90,7 +93,7 @@ export async function createWorkerHarness(
       session: options.session,
       models: guard.models,
       model: options.model,
-      toolContext: { env: options.env },
+      toolContext: { env: options.env, ...options.toolContextExtra },
       tools: tools.map((tool) =>
         options.wrapTool ? options.wrapTool(tool) : tool,
       ),
