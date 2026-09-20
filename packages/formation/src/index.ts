@@ -276,6 +276,12 @@ async function constructCandidates(
     const assessment = await selectedAssessment(session, packetId, context);
     const answer = assessment?.answers["J30.role"];
     if (answer?.type !== "choice") {
+      // A provider outage or similar transient failure, not a settled "no role" answer: forget this
+      // span's packet and decision so a later attempt - healthy again - judges it fresh instead of
+      // replaying the same unresolved decision forever.
+      delete state.roles[key];
+      delete state.rolePackets[key];
+      await save();
       unresolved.push(`span-${span.index}: role unresolved; later spans wait for the next window`);
       break;
     }
@@ -291,7 +297,9 @@ async function constructCandidates(
     }
     examined.push({ span: span.index, decision: state.roles[key] });
   }
-  state.roleUnresolved = [...new Set([...state.roleUnresolved, ...unresolved])];
+  // Replaced, not merged: this pass re-derives every span's outcome from the current state, so a
+  // span resolved on retry must not keep an earlier attempt's stale "unresolved" message around.
+  state.roleUnresolved = unresolved;
   await save();
   const admitted = await host.request(
     {
