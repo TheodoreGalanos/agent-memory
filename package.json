@@ -30,7 +30,8 @@
     "test:deploy": "python3 scripts/smoke-deploy.py",
     "embeddings": "node --experimental-strip-types scripts/embeddings.ts",
     "memory": "node --experimental-strip-types packages/cli/src/main.ts",
-    "pool": "node --import ./scripts/ts-loader.mjs packages/supervisor/src/main.ts"
+    "pool": "node --import ./scripts/ts-loader.mjs packages/supervisor/src/main.ts",
+    "inventory": "node --import ./scripts/ts-loader.mjs scripts/inventory.mjs"
   },
   "devDependencies": {
     "@types/node": "22.19.19",
