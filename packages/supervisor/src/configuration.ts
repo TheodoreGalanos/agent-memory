@@ -91,11 +91,12 @@ export function migrateWorkerConfiguration(
  * An `asp` execution service needs no additional environment credential: its SSH identity is a trusted file
  * reference carried in the binding itself, not an ambient secret. */
 export function credentialsRequired(config: WorkerConfiguration, processes: SupportedProcess[]): string[] {
-  const routes = processes.includes("formation")
+  const judgementProcesses: SupportedProcess[] = ["formation", "consolidation", "maintenance", "activation"];
+  const routes = processes.some((p) => judgementProcesses.includes(p))
     ? [config.judgement.primary, config.judgement.fallback, config.judgement.comparison].filter((r): r is JudgementRoute => !!r)
     : [];
   const required = new Set<string>();
-  if (processes.includes("investigation") || routes.some((r) => r.kind === "generative")) required.add("AZURE_OPENAI_API_KEY");
+  if (processes.includes("investigation") || processes.includes("consolidation") || processes.includes("evaluation") || routes.some((r) => r.kind === "generative")) required.add("AZURE_OPENAI_API_KEY");
   if (routes.some((r) => r.kind === "jev")) required.add("JEV_API_KEY");
   return [...required].sort();
 }

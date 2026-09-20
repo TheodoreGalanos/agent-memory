@@ -47,15 +47,17 @@ async function main() {
       ? new JevProvider(id, route.model, maximum, () => process.env.JEV_API_KEY!)
       : new GenerativeProvider(id, models, generativeModel(route), maximum, 2048);
   const services: Services = {};
-  if (processes.includes("investigation")) {
+  const wantsTaskModel = processes.includes("investigation") || processes.includes("consolidation") || processes.includes("evaluation");
+  const wantsExecution = processes.includes("investigation") || processes.includes("evaluation");
+  if (wantsTaskModel) {
     const taskModel = generativeModel(config.task_model);
     services.taskModel = { models, model: taskModel, maxPayloadBytes: config.max_payload_bytes ?? 100_000, reservationCost: config.task_reservation_cost_microunits };
-    if (config.execution)
-      services.execution = config.execution.kind === "node"
-        ? { kind: "node", cwd: config.execution.cwd }
-        : { kind: "asp", binding: config.execution.binding, helperPath: config.execution.helper_path };
   }
-  if (processes.includes("formation")) {
+  if (wantsExecution && config.execution)
+    services.execution = config.execution.kind === "node"
+      ? { kind: "node", cwd: config.execution.cwd }
+      : { kind: "asp", binding: config.execution.binding, helperPath: config.execution.helper_path };
+  if (processes.some((p) => ["formation", "consolidation", "maintenance", "activation"].includes(p))) {
     const { primary, fallback, comparison } = config.judgement;
     services.judgement = {
       primary: provider(primary, `primary:${primary.kind}`),
