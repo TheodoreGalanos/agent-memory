@@ -18,6 +18,16 @@ const module = (over: Partial<ProcessModule> & { id: string }): ProcessModule =>
 });
 const judgementService = { judgement: {} } as unknown as Services;
 
+it("accepts an installed execution service as satisfying an optional requirement", () => {
+  const declaresExecution = module({
+    id: "investigation",
+    declaration: { id: "investigation", version: "1", requires: [], optional: ["execution"], operations: ["investigation"] },
+  });
+  const executionService = { execution: { kind: "node", cwd: "." } } as unknown as Services;
+  expect(() => composeApplication(executionService, [declaresExecution])).not.toThrow();
+  expect(() => composeApplication({}, [declaresExecution])).not.toThrow();
+});
+
 it("composes declared modules into handlers, contributed tools and a content-derived identity", () => {
   const formation = module({
     id: "formation",

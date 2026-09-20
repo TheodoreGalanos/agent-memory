@@ -1,5 +1,6 @@
 // ABOUTME: worker.json shape for the pool: task model, Jev-first judgement routes (primary, optional fallback and
 // ABOUTME: comparison) and the explicit one-time migration from the former reference/jev/mode keys.
+import type { SandboxBinding } from "../../pi-worker/src/asp-execution-env.js";
 import type { SupportedProcess } from "./index.js";
 
 export type JudgementRoute =
@@ -30,6 +31,10 @@ export interface WorkerConfiguration {
   processes?: SupportedProcess[];
   task_model: { provider: string; model: string };
   judgement: JudgementConfiguration;
+  /** Where investigation's granted native tools run. Absent means investigation tasks are tool-less. */
+  execution?:
+    | { kind: "node"; cwd?: string }
+    | { kind: "asp"; binding: SandboxBinding; helper_path?: string };
 }
 
 /** Keys from the reference-plus-shadow arrangement this shape replaces. */
@@ -82,7 +87,9 @@ export function migrateWorkerConfiguration(
   return { config, migrated: present.length > 0, notes };
 }
 
-/** Environment variables the composed processes need: Azure for any generative model in use, Jev for any Jev route. */
+/** Environment variables the composed processes need: Azure for any generative model in use, Jev for any Jev route.
+ * An `asp` execution service needs no additional environment credential: its SSH identity is a trusted file
+ * reference carried in the binding itself, not an ambient secret. */
 export function credentialsRequired(config: WorkerConfiguration, processes: SupportedProcess[]): string[] {
   const routes = processes.includes("formation")
     ? [config.judgement.primary, config.judgement.fallback, config.judgement.comparison].filter((r): r is JudgementRoute => !!r)

@@ -1,15 +1,19 @@
 // ABOUTME: Investigation process module for the pool: retrieves relevant memories for the task at admission,
 // ABOUTME: attaches the assigned Pi worker with the task model and granted tools, and drives Pi to a settled result.
 import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
+import type { ExecutionEnv } from "@earendil-works/pi-agent-core";
 import type { Model, Api, Models } from "@earendil-works/pi-ai";
 import type { Assignment } from "../../../contracts/generated/assignment.js";
 import type { ActivationQuery, ContextPackage } from "../../../contracts/generated/host-response.js";
 import { activationAccess, applyActivation, runActivation } from "../../activation/src/index.js";
 import type { JudgementOptions } from "../../judgement/src/runtime.js";
 import { catalogueResponses } from "../../judgement/src/responses.js";
+import { AspExecutionEnv } from "../../pi-worker/src/asp-execution-env.js";
 import { attachAssignedWorker, type WorkerProfile } from "../../pi-worker/src/assigned-worker.js";
-import { toolName, type WorkerTool } from "../../pi-worker/src/harness.js";
+import { EXECUTION_TOOLS, toolName, type ExecutionTool, type WorkerTool } from "../../pi-worker/src/harness.js";
+import { InterpreterClient } from "../../pi-worker/src/interpreter-client.js";
 import { workspaceFromBrief } from "../../pi-worker/src/workspace.js";
+import type { HostCommands } from "../../host-client/src/client.js";
 import type { ProcessModule, Services } from "./composition.js";
 import type { ProcessHandler, ProcessRun } from "./runner.js";
 import { windowId } from "./formation.js";
@@ -26,16 +30,18 @@ export interface InvestigationDeps {
   tools?: WorkerTool[];
   /** When installed, relevant memories are retrieved for the task before the model runs. */
   judgement?: Services["judgement"];
+  /** Where the task's granted native tools run. Absent means the task is tool-less. */
+  execution?: Services["execution"];
 }
 
 /** Investigation drives the task model; offered tools are attached when the brief grants them. */
 export const investigationModule: ProcessModule = {
-  declaration: { id: "investigation", version: "2", requires: ["taskModel"], optional: ["judgement"], operations: ["investigation"] },
+  declaration: { id: "investigation", version: "3", requires: ["taskModel"], optional: ["judgement", "execution"], operations: ["investigation"] },
   attach: (services: Services, offered) => {
     const task = services.taskModel!;
     return [investigationHandler({
       models: task.models, taskModel: task.model, maxPayloadBytes: task.maxPayloadBytes,
-      taskReservationCost: task.reservationCost, tools: offered, judgement: services.judgement,
+      taskReservationCost: task.reservationCost, tools: offered, judgement: services.judgement, execution: services.execution,
     })];
   },
 };
@@ -86,6 +92,31 @@ export function investigationHandler(deps: InvestigationDeps): ProcessHandler<"i
   return { process: "investigation", run: (run) => runInvestigation(run, deps) };
 }
 
+/** What the worker runs Pi's native tools under, and which of the brief's granted native tool
+ * names the harness can actually honor with it. Absent `execution`: tool-less, a plain node
+ * environment rooted in the pool's sessions directory (no native tool names are granted). A node
+ * environment has no sandbox interpreter, so `python` is never granted under it even if the brief
+ * lists it. An `asp` environment supplies its own interpreter transport, so `python` is granted
+ * whenever the brief lists it. */
+async function resolveExecution(
+  execution: Services["execution"],
+  deps: { host: HostCommands; assignment: Assignment; sessionsDirectory: string; log: (line: string) => void },
+): Promise<{ env: ExecutionEnv; interpreter?: InterpreterClient; native: ExecutionTool[] }> {
+  const brief = deps.assignment.job.spec.brief;
+  const granted = (name: ExecutionTool) => brief.capabilities.tools.includes(name);
+  if (!execution) return { env: new NodeExecutionEnv({ cwd: deps.sessionsDirectory }), native: [] };
+  if (execution.kind === "node") {
+    if (granted("python")) deps.log(`job ${deps.assignment.job.id} brief grants python but the execution service is a node environment with no interpreter; not granted`);
+    return {
+      env: new NodeExecutionEnv({ cwd: execution.cwd ?? deps.sessionsDirectory }),
+      native: EXECUTION_TOOLS.filter((name) => name !== "python" && granted(name)),
+    };
+  }
+  const env = await AspExecutionEnv.connect(execution.binding, execution.binding, execution.helperPath);
+  const interpreter = granted("python") ? new InterpreterClient(env, deps.host, deps.assignment, deps.assignment.job.id) : undefined;
+  return { env, interpreter, native: EXECUTION_TOOLS.filter((name) => granted(name)) };
+}
+
 async function runInvestigation(run: ProcessRun, deps: InvestigationDeps) {
   const { host, lease, session, context, log } = run;
   const assignment = lease.assignment;
@@ -121,14 +152,18 @@ async function runInvestigation(run: ProcessRun, deps: InvestigationDeps) {
     }
   }
   const initial = workspaceFromBrief(brief, assignment.job.deadline, assignment.job.spec.retain_until);
+  const { env, interpreter, native } = await resolveExecution(deps.execution, {
+    host, assignment, sessionsDirectory: run.sessionsDirectory, log,
+  });
   // The worker follows the runner's lease keeper and owns Pi's cancellation protocol (abort the
   // operation, then acknowledge), so it runs under the lease context rather than the cancel-aborting run context.
   const worker = await attachAssignedWorker(assignment, host, investigationProfile(assignment, deps), {
     session,
     models: deps.models,
     model,
-    env: new NodeExecutionEnv({ cwd: run.sessionsDirectory }),
-    tools: (deps.tools ?? []).filter((tool) => brief.capabilities.tools.includes(toolName(tool))),
+    env,
+    interpreter,
+    tools: [...native, ...(deps.tools ?? []).filter((tool) => brief.capabilities.tools.includes(toolName(tool)))],
     systemPrompt: taskSystemPrompt(brief),
     lease,
     composition: run.composition,

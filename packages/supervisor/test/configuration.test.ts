@@ -51,3 +51,17 @@ it("requires only the credentials the configured routes use", () => {
   const withFallback: WorkerConfiguration = { ...jevOnly, judgement: { ...jevOnly.judgement, fallback: { kind: "generative", provider: "azure-openai-responses", model: "gpt-4.1-mini" } } };
   expect(credentialsRequired(withFallback, ["formation"])).toEqual(["AZURE_OPENAI_API_KEY", "JEV_API_KEY"]);
 });
+
+it("carries an optional execution block through unmigrated, and needs no extra credential for it", () => {
+  const nodeExecution: WorkerConfiguration = { ...base, judgement: { primary: { kind: "jev", model: "jev-latest" } }, execution: { kind: "node", cwd: "./workspace" } };
+  const { config, migrated } = migrateWorkerConfiguration(nodeExecution as unknown as Record<string, unknown>);
+  expect(migrated).toBe(false);
+  expect(config.execution).toEqual({ kind: "node", cwd: "./workspace" });
+  expect(credentialsRequired(nodeExecution, ["investigation"])).toEqual(["AZURE_OPENAI_API_KEY"]);
+  const aspBinding = {
+    sandbox_id: "s", generation: "1", session_id: "task", epoch: 1, expires_at: Date.now() + 60_000,
+    descriptor: { version: "0" as const, transport: "ssh" as const, workspace: "/workspace", connection: { host: "sandbox.internal", user: "runner", host_key: "ssh-ed25519 YWJj" } },
+  };
+  const aspExecution: WorkerConfiguration = { ...base, judgement: { primary: { kind: "jev", model: "jev-latest" } }, execution: { kind: "asp", binding: aspBinding } };
+  expect(credentialsRequired(aspExecution, ["investigation"])).toEqual(["AZURE_OPENAI_API_KEY"]);
+});

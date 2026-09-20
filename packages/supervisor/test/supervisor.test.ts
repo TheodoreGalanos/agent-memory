@@ -227,7 +227,7 @@ it("a pool claims, drives and settles investigation and formation jobs through a
       return states.every((state) => ["completed", "partial", "failed"].includes(state));
     };
     const composition = compose({ taskModel: taskService(models, faux), judgement: { primary: reference, maximum } }, "investigation", "formation");
-    expect(composition.identity).toMatch(/^investigation@2\+formation@1#[0-9a-f]{12}$/);
+    expect(composition.identity).toMatch(/^investigation@3\+formation@1#[0-9a-f]{12}$/);
     await runSupervisor({
       host: new HostClient(url, tokens.pool), hostUrl: url, concurrency: { interactive: 1, deferred: 1 }, pollMs: 50, leaseSeconds: 60,
       sessionsDirectory: join(base, "sessions"),

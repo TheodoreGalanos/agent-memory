@@ -5,6 +5,7 @@ import type { Model, Api, Models } from "@earendil-works/pi-ai";
 import type { Process } from "../../../contracts/generated/work-command.js";
 import type { JudgementProvider } from "../../judgement/src/providers.js";
 import type { JudgementOptions } from "../../judgement/src/runtime.js";
+import type { SandboxBinding } from "../../pi-worker/src/asp-execution-env.js";
 import { EXECUTION_TOOLS, toolName, type WorkerTool } from "../../pi-worker/src/harness.js";
 import type { ProcessHandler } from "./runner.js";
 
@@ -20,6 +21,11 @@ export interface Services {
   judgement?: Pick<JudgementOptions, "primary" | "fallback" | "comparison"> & {
     maximum: JudgementProvider["maximum"];
   };
+  /** Where a task's granted native tools actually run. Absent means tool-less: the brief's granted
+   * `read|write|edit|bash|python` names go unused and only offered application tools reach the model. */
+  execution?:
+    | { kind: "node"; cwd?: string }
+    | { kind: "asp"; binding: SandboxBinding; helperPath?: string };
 }
 export type Capability = keyof Services;
 
