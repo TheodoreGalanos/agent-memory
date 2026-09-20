@@ -948,6 +948,16 @@ impl Host {
                     source: Box::new(self.store.source_version(auth, &reference).await?),
                 }
             }
+            R::ScheduledWork {
+                trigger_kind,
+                trigger_id,
+            } => O::ScheduledWork {
+                mark: self
+                    .store
+                    .scheduled_work(auth, &trigger_kind, trigger_id)
+                    .await?
+                    .map(Box::new),
+            },
             R::Claim {
                 job_id,
                 lease_seconds,
@@ -1163,6 +1173,7 @@ fn authorize(role: &Role, request: &HostRequest) -> Result<(), ContractError> {
                 | R::InspectJob { .. }
                 | R::IngestSource { .. }
                 | R::Experience { .. }
+                | R::ScheduledWork { .. }
                 | R::Cancel { .. }
                 | R::Events { .. }
                 | R::BudgetUsage { .. }

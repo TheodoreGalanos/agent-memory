@@ -437,6 +437,12 @@ pub enum HostRequest {
     Experience {
         job_id: Uuid,
     },
+    /// What the scheduling sweep recorded for one trigger: the job it submitted, an
+    /// unschedulable mark, or nothing yet.
+    ScheduledWork {
+        trigger_kind: String,
+        trigger_id: Uuid,
+    },
     /// A trusted connector publishes one source revision. A JSON string is stored as
     /// text; any other value is serialized JSON. The adapter follows `source.kind`.
     IngestSource {
@@ -620,6 +626,9 @@ pub enum HostResponse {
     },
     Source {
         source: Box<crate::sources::SourceVersion>,
+    },
+    ScheduledWork {
+        mark: Option<Box<crate::scheduling::ScheduledWorkMark>>,
     },
     WorkerCredential {
         credential: Box<IssuedWorkerCredential>,

@@ -291,6 +291,11 @@ export type HostRequest =
       job_id: string;
     }
   | {
+      action: "scheduled_work";
+      trigger_id: string;
+      trigger_kind: string;
+    }
+  | {
       action: "ingest_source";
       content: unknown;
       source: SourceVersion;
@@ -908,8 +913,17 @@ export interface MemoryPolicy {
 }
 export interface ConsolidationPolicy {
   evaluator_profile: ConfigRef;
+  /**
+   * Upper bound on how many candidates one scheduled cohort covers.
+   */
+  max_cohort_size?: number;
   maximum_cost_microunits: number;
   maximum_regression: number;
+  /**
+   * Retained, not-yet-consolidated candidates needed under this policy before the host
+   * schedules a consolidation cohort. Missing in older data; defaults preserve prior behavior.
+   */
+  min_cohort_size?: number;
   min_held_out_groups: number;
   min_independent_sources: number;
   minimum_success_rate: number;

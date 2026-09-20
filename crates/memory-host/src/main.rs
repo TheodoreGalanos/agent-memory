@@ -140,6 +140,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 {
                     eprintln!("Formation scheduling failed; retrying on the next tick");
                 }
+                // Retained candidates that accumulate under a policy get a bounded consolidation cohort.
+                if tick % RECOVERY_TICKS == 0
+                    && timer_store
+                        .schedule_consolidation(authority, 10)
+                        .await
+                        .is_err()
+                {
+                    eprintln!("Consolidation scheduling failed; retrying on the next tick");
+                }
             }
         }
     });

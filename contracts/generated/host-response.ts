@@ -114,6 +114,10 @@ export type HostResponse =
       source: SourceVersion;
     }
   | {
+      kind: "scheduled_work";
+      mark?: ScheduledWorkMark | null;
+    }
+  | {
       credential: IssuedWorkerCredential;
       kind: "worker_credential";
     }
@@ -837,8 +841,17 @@ export interface MemoryPolicy {
 }
 export interface ConsolidationPolicy {
   evaluator_profile: ConfigRef;
+  /**
+   * Upper bound on how many candidates one scheduled cohort covers.
+   */
+  max_cohort_size?: number;
   maximum_cost_microunits: number;
   maximum_regression: number;
+  /**
+   * Retained, not-yet-consolidated candidates needed under this policy before the host
+   * schedules a consolidation cohort. Missing in older data; defaults preserve prior behavior.
+   */
+  min_cohort_size?: number;
   min_held_out_groups: number;
   min_independent_sources: number;
   minimum_success_rate: number;
@@ -1362,6 +1375,19 @@ export interface SourceVersion {
   reference: SourceRef;
   scope: Scope;
   snapshot_artifact?: string | null;
+}
+/**
+ * One row of the `scheduled_work` ledger: what a sweep decided about a single trigger, so a
+ * repeated sweep is idempotent and an operator can see why something was, or was not, scheduled.
+ */
+export interface ScheduledWorkMark {
+  causal_origin_job_id?: string | null;
+  dedupe_key: string;
+  job_id?: string | null;
+  scheduled_at: string;
+  trigger_id: string;
+  trigger_kind: string;
+  unschedulable?: string | null;
 }
 /**
  * A runtime worker credential. The token is shown only in the issuing response.

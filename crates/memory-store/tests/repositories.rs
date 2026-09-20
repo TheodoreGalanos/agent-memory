@@ -1118,7 +1118,7 @@ async fn migration_upgrade(url: &str) {
         .fetch_one(&pool)
         .await
         .unwrap();
-    assert_eq!(row.get::<i64, _>("version"), 11);
+    assert_eq!(row.get::<i64, _>("version"), 15);
     sqlx::query("INSERT INTO schema_migrations VALUES (999)")
         .execute(&pool)
         .await

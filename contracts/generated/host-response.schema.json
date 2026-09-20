@@ -471,6 +471,28 @@
     {
       "type": "object",
       "properties": {
+        "kind": {
+          "type": "string",
+          "const": "scheduled_work"
+        },
+        "mark": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScheduledWorkMark"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
         "credential": {
           "$ref": "#/$defs/IssuedWorkerCredential"
         },
@@ -1548,12 +1570,26 @@
         "evaluator_profile": {
           "$ref": "#/$defs/ConfigRef"
         },
+        "max_cohort_size": {
+          "description": "Upper bound on how many candidates one scheduled cohort covers.",
+          "type": "integer",
+          "default": 16,
+          "maximum": 65535,
+          "minimum": 0
+        },
         "maximum_cost_microunits": {
           "type": "integer",
           "minimum": 0
         },
         "maximum_regression": {
           "type": "number"
+        },
+        "min_cohort_size": {
+          "description": "Retained, not-yet-consolidated candidates needed under this policy before the host\nschedules a consolidation cohort. Missing in older data; defaults preserve prior behavior.",
+          "type": "integer",
+          "default": 3,
+          "maximum": 65535,
+          "minimum": 0
         },
         "min_held_out_groups": {
           "type": "integer",
@@ -5267,6 +5303,52 @@
         "target",
         "revision",
         "enabled"
+      ]
+    },
+    "ScheduledWorkMark": {
+      "description": "One row of the `scheduled_work` ledger: what a sweep decided about a single trigger, so a\nrepeated sweep is idempotent and an operator can see why something was, or was not, scheduled.",
+      "type": "object",
+      "properties": {
+        "causal_origin_job_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "dedupe_key": {
+          "type": "string"
+        },
+        "job_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "scheduled_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "trigger_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "trigger_kind": {
+          "type": "string"
+        },
+        "unschedulable": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "trigger_kind",
+        "trigger_id",
+        "dedupe_key",
+        "scheduled_at"
       ]
     },
     "Scope": {

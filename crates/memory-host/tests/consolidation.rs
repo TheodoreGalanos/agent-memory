@@ -72,6 +72,8 @@ async fn fixture(live: bool) {
         maximum_regression: 0.0,
         maximum_cost_microunits: if live { 250_000 } else { 1000 },
         evaluator_profile: brief.profile.clone(),
+        min_cohort_size: 3,
+        max_cohort_size: 16,
     });
     brief.policy = store
         .create_policy(

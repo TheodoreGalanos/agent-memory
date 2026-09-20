@@ -145,6 +145,7 @@ impl Store {
             include_str!("../migrations/012_composition.sql"),
             include_str!("../migrations/013_experience.sql"),
             include_str!("../migrations/014_experience_windows.sql"),
+            include_str!("../migrations/015_scheduling.sql"),
         ];
         if current > migrations.len() as i64 {
             return Err(Error::Invalid(
