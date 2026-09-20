@@ -5,6 +5,10 @@ import type { AgentHarnessTool, ExecutionToolContext } from "@earendil-works/pi-
 import { Type } from "@earendil-works/pi-ai";
 import { composeApplication, type ProcessModule, type Services } from "../src/composition.js";
 import type { ProcessHandler } from "../src/runner.js";
+import { activationModule } from "../src/activation.js";
+import { consolidationModule } from "../src/consolidation.js";
+import { evaluationModule } from "../src/evaluation.js";
+import { maintenanceModule } from "../src/maintenance.js";
 
 const handler = (process: ProcessHandler["process"]): ProcessHandler => ({ process, async run() {} });
 const tool = (name: string): AgentHarnessTool<ExecutionToolContext> => ({
@@ -62,4 +66,20 @@ it("rejects contributed tools that collide with each other or with native execut
   const b = module({ id: "b", declaration: { id: "b", version: "1", requires: [], operations: ["formation"] }, attach: () => [handler("formation")], tools: () => [tool("lookup")] });
   expect(() => composeApplication({}, [a, b])).toThrow(/lookup/);
   expect(() => composeApplication({}, [module({ id: "a", tools: () => [tool("bash")] })])).toThrow(/bash/);
+});
+
+it("rejects consolidation, maintenance and activation without an installed judgement service", () => {
+  expect(() => composeApplication({}, [consolidationModule])).toThrow(/consolidation.*judgement/);
+  expect(() => composeApplication({}, [maintenanceModule])).toThrow(/maintenance.*judgement/);
+  expect(() => composeApplication({}, [activationModule])).toThrow(/activation.*judgement/);
+});
+
+it("accepts consolidation, evaluation, maintenance and activation once their declared requirements are installed", () => {
+  expect(() => composeApplication(judgementService, [consolidationModule])).not.toThrow();
+  expect(() => composeApplication(judgementService, [maintenanceModule])).not.toThrow();
+  expect(() => composeApplication(judgementService, [activationModule])).not.toThrow();
+  // Evaluation declares no required service: its trials run through whichever optional service a candidate needs.
+  expect(() => composeApplication({}, [evaluationModule])).not.toThrow();
+  const composed = composeApplication(judgementService, [consolidationModule, maintenanceModule, activationModule, evaluationModule]);
+  expect(composed.handlers.map((h) => h.process).sort()).toEqual(["activation", "consolidation", "evaluation", "maintenance"]);
 });

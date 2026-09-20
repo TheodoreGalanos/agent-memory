@@ -5,16 +5,20 @@ import type { IssuedWorkerCredential } from "../../../contracts/generated/host-r
 import type { Process } from "../../../contracts/generated/work-command.js";
 import { HostClient, type HostCommands } from "../../host-client/src/client.js";
 import type { Composition, ProcessModule } from "./composition.js";
+import { activationModule } from "./activation.js";
+import { consolidationModule } from "./consolidation.js";
+import { evaluationModule } from "./evaluation.js";
 import { formationModule } from "./formation.js";
 import { investigationModule } from "./investigation.js";
+import { maintenanceModule } from "./maintenance.js";
 import { runAssignment, type ProcessHandler, type Work } from "./runner.js";
 
 export type { ProcessHandler, ProcessRun, Work } from "./runner.js";
 export { composeApplication, type Composition, type ProcessModule, type Services } from "./composition.js";
 /** The modules this pool ships. A deployment composes a subset against its installed services. */
-export const POOL_MODULES: ProcessModule[] = [investigationModule, formationModule];
-export type SupportedProcess = Extract<Process, "investigation" | "formation">;
-export const SUPPORTED_PROCESSES: SupportedProcess[] = ["investigation", "formation"];
+export const POOL_MODULES: ProcessModule[] = [investigationModule, formationModule, consolidationModule, evaluationModule, maintenanceModule, activationModule];
+export type SupportedProcess = Extract<Process, "investigation" | "formation" | "consolidation" | "evaluation" | "maintenance" | "activation">;
+export const SUPPORTED_PROCESSES: SupportedProcess[] = ["investigation", "formation", "consolidation", "evaluation", "maintenance", "activation"];
 export type WorkClass = "interactive" | "deferred";
 /** Capacity classes from the deployment profile (§20.2): interactive work answers a waiting task. */
 export const CLASS_OF: Record<Process, WorkClass> = {
