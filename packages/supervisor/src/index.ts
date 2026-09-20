@@ -18,8 +18,10 @@ export type { ProcessHandler, ProcessRun, Work } from "./runner.js";
 export { composeApplication, type Composition, type ProcessModule, type Services } from "./composition.js";
 /** The modules this pool ships. A deployment composes a subset against its installed services. */
 export const POOL_MODULES: ProcessModule[] = [investigationModule, formationModule, consolidationModule, evaluationModule, maintenanceModule, activationModule, decisionModule];
-export type SupportedProcess = Extract<Process, "investigation" | "formation" | "consolidation" | "evaluation" | "maintenance" | "activation">;
-export const SUPPORTED_PROCESSES: SupportedProcess[] = ["investigation", "formation", "consolidation", "evaluation", "maintenance", "activation"];
+export type SupportedProcess = Process;
+/** Every process some pool module declares (derived, not hand-maintained): `decisionModule` declares
+ * none of its own (it only offers the `decide` tool to other operations), so it never appears here. */
+export const SUPPORTED_PROCESSES: SupportedProcess[] = [...new Set(POOL_MODULES.flatMap((m) => m.declaration.operations))];
 export type WorkClass = "interactive" | "deferred";
 /** Capacity classes from the deployment profile (§20.2): interactive work answers a waiting task. */
 export const CLASS_OF: Record<Process, WorkClass> = {
