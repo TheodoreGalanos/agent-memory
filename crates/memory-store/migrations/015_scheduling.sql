@@ -8,3 +8,4 @@ CREATE TABLE consolidation_cohort_members (
  tenant_id TEXT NOT NULL, policy_id TEXT NOT NULL, memory_id TEXT NOT NULL, cohort_id TEXT NOT NULL,
  PRIMARY KEY (tenant_id, policy_id, memory_id)
 );
+ALTER TABLE memory_changes ADD COLUMN causal_job_id TEXT;

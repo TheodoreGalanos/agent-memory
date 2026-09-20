@@ -1,5 +1,5 @@
-// ABOUTME: Store-level TDD coverage for the scheduling sweeps: consolidation cohorts and the
-// ABOUTME: procedure qualification job scheduled once a commit produces a candidate procedure.
+// ABOUTME: Store-level TDD coverage for the scheduling sweeps: consolidation, qualification and
+// ABOUTME: maintenance triggered by a correction or a new source revision (with causal-origin skip).
 use chrono::{Duration, Utc};
 use memory_domain::{consolidation::*, contracts::*, coordination::*, records::*};
 use memory_store::Store;
@@ -437,6 +437,189 @@ fn procedure_content() -> MemoryContent {
         contract: None,
     }
 }
+
+async fn maintenance_on_correction_and_causal_skip(store: &Store, raw: &sqlx::AnyPool) {
+    let f = setup(store).await;
+    let base = store
+        .create_memory(&f.auth, candidate(&f.project_scope, &f.policy, "corrected"))
+        .await
+        .unwrap();
+    let dependent = store
+        .create_memory(&f.auth, candidate(&f.project_scope, &f.policy, "dependent"))
+        .await
+        .unwrap();
+    store
+        .create_relation(
+            &f.auth,
+            RelationDraft {
+                from: dependent.reference.clone(),
+                to: base.reference.clone(),
+                kind: RelationKind::DependsOn,
+                scope: f.project_scope.clone(),
+                basis: "Cites the base record".into(),
+                evidential_status: EvidentialStatus::Inference,
+                acceptance: Acceptance::Accepted,
+                valid_time: ValidTime::Unknown,
+            },
+        )
+        .await
+        .unwrap();
+    let mut corrected = base.record.clone();
+    if let MemoryContent::Knowledge { statement, .. } = &mut corrected.content {
+        *statement = "Corrected statement".into();
+    }
+    store
+        .user_request(
+            &f.auth,
+            memory_domain::interaction::UserRequest::Mutate {
+                request_id: Uuid::now_v7(),
+                mutation: Box::new(memory_domain::interaction::UserMutation::Correct {
+                    expected: base.reference.clone(),
+                    record: Box::new(corrected),
+                }),
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(store.schedule_maintenance(&f.auth, 10).await.unwrap(), 1);
+    let queued = store
+        .queued_jobs(&f.auth, &[Process::Maintenance], 10)
+        .await
+        .unwrap();
+    assert_eq!(queued.len(), 1);
+    let job = store.job(&f.auth, queued[0]).await.unwrap();
+    let members: std::collections::BTreeSet<_> = job
+        .spec
+        .brief
+        .inputs
+        .memories
+        .iter()
+        .map(|m| m.memory_id)
+        .collect();
+    assert!(members.contains(&base.reference.memory_id));
+    assert!(members.contains(&dependent.reference.memory_id));
+    // Idempotent: the same correction does not schedule a second job.
+    assert_eq!(store.schedule_maintenance(&f.auth, 10).await.unwrap(), 0);
+
+    // A correction whose causal origin is itself a maintenance job over the same record is
+    // never rescheduled, so a module cannot reprocess its own unchanged output forever.
+    let origin_memory = store
+        .create_memory(
+            &f.auth,
+            candidate(&f.project_scope, &f.policy, "self-correcting"),
+        )
+        .await
+        .unwrap();
+    let maintenance_task_id = Uuid::now_v7();
+    let mut maintenance_brief = base_brief(
+        &f.auth,
+        &f.policy,
+        f.project_scope.clone(),
+        maintenance_task_id,
+    );
+    maintenance_brief.process = Process::Maintenance;
+    let maintenance_job = submit_job(
+        store,
+        &f.auth,
+        maintenance_brief,
+        f.budget_id,
+        Utc::now() + Duration::minutes(30),
+    )
+    .await;
+    let mut recorrected = origin_memory.record.clone();
+    if let MemoryContent::Knowledge { statement, .. } = &mut recorrected.content {
+        *statement = "Maintained statement".into();
+    }
+    store
+        .user_request(
+            &f.auth,
+            memory_domain::interaction::UserRequest::Mutate {
+                request_id: Uuid::now_v7(),
+                mutation: Box::new(memory_domain::interaction::UserMutation::Correct {
+                    expected: origin_memory.reference.clone(),
+                    record: Box::new(recorrected),
+                }),
+            },
+        )
+        .await
+        .unwrap();
+    sqlx::query("UPDATE memory_changes SET causal_job_id=$1 WHERE tenant_id=$2 AND resource_id=$3")
+        .bind(maintenance_job.to_string())
+        .bind(f.auth.tenant_id.to_string())
+        .bind(origin_memory.reference.memory_id.to_string())
+        .execute(raw)
+        .await
+        .unwrap();
+    assert_eq!(store.schedule_maintenance(&f.auth, 10).await.unwrap(), 0);
+    let notice_id = latest_notice_id(raw, &f.auth, origin_memory.reference.memory_id).await;
+    let mark = store
+        .scheduled_work(&f.auth, "maintenance-correction", notice_id)
+        .await
+        .unwrap()
+        .expect("causal-origin skip is recorded");
+    assert!(mark.job_id.is_none());
+    assert_eq!(mark.causal_origin_job_id, Some(maintenance_job));
+}
+
+async fn maintenance_on_source_revision(store: &Store) {
+    let f = setup(store).await;
+    let source = memory_domain::sources::SourceVersion {
+        reference: SourceRef {
+            source_id: Uuid::now_v7(),
+            revision: "1".into(),
+        },
+        label: "Watched source".into(),
+        scope: f.project_scope.clone(),
+        kind: memory_domain::sources::SourceKind::Document,
+        owner: "fixture".into(),
+        acquired_at: Utc::now(),
+        acquisition_method: "authored fixture".into(),
+        precedence: None,
+        snapshot_artifact: None,
+    };
+    store
+        .register_source_version(&f.auth, source.clone())
+        .await
+        .unwrap();
+    let locator = memory_domain::sources::SourceLocator {
+        id: Uuid::now_v7(),
+        source: source.reference.clone(),
+        locator: memory_domain::sources::Locator::Document {
+            start_line: 1,
+            end_line: 1,
+            page: None,
+        },
+    };
+    store
+        .create_source_locator(&f.auth, locator.clone())
+        .await
+        .unwrap();
+    let mut draft = candidate(&f.project_scope, &f.policy, "sourced");
+    draft.source_locators = vec![locator.id];
+    let sourced = store.create_memory(&f.auth, draft).await.unwrap();
+    let mut revised_source = source.clone();
+    revised_source.reference.revision = "2".into();
+    store
+        .register_source_version(&f.auth, revised_source)
+        .await
+        .unwrap();
+    assert_eq!(store.schedule_maintenance(&f.auth, 10).await.unwrap(), 1);
+    let queued = store
+        .queued_jobs(&f.auth, &[Process::Maintenance], 10)
+        .await
+        .unwrap();
+    assert_eq!(queued.len(), 1);
+    let job = store.job(&f.auth, queued[0]).await.unwrap();
+    assert!(
+        job.spec
+            .brief
+            .inputs
+            .memories
+            .iter()
+            .any(|m| m.memory_id == sourced.reference.memory_id)
+    );
+    assert_eq!(store.schedule_maintenance(&f.auth, 10).await.unwrap(), 0);
+}
 async fn insert_consolidation_review(
     raw: &sqlx::AnyPool,
     auth: &Authority,
@@ -457,12 +640,28 @@ async fn insert_consolidation_review(
     .unwrap();
 }
 
+async fn latest_notice_id(raw: &sqlx::AnyPool, auth: &Authority, resource_id: Uuid) -> Uuid {
+    use sqlx::Row;
+    let row = sqlx::query(
+        "SELECT id FROM memory_changes WHERE tenant_id=$1 AND resource_id=$2 ORDER BY cursor DESC LIMIT 1",
+    )
+    .bind(auth.tenant_id.to_string())
+    .bind(resource_id.to_string())
+    .fetch_one(raw)
+    .await
+    .unwrap();
+    let id_str: String = row.get("id");
+    Uuid::parse_str(&id_str).unwrap()
+}
+
 async fn suite(url: &str) {
     let store = Store::connect(url).await.unwrap();
     let raw = sqlx::AnyPool::connect(url).await.unwrap();
     consolidation_cohort(&store).await;
     qualification_after_consolidation(&store, &raw).await;
     qualification_unschedulable_on_expired_budget(&store, &raw).await;
+    maintenance_on_correction_and_causal_skip(&store, &raw).await;
+    maintenance_on_source_revision(&store).await;
     raw.close().await;
     store.close().await;
 }

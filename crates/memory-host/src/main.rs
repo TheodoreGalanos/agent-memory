@@ -158,6 +158,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 {
                     eprintln!("Qualification scheduling failed; retrying on the next tick");
                 }
+                // A new source revision or memory correction gets a bounded maintenance job.
+                if tick % RECOVERY_TICKS == 0
+                    && timer_store
+                        .schedule_maintenance(authority, 10)
+                        .await
+                        .is_err()
+                {
+                    eprintln!("Maintenance scheduling failed; retrying on the next tick");
+                }
             }
         }
     });
