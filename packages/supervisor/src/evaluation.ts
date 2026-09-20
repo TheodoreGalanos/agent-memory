@@ -5,7 +5,7 @@ import { runQualification } from "../../consolidation/src/qualification.js";
 import { trialExecutor } from "./adapters/trials.js";
 import type { ProcessModule, Services } from "./composition.js";
 import type { ProcessHandler, ProcessRun } from "./runner.js";
-import { windowId } from "./formation.js";
+import { requestId } from "../../host-client/src/identity.js";
 import { inspectJson } from "../../host-client/src/artifact.js";
 import { fenceFor } from "../../host-client/src/fence.js";
 import type { HostCommands } from "../../host-client/src/client.js";
@@ -96,7 +96,7 @@ async function runEvaluationJob(run: ProcessRun, deps: EvaluationDeps) {
     }
   }
   const committed = await host.request(
-    { action: "complete", request_id: windowId(assignment.job.id, { source_id: "complete", revision: String(assignment.job.attempt) }), fence, result },
+    { action: "complete", request_id: requestId(assignment.job.id, "complete", String(assignment.job.attempt)), fence, result },
     context.abortSignal,
   );
   log(`job ${assignment.job.id} ${committed.kind === "job" ? committed.job.state : committed.kind}`);

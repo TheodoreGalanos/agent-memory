@@ -7,7 +7,6 @@ import type { Assignment } from "../../../contracts/generated/assignment.js";
 import type { ActivationQuery, ContextPackage } from "../../../contracts/generated/host-response.js";
 import { activationAccess, applyActivation, runActivation } from "../../activation/src/index.js";
 import type { JudgementOptions } from "../../judgement/src/runtime.js";
-import { catalogueResponses } from "../../judgement/src/responses.js";
 import { AspExecutionEnv } from "../../pi-worker/src/asp-execution-env.js";
 import { attachAssignedWorker, type WorkerProfile } from "../../pi-worker/src/assigned-worker.js";
 import { EXECUTION_TOOLS, toolName, type ExecutionTool, type WorkerTool } from "../../pi-worker/src/harness.js";
@@ -17,9 +16,9 @@ import type { HostCommands } from "../../host-client/src/client.js";
 import { selectAdapter } from "./adapter.js";
 import type { ProcessModule, Services } from "./composition.js";
 import type { ProcessHandler, ProcessRun } from "./runner.js";
-import { windowId } from "./formation.js";
+import { requestId } from "../../host-client/src/identity.js";
 import { constrainToWorkResult, deliverInputMemories, taskSystemPrompt } from "./task.js";
-import { observeProvider } from "./trace.js";
+import { judgementFor } from "./judgement.js";
 import { checkResultCoverage, reactiveDecisionHint } from "./decision.js";
 
 export interface InvestigationDeps {
@@ -133,23 +132,11 @@ async function runInvestigation(run: ProcessRun, deps: InvestigationDeps) {
   let activated: ContextPackage | undefined;
   let judgement: JudgementOptions | undefined;
   if (deps.judgement) {
-    const { primary, fallback, comparison } = deps.judgement;
-    judgement = {
-      primary: observeProvider(primary, "primary", log),
-      fallback: fallback ? observeProvider(fallback, "fallback", log) : undefined,
-      comparison: comparison ? { provider: observeProvider(comparison.provider, "comparison", log) } : undefined,
-      maxAttempts: 1,
-      responses: catalogueResponses,
-      disclosure: {
-        policy: brief.disclosure_policy,
-        scope: brief.scope,
-        providers: [primary.id, ...(fallback ? [fallback.id] : []), ...(comparison ? [comparison.provider.id] : [])],
-      },
-    };
+    judgement = judgementFor(deps.judgement, brief, log);
     try {
       activated = await runActivation(
         host, assignment, session,
-        { id: windowId(assignment.job.id, { source_id: "activation", revision: String(assignment.job.attempt) }), query: admissionQuery(assignment, deps.maxPayloadBytes) },
+        { id: requestId(assignment.job.id, "activation", String(assignment.job.attempt)), query: admissionQuery(assignment, deps.maxPayloadBytes) },
         judgement, context,
       );
       log(`job ${assignment.job.id} activation: ${activated.selected.length} memory(ies) selected, ${activated.deferred.length} deferred`);
@@ -175,8 +162,8 @@ async function runInvestigation(run: ProcessRun, deps: InvestigationDeps) {
     systemPrompt: taskSystemPrompt(brief),
     lease,
     composition: run.composition,
-    // An independent adapter validates the result before it commits; the model's own claims about
-    // its status or coverage are never taken as proof of meeting the brief's output criteria.
+    // Validate before committing. The default checks reporting consistency; installed adapters
+    // can check domain correctness against the captured experience.
     beforeComplete: async (result, experience, hookContext) => {
       // With the decision attachment granted, a coverage check compares the result's claims against
       // what actually happened; a concern is appended as unresolved work rather than blocking.
@@ -222,7 +209,7 @@ async function runInvestigation(run: ProcessRun, deps: InvestigationDeps) {
         const reason = error instanceof Error ? error.message : String(error);
         await host.request({ action: "start", fence, composition: run.composition }, context.abortSignal);
         await host.request({
-          action: "complete", request_id: windowId(assignment.job.id, { source_id: "blocked", revision: String(assignment.job.attempt) }), fence,
+          action: "complete", request_id: requestId(assignment.job.id, "blocked", String(assignment.job.attempt)), fence,
           result: {
             schema_version: "1", status: "blocked", examined_scope: brief.scope, inputs: brief.inputs, findings: [],
             coverage: { examined: [], unexamined: brief.inputs.memories.map((m) => `${m.label} r${m.revision}`) },

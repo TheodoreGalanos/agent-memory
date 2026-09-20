@@ -1,40 +1,21 @@
-// ABOUTME: An independent output validator for a task: checks a settled result against its brief
-// ABOUTME: without trusting the model's own claims, and reports a durable verdict before it commits.
+// ABOUTME: Task result validation: a structural default and a hook for domain checks.
 import type { Validation, ValidationVerdict, WorkBrief, WorkResult } from "../../../contracts/generated/assignment.js";
 import type { ToolEvent } from "../../../contracts/generated/formation-window.js";
 
 export type { Validation, ValidationVerdict };
 
-/** One process-owned task adapter: what the model may see, which tools it may use, what to observe
- * from its experience for the record, and an independent check of its settled result. `validate`
- * never trusts `result`'s own claims about itself (status, coverage) as proof; it checks them. */
+/** Validates a task result against its brief and recorded experience. The brief and execution
+ * service own input and tool access; adapters do not grant or filter either. */
 export interface TaskAdapter {
   id: string;
-  version: string;
-  /** Public inputs the model may see for this brief. */
-  inputs(brief: WorkBrief): unknown;
-  /** Tool names this adapter permits for the brief. */
-  tools(brief: WorkBrief): string[];
-  /** Observations extracted from the task's experience events, kept alongside the verdict. */
-  observe(events: ToolEvent[]): string[];
-  /** An independent check of the settled result against the brief; never derived from the result's
-   * own status or coverage claims alone. */
+  /** Implement domain checks here when reported coverage alone is insufficient. */
   validate(brief: WorkBrief, result: WorkResult, experience: ToolEvent[]): Validation;
 }
 
-/** Validates structurally against `brief.output_criteria`: each criterion must appear, verbatim, in
- * the result's own examined coverage or a finding's statement (evidence the task actually produced,
- * not merely asserted status). A blocked task cannot be assessed either way. A complete status with
- * unresolved work left is inconsistent and fails regardless of criteria coverage. */
+/** A structural check only: each criterion must appear verbatim in reported coverage or a
+ * finding. This checks reporting consistency, not whether the work was performed correctly. */
 export const criteriaAdapter: TaskAdapter = {
   id: "criteria",
-  version: "1",
-  inputs: (brief) => brief.inputs,
-  tools: (brief) => brief.capabilities.tools,
-  observe: (events) =>
-    events
-      .filter((event) => event.kind === "tool_result" || event.kind === "message")
-      .map((event) => `${event.kind}: ${JSON.stringify(event.content).slice(0, 200)}`),
   validate(brief, result) {
     if (result.status === "blocked")
       return { verdict: "unknown", reasons: ["Task was blocked before its output criteria could be assessed"] };

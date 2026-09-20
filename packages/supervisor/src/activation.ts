@@ -4,13 +4,11 @@
 import type { HostResponse } from "../../../contracts/generated/host-response.js";
 import type { WorkResult } from "../../../contracts/generated/work-result.js";
 import { runActivation } from "../../activation/src/index.js";
-import type { JudgementOptions } from "../../judgement/src/runtime.js";
-import { catalogueResponses } from "../../judgement/src/responses.js";
 import { admissionQuery } from "./investigation.js";
 import type { ProcessModule, Services } from "./composition.js";
 import type { ProcessHandler, ProcessRun } from "./runner.js";
-import { windowId } from "./formation.js";
-import { observeProvider } from "./trace.js";
+import { requestId } from "../../host-client/src/identity.js";
+import { judgementFor } from "./judgement.js";
 
 type ActivationDeps = Required<Pick<Services, "judgement">>;
 
@@ -32,19 +30,7 @@ async function runActivationJob(run: ProcessRun, deps: ActivationDeps) {
   const fence = lease.fence;
   if (assignment.job.state !== "running")
     await host.request({ action: "start", fence, composition: run.composition }, context.abortSignal);
-  const { primary, fallback, comparison } = deps.judgement;
-  const judgement: JudgementOptions = {
-    primary: observeProvider(primary, "primary", log),
-    fallback: fallback ? observeProvider(fallback, "fallback", log) : undefined,
-    comparison: comparison ? { provider: observeProvider(comparison.provider, "comparison", log) } : undefined,
-    maxAttempts: 1,
-    responses: catalogueResponses,
-    disclosure: {
-      policy: brief.disclosure_policy,
-      scope: brief.scope,
-      providers: [primary.id, ...(fallback ? [fallback.id] : []), ...(comparison ? [comparison.provider.id] : [])],
-    },
-  };
+  const judgement = judgementFor(deps.judgement, brief, log);
   // No task model bounds this job's payload; a conservative fixed allowance keeps the retrieval question small.
   const maxPayloadBytes = Math.min(60_000, brief.limits.max_output_bytes);
   let coverage = { examined: [] as string[], unexamined: [] as string[] };
@@ -52,12 +38,12 @@ async function runActivationJob(run: ProcessRun, deps: ActivationDeps) {
   let childOutputs: string[] = [];
   try {
     const query = admissionQuery(assignment, maxPayloadBytes);
-    const id = windowId(assignment.job.id, { source_id: "activation", revision: String(assignment.job.attempt) });
+    const id = requestId(assignment.job.id, "activation", String(assignment.job.attempt));
     const result = await runActivation(host, assignment, session, { id, query }, judgement, context);
     coverage = { examined: result.selected.map((r) => `${r.label} r${r.revision}`), unexamined: result.deferred };
     unresolved = result.deferred;
     const published = await host.request(
-      { action: "publish_artifact", fence, request_id: windowId(assignment.job.id, { source_id: "activation-result", revision: String(assignment.job.attempt) }), label: "Activation context package", text: JSON.stringify(result), dependencies: [] },
+      { action: "publish_artifact", fence, request_id: requestId(assignment.job.id, "activation-result", String(assignment.job.attempt)), label: "Activation context package", text: JSON.stringify(result), dependencies: [] },
       context.abortSignal,
     );
     if (published.kind !== "artifact") throw new Error("Activation result was not published");
@@ -82,7 +68,7 @@ async function runActivationJob(run: ProcessRun, deps: ActivationDeps) {
     usage: { status: "unknown", input_tokens: null, output_tokens: null, cost: null },
   };
   const committed: HostResponse = await host.request(
-    { action: "complete", request_id: windowId(assignment.job.id, { source_id: "complete", revision: String(assignment.job.attempt) }), fence, result: completion },
+    { action: "complete", request_id: requestId(assignment.job.id, "complete", String(assignment.job.attempt)), fence, result: completion },
     context.abortSignal,
   );
   log(`job ${assignment.job.id} ${committed.kind === "job" ? committed.job.state : committed.kind}`);

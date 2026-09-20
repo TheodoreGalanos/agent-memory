@@ -87,7 +87,7 @@ Host failure before/after commit.
 | `evals/consolidation/live-2026-09-18.json` | Live synthesis and advisory transfer run; the judge accepted an unsupported generalisation | Consolidation retention quality |
 | `evals/activation/nomic-smoke.json` | Two paraphrase cases retrieve correctly with local embeddings | Retrieval usefulness at scale |
 | `evals/live-walkthrough/run-2026-09-18.json` | A model works a task from corrected memory; findings judged and retained with provenance; pool-driven with a Host restart | Model or judge quality; n is tiny |
-| `evals/campaign/` (dry run only; see `evals/campaign/README.md`) | The campaign scaffold's arm isolation, transfer holdout and cost reporting over three fixture tasks | Any live campaign result — running one for real needs `MEMORY_LIVE_CAMPAIGN=1` and is paid |
+| `evals/campaign/` (dry run only; see `evals/campaign/README.md`) | The campaign scaffold's arm isolation, transfer holdout and cost reporting over three fixture tasks | Any live campaign result — the fixture runner has no live execution driver |
 
 ### 3.3 Behavioural (acceptance stories)
 
@@ -120,8 +120,8 @@ Host failure before/after commit.
 - Persistence/rotation of runtime-issued worker credentials.
 - Provider/image matrix beyond Docker and the bounded Daytona profile.
 - Live formation quality: a recorded live run made incorrect retention decisions.
-- A live run of the campaign scaffold (`evals/campaign/`) — its dry run is fixture-backed and
-  free; a real campaign is paid and gated behind `MEMORY_LIVE_CAMPAIGN=1`.
+- Live campaign execution (`evals/campaign/`) — the current runner uses supplied fixture
+  outcomes and costs. It does not launch workers; a real execution driver is still required.
 
 ## 6. What a user can rely on today
 

@@ -6,16 +6,14 @@ import type { MaintenanceRequest } from "../../../contracts/generated/maintenanc
 import type { HostResponse } from "../../../contracts/generated/host-response.js";
 import type { WorkResult } from "../../../contracts/generated/work-result.js";
 import type { Context } from "@earendil-works/pi-agent-core";
-import type { JudgementOptions } from "../../judgement/src/runtime.js";
-import { catalogueResponses } from "../../judgement/src/responses.js";
 import { inspectJson } from "../../host-client/src/artifact.js";
 import { fenceFor } from "../../host-client/src/fence.js";
 import type { HostCommands } from "../../host-client/src/client.js";
 import { runMaintenance, runIntentionCheck } from "../../maintenance/src/index.js";
 import type { ProcessModule, Services } from "./composition.js";
 import type { ProcessHandler, ProcessRun } from "./runner.js";
-import { windowId } from "./formation.js";
-import { observeProvider } from "./trace.js";
+import { requestId } from "../../host-client/src/identity.js";
+import { judgementFor } from "./judgement.js";
 
 type MaintenanceDeps = Required<Pick<Services, "judgement">>;
 
@@ -58,7 +56,7 @@ export async function maintenanceInput(host: HostCommands, assignment: Assignmen
   if (manifestId) return validateManifest(await inspectJson(host, fenceFor(assignment), manifestId, "", context));
   const scheduled = brief.scheduled;
   if (scheduled?.kind === "maintenance_correction" || scheduled?.kind === "maintenance_source") {
-    const id = windowId(assignment.job.id, { source_id: scheduled.kind, revision: String(assignment.job.attempt) });
+    const id = requestId(assignment.job.id, scheduled.kind, String(assignment.job.attempt));
     return { kind: "correction", id, request: scheduled.request };
   }
   throw new Error("Maintenance needs a manifest artifact, or a scheduled request, naming the correction or intention check to run");
@@ -75,19 +73,7 @@ async function runMaintenanceJob(run: ProcessRun, deps: MaintenanceDeps) {
   const fence = lease.fence;
   if (assignment.job.state !== "running")
     await host.request({ action: "start", fence, composition: run.composition }, context.abortSignal);
-  const { primary, fallback, comparison } = deps.judgement;
-  const judgement: JudgementOptions = {
-    primary: observeProvider(primary, "primary", log),
-    fallback: fallback ? observeProvider(fallback, "fallback", log) : undefined,
-    comparison: comparison ? { provider: observeProvider(comparison.provider, "comparison", log) } : undefined,
-    maxAttempts: 1,
-    responses: catalogueResponses,
-    disclosure: {
-      policy: brief.disclosure_policy,
-      scope: brief.scope,
-      providers: [primary.id, ...(fallback ? [fallback.id] : []), ...(comparison ? [comparison.provider.id] : [])],
-    },
-  };
+  const judgement = judgementFor(deps.judgement, brief, log);
   let coverage = { examined: [] as string[], unexamined: [] as string[] };
   let unresolved: string[] = [];
   let childOutputs: string[] = [];
@@ -98,7 +84,7 @@ async function runMaintenanceJob(run: ProcessRun, deps: MaintenanceDeps) {
       coverage = result.coverage;
       unresolved = result.unresolved;
       const published = await host.request(
-        { action: "publish_artifact", fence, request_id: windowId(assignment.job.id, { source_id: "maintenance-result", revision: String(assignment.job.attempt) }), label: "Maintenance correction result", text: JSON.stringify(result), dependencies: [] },
+        { action: "publish_artifact", fence, request_id: requestId(assignment.job.id, "maintenance-result", String(assignment.job.attempt)), label: "Maintenance correction result", text: JSON.stringify(result), dependencies: [] },
         context.abortSignal,
       );
       if (published.kind !== "artifact") throw new Error("Maintenance result was not published");
@@ -108,7 +94,7 @@ async function runMaintenanceJob(run: ProcessRun, deps: MaintenanceDeps) {
       const occurrence = await runIntentionCheck(host, assignment, session, { id: manifest.id, occurrence_id: manifest.occurrence_id, kind: manifest.check }, judgement, context);
       coverage = { examined: [`Intention occurrence ${occurrence.id}: ${occurrence.state}`], unexamined: [] };
       const published = await host.request(
-        { action: "publish_artifact", fence, request_id: windowId(assignment.job.id, { source_id: "intention-check-result", revision: String(assignment.job.attempt) }), label: "Intention check result", text: JSON.stringify(occurrence), dependencies: [] },
+        { action: "publish_artifact", fence, request_id: requestId(assignment.job.id, "intention-check-result", String(assignment.job.attempt)), label: "Intention check result", text: JSON.stringify(occurrence), dependencies: [] },
         context.abortSignal,
       );
       if (published.kind !== "artifact") throw new Error("Intention check result was not published");
@@ -134,7 +120,7 @@ async function runMaintenanceJob(run: ProcessRun, deps: MaintenanceDeps) {
     usage: { status: "unknown", input_tokens: null, output_tokens: null, cost: null },
   };
   const committed: HostResponse = await host.request(
-    { action: "complete", request_id: windowId(assignment.job.id, { source_id: "complete", revision: String(assignment.job.attempt) }), fence, result: completion },
+    { action: "complete", request_id: requestId(assignment.job.id, "complete", String(assignment.job.attempt)), fence, result: completion },
     context.abortSignal,
   );
   log(`job ${assignment.job.id} ${committed.kind === "job" ? committed.job.state : committed.kind}`);

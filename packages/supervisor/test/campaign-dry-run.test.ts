@@ -8,8 +8,8 @@ it("runs the 3 fixture tasks through every arm without any live provider, settli
   expect(report.arms).toEqual(ARMS);
   expect(report.outcomes).toHaveLength(3 * ARMS.length);
   expect(report.outcomes.every((o) => o.operational === "settled"), JSON.stringify(report.outcomes)).toBe(true);
-  // The transfer tasks show memory's behavioural value: the full arm costs no more, and for the task
-  // that only the full arm can actually answer, it is also the only arm that passes semantically.
+  // These differences come from the fixture. They verify comparison arithmetic, not a benefit
+  // from memory: this test never runs a model or worker pool.
   expect(report.behavioural_value).toHaveLength(2);
   const harder = report.behavioural_value.find((b) => b.task_id === "lease-timeout-default")!;
   expect(harder.full_cheaper_than_no_memory).toBe(true);

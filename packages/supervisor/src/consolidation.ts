@@ -6,13 +6,11 @@ import type { CohortSelection } from "../../../contracts/generated/consolidation
 import type { HostResponse } from "../../../contracts/generated/host-response.js";
 import type { WorkResult } from "../../../contracts/generated/work-result.js";
 import { runConsolidation } from "../../consolidation/src/index.js";
-import type { JudgementOptions } from "../../judgement/src/runtime.js";
-import { catalogueResponses } from "../../judgement/src/responses.js";
 import { synthesizeProposal } from "./adapters/synthesis.js";
 import type { ProcessModule, Services } from "./composition.js";
 import type { ProcessHandler, ProcessRun } from "./runner.js";
-import { windowId } from "./formation.js";
-import { observeProvider } from "./trace.js";
+import { requestId } from "../../host-client/src/identity.js";
+import { judgementFor } from "./judgement.js";
 
 type ConsolidationDeps = Required<Pick<Services, "judgement">> & Pick<Services, "taskModel">;
 
@@ -23,9 +21,8 @@ export const consolidationModule: ProcessModule = {
   attach: (services) => [consolidationHandler({ judgement: services.judgement!, taskModel: services.taskModel })],
 };
 
-/** The persisted work a consolidation attempt needs, derived deterministically from its assignment so a
- * retried attempt resumes the same cohort instead of paying for a new one. Lane B's Host-timer scheduler
- * is expected to select cohort members; until then the brief's own inputs name them directly. */
+/** The persisted work a consolidation attempt needs, derived deterministically from its assignment so the
+ * scheduler-selected members remain explicit in the brief. Each attempt has its own review id. */
 export interface ConsolidationInput {
   id: string;
   selection: CohortSelection;
@@ -35,7 +32,7 @@ export function consolidationInput(assignment: Assignment): ConsolidationInput {
   const brief = assignment.job.spec.brief;
   if (brief.process !== "consolidation") throw new Error("Consolidation input needs a consolidation assignment");
   return {
-    id: windowId(assignment.job.id, { source_id: "consolidation", revision: String(assignment.job.attempt) }),
+    id: requestId(assignment.job.id, "consolidation", String(assignment.job.attempt)),
     selection: {
       purpose: brief.purpose.trim().slice(0, 200) || "Consolidate related experience",
       mechanism: "scheduled",
@@ -58,19 +55,7 @@ async function runConsolidationJob(run: ProcessRun, deps: ConsolidationDeps) {
   const input = consolidationInput(assignment);
   if (assignment.job.state !== "running")
     await host.request({ action: "start", fence, composition: run.composition }, context.abortSignal);
-  const { primary, fallback, comparison } = deps.judgement;
-  const judgement: JudgementOptions = {
-    primary: observeProvider(primary, "primary", log),
-    fallback: fallback ? observeProvider(fallback, "fallback", log) : undefined,
-    comparison: comparison ? { provider: observeProvider(comparison.provider, "comparison", log) } : undefined,
-    maxAttempts: 1,
-    responses: catalogueResponses,
-    disclosure: {
-      policy: brief.disclosure_policy,
-      scope: brief.scope,
-      providers: [primary.id, ...(fallback ? [fallback.id] : []), ...(comparison ? [comparison.provider.id] : [])],
-    },
-  };
+  const judgement = judgementFor(deps.judgement, brief, log);
   const taskModel = deps.taskModel;
   let coverage = { examined: [] as string[], unexamined: [] as string[] };
   let unresolved: string[] = [];
@@ -88,7 +73,7 @@ async function runConsolidationJob(run: ProcessRun, deps: ConsolidationDeps) {
       coverage = result.coverage;
       unresolved = result.deferred;
       const published = await host.request(
-        { action: "publish_artifact", fence, request_id: windowId(assignment.job.id, { source_id: "consolidation-result", revision: String(assignment.job.attempt) }), label: "Consolidation result", text: JSON.stringify(result), dependencies: [] },
+        { action: "publish_artifact", fence, request_id: requestId(assignment.job.id, "consolidation-result", String(assignment.job.attempt)), label: "Consolidation result", text: JSON.stringify(result), dependencies: [] },
         context.abortSignal,
       );
       if (published.kind !== "artifact") throw new Error("Consolidation result was not published");
@@ -114,7 +99,7 @@ async function runConsolidationJob(run: ProcessRun, deps: ConsolidationDeps) {
     usage: { status: "unknown", input_tokens: null, output_tokens: null, cost: null },
   };
   const committed: HostResponse = await host.request(
-    { action: "complete", request_id: windowId(assignment.job.id, { source_id: "complete", revision: String(assignment.job.attempt) }), fence, result: completion },
+    { action: "complete", request_id: requestId(assignment.job.id, "complete", String(assignment.job.attempt)), fence, result: completion },
     context.abortSignal,
   );
   log(`job ${assignment.job.id} ${committed.kind === "job" ? committed.job.state : committed.kind}`);

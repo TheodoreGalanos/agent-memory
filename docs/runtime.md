@@ -289,12 +289,14 @@ proposal, never itself authority.
 
 ## Schedulers: the Host's own triggers
 
-The Host schedules work on its own timer (`crates/memory-store/src/scheduling.rs`,
+The Host schedules work on its own timer (`crates/memory-store/src/scheduling/`,
 driven from `crates/memory-host/src/main.rs`); nothing here requires an operator
-to submit a follow-up job by hand. Every scheduling decision is recorded once in
-the `scheduled_work` ledger (`tenant_id, trigger_kind, trigger_id`, deduplicated
-by a `dedupe_key` so an observed trigger never double-submits), naming the job it
-produced or, if none could be scheduled yet, why not — so a disabled module's
+to submit a follow-up job by hand. Consolidation, qualification and maintenance
+submit the job and record its trigger in one transaction. Consolidation also records cohort membership in that
+transaction. Scheduling and job claiming scan in pages, so older records and
+jobs for disabled processes do not prevent later eligible work from running. Each decision is recorded in
+the `scheduled_work` ledger, keyed by `(tenant_id, trigger_kind, trigger_id)`,
+naming the job produced or the reason it could not be scheduled — so a disabled module's
 triggers accumulate as *scheduled-but-unclaimed* work, never silently lost.
 
 - **Formation** (`Store::schedule_formation`, `crates/memory-store/src/experience.rs`):
@@ -305,11 +307,8 @@ triggers accumulate as *scheduled-but-unclaimed* work, never silently lost.
   job is scheduled over that cohort (`inputs.memories`).
 - **Qualification** (`schedule_qualification`): a retained candidate procedure
   schedules a `Process::Evaluation` job. The evaluation module first looks for a
-  real `QualificationTask` manifest artifact; when the trigger carries no
-  manifest, it derives one from the brief's typed `scheduled` field (candidate
-  = `inputs.memories[0]`, held-out cases from the consolidation review that
-  produced it) and otherwise falls back to a `partial` result naming the
-  candidate with a clear unresolved line — it never fabricates cases.
+  real qualification manifest artifact. Without one, it returns a `partial` result
+  naming the candidate in `inputs.memories[0]` and the missing input.
 - **Maintenance** (`schedule_maintenance`): a correction or a source revision
   schedules a `Process::Maintenance` job for each affected record, carrying a
   typed `scheduled: ScheduledInputs::MaintenanceCorrection | MaintenanceSource`
@@ -369,12 +368,9 @@ the real entrypoint rather than a test harness stub. Both use a
 only when `MEMORY_TEST_SCRIPTED=1` is set — a real `GenerativeProvider`
 serialization path backed by a scripted model, never a production mock mode.
 
-`evals/campaign/run.ts` is a paid-campaign scaffold (gated behind
-`MEMORY_LIVE_CAMPAIGN=1`): it isolates arms (no memory / capture-only / full
-learning) against an AEC-Bench-shaped task list through the `TaskAdapter` seam
-(`packages/supervisor/src/adapter.ts`), holds out transfer tasks, and reports
-task outcomes and cost from `budget_usage`, separated into operational
-correctness, semantic quality and behavioural value. Its dry run
-(`packages/supervisor/test/campaign-dry-run.test.ts`) exercises the same code
-over three fixture tasks with no credentials; see
-[`evals/campaign/README.md`](../evals/campaign/README.md).
+`evals/campaign/run.ts` tests reporting with fixture-supplied outcomes and costs.
+It creates isolated Hosts and orders seed tasks before transfer tasks, but does
+not launch worker pools or exercise different memory configurations. Its dry-run
+test verifies bookkeeping, not learning or model quality. Live campaign execution
+still needs to be implemented; the entrypoint rejects `MEMORY_LIVE_CAMPAIGN=1`.
+See [`evals/campaign/README.md`](../evals/campaign/README.md).

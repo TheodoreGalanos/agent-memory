@@ -1,5 +1,5 @@
-// ABOUTME: AEC-Bench-style campaign runner: isolates arms (no memory / capture-only / full), holds out
-// ABOUTME: transfer tasks, and reports operational, semantic and behavioural outcomes plus process cost.
+// ABOUTME: Fixture campaign: exercises isolated Hosts, task ordering and report calculations.
+// ABOUTME: Outcomes and costs are supplied by fixtures; no worker pool or model runs here.
 import { spawn } from "node:child_process";
 import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -8,23 +8,21 @@ import { fileURLToPath } from "node:url";
 import { once } from "node:events";
 import { createServer } from "node:net";
 import { randomBytes, randomUUID } from "node:crypto";
+import type { WorkBrief, WorkResult } from "../../contracts/generated/assignment.js";
 import type { HostResponse } from "../../contracts/generated/host-response.js";
 import { HostClient } from "../../packages/host-client/src/client.js";
 import { fenceFor } from "../../packages/host-client/src/fence.js";
 import { criteriaAdapter, type TaskAdapter } from "../../packages/supervisor/src/adapter.js";
 
-/** The seam a real campaign plugs its benchmark into: `packages/supervisor/src/adapter.ts`'s
- * `TaskAdapter` already separates "what the model may see/do" from "an independent check of its
- * settled result" — exactly what a held-out benchmark needs. Nothing here is AEC-Bench-specific;
- * define an adapter per benchmark and pass its task list in. */
+/** Labels for fixture comparisons. They do not enable or disable worker processes here. */
 export type Arm = "no_memory" | "capture_only" | "full";
 export const ARMS: Arm[] = ["no_memory", "capture_only", "full"];
 
 export interface CampaignTask {
   id: string;
   purpose: string;
-  /** A transfer task is run after the other tasks in the same arm, in the same project, so a memory
-   * process (when the arm enables one) has a chance to have formed something relevant beforehand. */
+  /** A transfer task is run after the other tasks in the same arm, in the same project. The fixture
+   * runner checks this ordering without launching memory processes. */
   transfer: boolean;
   adapter?: TaskAdapter;
 }
@@ -39,10 +37,10 @@ export interface TaskOutcome {
 export interface CampaignReport {
   arms: Arm[];
   outcomes: TaskOutcome[];
-  /** Total committed process cost per arm, from the Host's own `budget_usage`. */
+  /** Total fixture-supplied cost per arm; no provider usage is measured. */
   cost_by_arm: Record<Arm, number>;
-  /** For each transfer task, whether `full` both completed and cost less than `no_memory` — the
-   * behavioural signal a memory system exists to produce. */
+  /** For each transfer task, whether the supplied outcomes differ between `full` and `no_memory`.
+   * These calculations do not demonstrate a benefit from memory. */
   behavioural_value: { task_id: string; full_cheaper_than_no_memory: boolean; full_more_complete: boolean }[];
 }
 
@@ -61,8 +59,8 @@ async function freePort(): Promise<number> {
 }
 const minutes = (n: number) => new Date(Date.now() + n * 60_000).toISOString();
 
-/** One isolated Host per arm: an arm's memory never leaks into another arm's, and a transfer task's
- * "memory helps" comparison is never confounded by cross-arm contamination. */
+/** One isolated Host per arm: an arm's memory never leaks into another arm's, while exercising the
+ * same job and receipt APIs for each fixture comparison. */
 async function armWorld() {
   const base = await mkdtemp(join(tmpdir(), "memory-campaign-"));
   const port = await freePort();
@@ -86,10 +84,10 @@ async function armWorld() {
   await client.request({ action: "create_budget", budget });
   const profile = { id: randomUUID(), revision: 1, label: "campaign" };
   return {
-    async runTask(task: CampaignTask, arm: Arm, expected: { status: string; coverage: string[]; cost_microunits: number }): Promise<TaskOutcome> {
+    async runTask(task: CampaignTask, arm: Arm, expected: { status: WorkResult["status"]; coverage: string[]; cost_microunits: number }): Promise<TaskOutcome> {
       const adapter = task.adapter ?? criteriaAdapter;
       const task_id = randomUUID();
-      const brief = {
+      const brief: WorkBrief = {
         schema_version: "1", purpose: task.purpose, process: "investigation", task_id, frame_ref: null, definitions: [],
         scope: { ...scope, task_id }, inputs: { memories: [], sources: [], artifacts: [] }, capabilities: { sources: [], queries: [], tools: [] },
         known_conflicts: [], evidence_cutoff: new Date().toISOString(), freshness_requirement: "current",
@@ -100,39 +98,33 @@ async function armWorld() {
       const submitted = expectKind(await client.request({
         action: "submit",
         command: { request_id: randomUUID(), command_version: "1", tenant_id, actor_id, scope: brief.scope, job_id: null, session_id: null, operation_id: null, lane_id: null, invocation_id: null, expected_revisions: [], deadline: minutes(20), budget_id: budget.id, lease_epoch: null, payload: { brief, parent_id: null, max_attempts: 2, retain_until: minutes(60) } },
-      } as never), "job").job;
+      }), "job").job;
       try {
         const claimed = expectKind(await client.request({ action: "claim", job_id: submitted.id, lease_seconds: 300 }), "assignment");
         const fence = fenceFor(claimed.assignment);
         await client.request({ action: "start", fence });
-        const result = {
+        const result: WorkResult = {
           schema_version: "1", status: expected.status, examined_scope: brief.scope, inputs: brief.inputs,
           findings: [], coverage: { examined: expected.coverage, unexamined: [] }, unresolved_work: expected.status === "complete" ? [] : ["Dry-run: no live model installed"],
           proposed_changes: [], child_outputs: [], known_effects: [],
           usage: { status: "known", input_tokens: 0, output_tokens: 0, cost: { minor_units: expected.cost_microunits, currency: "USD" } },
         };
-        await client.request({ action: "complete", fence, request_id: randomUUID(), result: result as never });
-        const validation = adapter.validate(brief as never, result as never, []);
+        await client.request({ action: "complete", fence, request_id: randomUUID(), result });
+        const validation = adapter.validate(brief, result, []);
         return { task_id: task.id, arm, operational: "settled", semantic: validation.verdict, reasons: validation.reasons, cost_microunits: expected.cost_microunits };
       } catch (error) {
         return { task_id: task.id, arm, operational: "error", semantic: "unknown", reasons: [error instanceof Error ? error.message : String(error)], cost_microunits: 0 };
       }
     },
-    async committedCost(): Promise<number> {
-      const usage = expectKind(await client.request({ action: "budget_usage", budget_id: budget.id }), "budget_usage").usage;
-      return usage.committed.cost_microunits;
-    },
     async close() { host.kill("SIGINT"); await once(host, "exit"); await rm(base, { recursive: true, force: true }); },
   };
 }
 
-/** Runs every task in every arm against its own isolated Host, holding transfer tasks out until the
- * arm's other tasks have run (giving a memory process something to have formed from first). Paid,
- * live benchmarks gate behind `MEMORY_LIVE_CAMPAIGN=1` in their own caller; this function itself never
- * makes a network call to a paid provider — it only drives the Host and a supplied outcome per task. */
-export async function runCampaign(
+/** Runs supplied outcomes through isolated Hosts and checks ordering and report calculations.
+ * This function does not execute models or memory processes. */
+export async function runFixtureCampaign(
   tasks: CampaignTask[],
-  expectedByTaskAndArm: Record<string, Record<Arm, { status: string; coverage: string[]; cost_microunits: number }>>,
+  expectedByTaskAndArm: Record<string, Record<Arm, { status: WorkResult["status"]; coverage: string[]; cost_microunits: number }>>,
 ): Promise<CampaignReport> {
   const seeds = tasks.filter((t) => !t.transfer);
   const transfers = tasks.filter((t) => t.transfer);
@@ -147,12 +139,7 @@ export async function runCampaign(
         armOutcomes.push(await world.runTask(task, arm, expected));
       }
       outcomes.push(...armOutcomes);
-      // `budget_usage` reflects only reservations a real provider call makes; a fixture-driven dry
-      // run supplies its own declared cost per outcome instead, and sums those for this arm's total.
-      // A live campaign's task adapters drive genuine provider calls, so `world.committedCost()`
-      // (still exercised here to prove the wiring) becomes the authoritative total in that case.
-      const reserved = await world.committedCost();
-      cost_by_arm[arm] = reserved || armOutcomes.reduce((sum, o) => sum + o.cost_microunits, 0);
+      cost_by_arm[arm] = armOutcomes.reduce((sum, outcome) => sum + outcome.cost_microunits, 0);
     } finally {
       await world.close();
     }
@@ -173,19 +160,19 @@ export async function runCampaign(
 export async function dryRun(): Promise<CampaignReport> {
   const dir = dirname(fileURLToPath(import.meta.url));
   const fixtures = JSON.parse(await readFile(join(dir, "fixtures/dry-run-tasks.json"), "utf8")) as {
-    id: string; purpose: string; transfer: boolean; expected: Record<Arm, { status: string; coverage: string[]; cost_microunits: number }>;
+    id: string; purpose: string; transfer: boolean; expected: Record<Arm, { status: WorkResult["status"]; coverage: string[]; cost_microunits: number }>;
   }[];
   const tasks: CampaignTask[] = fixtures.map((f) => ({ id: f.id, purpose: f.purpose, transfer: f.transfer }));
   const expected = Object.fromEntries(fixtures.map((f) => [f.id, f.expected]));
-  return runCampaign(tasks, expected);
+  return runFixtureCampaign(tasks, expected);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   if (process.env.MEMORY_LIVE_CAMPAIGN !== "1") {
-    console.log("Dry run (set MEMORY_LIVE_CAMPAIGN=1 with a real task list and provider credentials for a live campaign):");
+    console.log("Fixture dry run (supplied outcomes and costs; no model or worker pool):");
     console.log(JSON.stringify(await dryRun(), null, 2));
   } else {
-    console.error("Live campaigns need a real task list; this entrypoint only ships the dry-run fixture. See evals/campaign/README.md.");
+    console.error("Live campaign execution is not implemented; this entrypoint only runs fixtures. See evals/campaign/README.md.");
     process.exit(1);
   }
 }

@@ -76,28 +76,49 @@ impl Store {
         processes: &[Process],
         limit: usize,
     ) -> Result<Vec<Uuid>> {
+        if processes.is_empty() || limit == 0 {
+            return Ok(vec![]);
+        }
         let mut connection = self.pool.acquire().await?;
         let now = Utc::now().timestamp_millis();
         let (filter, values) = predicate(authority);
         let sql = format!(
-            "SELECT j.id, j.spec FROM jobs j JOIN resource_scopes s ON s.tenant_id=j.tenant_id AND s.id=j.id WHERE {filter} AND j.state='queued' AND j.cancel_requested=0 AND j.deadline>$__NOW AND (j.ready_at IS NULL OR j.ready_at<=$__NOW) ORDER BY j.id LIMIT 500"
+            "SELECT j.id, j.spec FROM jobs j JOIN resource_scopes s ON s.tenant_id=j.tenant_id AND s.id=j.id WHERE {filter} AND j.state='queued' AND j.cancel_requested=0 AND j.deadline>$__NOW AND (j.ready_at IS NULL OR j.ready_at<=$__NOW) AND j.id>$__AFTER ORDER BY j.id LIMIT 500"
         );
         let index = values.len() + 1;
-        let sql = sql.replace("$__NOW", &format!("${index}"));
-        let mut query = sqlx::query(&sql);
-        for value in values {
-            query = query.bind(value);
-        }
-        query = query.bind(now);
+        let sql = sql
+            .replace("$__NOW", &format!("${index}"))
+            .replace("$__AFTER", &format!("${}", index + 1));
         let mut candidates = Vec::new();
-        for row in query.fetch_all(&mut *connection).await? {
-            let spec: SubmitJob = serde_json::from_str(row.try_get("spec")?)?;
-            if processes.contains(&spec.brief.process) && authority.scope.permits(&spec.brief.scope)
-            {
-                candidates.push((
-                    crate::database::id(row.try_get("id")?)?,
-                    spec.brief.scope.project_id,
-                ));
+        let mut after = String::new();
+        // Bound eligible candidates, not unrelated queued work from disabled modules.
+        while candidates.len() < 500 {
+            let mut query = sqlx::query(&sql);
+            for value in &values {
+                query = query.bind(value);
+            }
+            let rows = query
+                .bind(now)
+                .bind(&after)
+                .fetch_all(&mut *connection)
+                .await?;
+            if rows.is_empty() {
+                break;
+            }
+            for row in rows {
+                after = row.try_get("id")?;
+                let spec: SubmitJob = serde_json::from_str(row.try_get("spec")?)?;
+                if processes.contains(&spec.brief.process)
+                    && authority.scope.permits(&spec.brief.scope)
+                {
+                    candidates.push((
+                        crate::database::id(row.try_get("id")?)?,
+                        spec.brief.scope.project_id,
+                    ));
+                    if candidates.len() == 500 {
+                        break;
+                    }
+                }
             }
         }
         // Fair claiming: projects with fewer leased or running jobs come first; age breaks ties.

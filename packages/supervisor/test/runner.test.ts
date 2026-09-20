@@ -23,6 +23,12 @@ const composed = (handlers: ProcessHandler[]) =>
 const seconds = (n: number) => new Date(Date.now() + n * 1000).toISOString();
 const sleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
 
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
 function assignmentFor(process: Process, sessionId = randomUUID()): Assignment {
   const brief = input("before-correction").command.payload;
   return {
@@ -264,4 +270,70 @@ it("shutdown cancels running work once the drain window passes", async () => {
   }, withAbortSignal(controller.signal, BACKGROUND_CONTEXT));
   expect(log.some((l) => l.includes("failed") && l.includes("cancelled by shutdown"))).toBe(true);
   expect(host.calls.at(-1)).toMatchObject({ action: "renew", lease_seconds: 1 });
+});
+
+it("a failed claim drains and closes active assignments before rejecting", async () => {
+  const assignment = assignmentFor("formation");
+  const host = scriptedHost([assignment]);
+  const controller = new AbortController();
+  const started = deferred();
+  const finished = deferred();
+  let closed = false;
+  const handler: ProcessHandler = {
+    process: "formation",
+    async run(run) {
+      started.resolve();
+      try {
+        await new Promise<void>((_, reject) => run.context.abortSignal!.addEventListener("abort", () => reject(new Error("stopped")), { once: true }));
+      } finally {
+        closed = true;
+        finished.resolve();
+      }
+    },
+  };
+  let claims = 0;
+  try {
+    await expect(runSupervisor({
+      host: { async request(command) {
+        if (++claims === 1) return host.request(command);
+        await started.promise;
+        throw new Error("claim transport failed");
+      } },
+      connect: () => host, concurrency: 2, pollMs: 10, leaseSeconds: 60, drainMs: 10,
+      sessionsDirectory: base, composition: composed([handler]), log: () => {},
+    }, withAbortSignal(controller.signal, BACKGROUND_CONTEXT))).rejects.toThrow("claim transport failed");
+    expect(closed).toBe(true);
+    expect(host.calls.at(-1)).toMatchObject({ action: "renew", lease_seconds: 1 });
+    expect(getEventListeners(controller.signal, "abort")).toHaveLength(0);
+  } finally {
+    controller.abort();
+    await finished.promise;
+    await sleep(30);
+  }
+});
+
+it("an aborted in-flight claim still drains work and exits normally", async () => {
+  const assignment = assignmentFor("formation");
+  const host = scriptedHost([assignment]);
+  const controller = new AbortController();
+  const started = deferred();
+  let finished = false;
+  const handler: ProcessHandler = { process: "formation", async run() {
+    started.resolve();
+    await sleep(30);
+    finished = true;
+  } };
+  let claims = 0;
+  await runSupervisor({
+    host: { async request(command) {
+      if (++claims === 1) return host.request(command);
+      await started.promise;
+      controller.abort();
+      throw controller.signal.reason;
+    } },
+    connect: () => host, concurrency: 2, pollMs: 10, leaseSeconds: 60, drainMs: 100,
+    sessionsDirectory: base, composition: composed([handler]), log: () => {},
+  }, withAbortSignal(controller.signal, BACKGROUND_CONTEXT));
+  expect(finished).toBe(true);
+  expect(getEventListeners(controller.signal, "abort")).toHaveLength(0);
 });

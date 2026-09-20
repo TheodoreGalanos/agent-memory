@@ -6,6 +6,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
+/// Maximum records admitted to a consolidation cohort.
+pub const MAX_COHORT_SIZE: u16 = 64;
+
 fn default_min_cohort_size() -> u16 {
     3
 }
@@ -38,7 +41,7 @@ impl ConsolidationPolicy {
             || !(0.0..=1.0).contains(&self.maximum_regression)
             || self.min_cohort_size == 0
             || self.max_cohort_size < self.min_cohort_size
-            || self.max_cohort_size > 64
+            || self.max_cohort_size > MAX_COHORT_SIZE
         {
             return Err(
                 "Consolidation needs positive source/holdout counts, rates in [0,1] and a sane cohort size range".into(),

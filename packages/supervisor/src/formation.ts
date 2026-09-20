@@ -1,17 +1,15 @@
+import { requestId } from "../../host-client/src/identity.js";
 // ABOUTME: Formation process module for the pool: derives one bounded capture window per input source
 // ABOUTME: from the assignment, runs each under the runner's lease, and publishes the combined WorkResult.
-import { createHash } from "node:crypto";
 import type { Assignment } from "../../../contracts/generated/assignment.js";
 import type { FormationResult } from "../../../contracts/generated/formation-result.js";
 import type { FormationWindow } from "../../../contracts/generated/formation-window.js";
 import type { HostResponse } from "../../../contracts/generated/host-response.js";
 import type { WorkResult } from "../../../contracts/generated/work-result.js";
-import type { JudgementOptions } from "../../judgement/src/runtime.js";
-import { catalogueResponses } from "../../judgement/src/responses.js";
 import { runFormation } from "../../formation/src/index.js";
 import type { ProcessModule, Services } from "./composition.js";
 import type { ProcessHandler, ProcessRun } from "./runner.js";
-import { observeProvider } from "./trace.js";
+import { judgementFor } from "./judgement.js";
 
 type FormationDeps = Required<Pick<Services, "judgement">>;
 
@@ -38,17 +36,8 @@ export function formationInput(assignment: Assignment): FormationInput {
   if (brief.process !== "formation") throw new Error("Formation input needs a formation assignment");
   return {
     operation: brief.purpose.trim().slice(0, 200) || "capture",
-    windows: brief.inputs.sources.map((source) => ({ id: windowId(assignment.job.id, source), source, limit: 32 })),
+    windows: brief.inputs.sources.map((source) => ({ id: requestId(assignment.job.id, source.source_id, source.revision), source, limit: 32 })),
   };
-}
-
-/** A UUID derived from the job and a source so retries reuse the same window or request id. */
-export function windowId(jobId: string, source: { source_id: string; revision: string }): string {
-  const digest = createHash("sha256").update(`${jobId}:${source.source_id}:${source.revision}`).digest();
-  digest[6] = (digest[6] & 0x0f) | 0x80;
-  digest[8] = (digest[8] & 0x3f) | 0x80;
-  const hex = digest.subarray(0, 16).toString("hex");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }
 
 export function formationHandler(deps: FormationDeps): ProcessHandler<"formation"> {
@@ -63,25 +52,13 @@ async function runFormationJob(run: ProcessRun, deps: FormationDeps) {
   const input = formationInput(assignment);
   if (assignment.job.state !== "running")
     await host.request({ action: "start", fence, composition: run.composition }, context.abortSignal);
-  const { primary, fallback, comparison } = deps.judgement;
-  const judgement: JudgementOptions = {
-    primary: observeProvider(primary, "primary", log),
-    fallback: fallback ? observeProvider(fallback, "fallback", log) : undefined,
-    comparison: comparison ? { provider: observeProvider(comparison.provider, "comparison", log) } : undefined,
-    maxAttempts: 1,
-    responses: catalogueResponses,
-    disclosure: {
-      policy: brief.disclosure_policy,
-      scope: brief.scope,
-      providers: [primary.id, ...(fallback ? [fallback.id] : []), ...(comparison ? [comparison.provider.id] : [])],
-    },
-  };
+  const judgement = judgementFor(deps.judgement, brief, log);
   const results: FormationResult[] = [];
   for (const window of input.windows) {
     // Continue bounded windows while the source has more, up to the per-source allowance; what is
     // left is reported as unexamined and a later job continues the cursor.
     for (let continuation = 0; continuation < MAX_WINDOWS_PER_SOURCE; continuation++) {
-      const id = continuation ? windowId(assignment.job.id, { ...window.source, revision: `${window.source.revision}#${continuation}` }) : window.id;
+      const id = continuation ? requestId(assignment.job.id, window.source.source_id, `${window.source.revision}#${continuation}`) : window.id;
       const result = await runFormation(host, assignment, session, { ...window, id, operation: input.operation }, judgement, context);
       results.push(result);
       log(`job ${assignment.job.id} source ${window.source.source_id}@${window.source.revision} window ${continuation + 1}: retained ${result.records.length}, deferred ${result.deferred.length}${result.remaining ? ", more remains" : ""}`);
@@ -106,7 +83,7 @@ async function runFormationJob(run: ProcessRun, deps: FormationDeps) {
     usage,
   };
   const committed: HostResponse = await host.request(
-    { action: "complete", request_id: windowId(assignment.job.id, { source_id: "complete", revision: String(assignment.job.attempt) }), fence, result: completion },
+    { action: "complete", request_id: requestId(assignment.job.id, "complete", String(assignment.job.attempt)), fence, result: completion },
     context.abortSignal,
   );
   log(`job ${assignment.job.id} ${committed.kind === "job" ? committed.job.state : committed.kind}`);

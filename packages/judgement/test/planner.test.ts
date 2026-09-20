@@ -49,3 +49,11 @@ it("splits a compatible group that exceeds the packet bound", () => {
   expect(waves).toHaveLength(1);
   expect(waves[0].map((p) => p.questions.length)).toEqual([4, 4, 2]);
 });
+
+it("preserves each question's evidence coverage when batching shared fields", () => {
+  const first = { ...field("candidate"), coverage: ["assessment"] };
+  const second = { ...field("candidate"), coverage: ["faithfulness"] };
+  const waves = planPackets([q("J01", [first]), q("J02", [second])]);
+  expect(waves.flat().flatMap((p) => p.fields.flatMap((f) => f.coverage))).toContain("faithfulness");
+  expect(first.coverage).toEqual(["assessment"]);
+});

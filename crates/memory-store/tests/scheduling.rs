@@ -5,6 +5,9 @@ use memory_domain::{consolidation::*, contracts::*, coordination::*, intentions:
 use memory_store::Store;
 use uuid::Uuid;
 
+#[path = "scheduling/backlog.rs"]
+mod backlog;
+
 struct Fixture {
     auth: Authority,
     policy: ConfigRef,
@@ -293,6 +296,29 @@ async fn consolidation_cohort(store: &Store) {
     );
 }
 
+async fn concurrent_consolidation_sweeps(store: &Store) {
+    let f = setup(store).await;
+    for label in ["first", "second"] {
+        store
+            .create_memory(&f.auth, candidate(&f.project_scope, &f.policy, label))
+            .await
+            .unwrap();
+    }
+    let (first, second) = tokio::join!(
+        store.schedule_consolidation(&f.auth, 10),
+        store.schedule_consolidation(&f.auth, 10),
+    );
+    assert_eq!(first.unwrap() + second.unwrap(), 1);
+    assert_eq!(
+        store
+            .queued_jobs(&f.auth, &[Process::Consolidation], 10)
+            .await
+            .unwrap()
+            .len(),
+        1
+    );
+}
+
 async fn qualification_after_consolidation(store: &Store, raw: &sqlx::AnyPool) {
     let f = setup(store).await;
     let task_id = Uuid::now_v7();
@@ -309,6 +335,27 @@ async fn qualification_after_consolidation(store: &Store, raw: &sqlx::AnyPool) {
         Utc::now() + Duration::minutes(30),
     )
     .await;
+    // Earlier reviews that retained nothing must not hide later candidates at the page boundary.
+    for _ in 0..500 {
+        let review_id = Uuid::now_v7();
+        insert_consolidation_review(
+            raw,
+            &f.auth,
+            review_id,
+            consolidation_job,
+            &ConsolidationResult {
+                review_id,
+                record: None,
+                deferred: vec![],
+                independent_sources: 0,
+                coverage: Coverage {
+                    examined: vec![],
+                    unexamined: vec![],
+                },
+            },
+        )
+        .await;
+    }
     let review_id = Uuid::now_v7();
     let result = ConsolidationResult {
         review_id,
@@ -465,6 +512,28 @@ async fn maintenance_on_correction_and_causal_skip(store: &Store, raw: &sqlx::An
         )
         .await
         .unwrap();
+    // Non-correction history must not monopolize each sweep's first page.
+    for index in 0..500 {
+        let notice = memory_domain::maintenance::MemoryChangeNotice {
+            id: Uuid::now_v7(),
+            cursor: index + 1,
+            previous: base.reference.clone(),
+            current: base.reference.clone(),
+            kind: memory_domain::maintenance::ChangeKind::Wording,
+            reason: "Historical wording change".into(),
+            scope: f.project_scope.clone(),
+            valid_time: ValidTime::Unknown,
+        };
+        sqlx::query("INSERT INTO memory_changes(tenant_id,id,cursor,resource_id,data) VALUES($1,$2,$3,$4,$5)")
+            .bind(f.auth.tenant_id.to_string()).bind(notice.id.to_string()).bind(i64::from(index + 1))
+            .bind(base.reference.memory_id.to_string()).bind(serde_json::to_string(&notice).unwrap())
+            .execute(raw).await.unwrap();
+    }
+    // Keep the store clock beyond the inserted historical notices.
+    sqlx::query("UPDATE commit_clock SET sequence=sequence+500 WHERE id=1")
+        .execute(raw)
+        .await
+        .unwrap();
     let mut corrected = base.record.clone();
     if let MemoryContent::Knowledge { statement, .. } = &mut corrected.content {
         *statement = "Corrected statement".into();
@@ -618,6 +687,14 @@ async fn maintenance_on_source_revision(store: &Store) {
     let mut draft = candidate(&f.project_scope, &f.policy, "sourced");
     draft.source_locators = vec![locator.id];
     let sourced = store.create_memory(&f.auth, draft).await.unwrap();
+    for _ in 0..500 {
+        let mut unrelated = source.clone();
+        unrelated.reference.source_id = Uuid::now_v7();
+        store
+            .register_source_version(&f.auth, unrelated)
+            .await
+            .unwrap();
+    }
     let mut revised_source = source.clone();
     revised_source.reference.revision = "2".into();
     store
@@ -823,6 +900,9 @@ async fn suite(url: &str) {
     let store = Store::connect(url).await.unwrap();
     let raw = sqlx::AnyPool::connect(url).await.unwrap();
     consolidation_cohort(&store).await;
+    concurrent_consolidation_sweeps(&store).await;
+    backlog::queued_processes(&store).await;
+    backlog::candidate_memories(&store).await;
     qualification_after_consolidation(&store, &raw).await;
     qualification_unschedulable_on_expired_budget(&store, &raw).await;
     maintenance_on_correction_and_causal_skip(&store, &raw).await;
@@ -840,6 +920,42 @@ async fn sqlite_scheduling() {
         temp.path().join("scheduling.sqlite").display()
     ))
     .await;
+}
+
+#[tokio::test]
+async fn consolidation_submission_rolls_back_if_recording_the_trigger_fails() {
+    let temp = tempfile::tempdir().unwrap();
+    let url = format!(
+        "sqlite://{}?mode=rwc",
+        temp.path().join("atomic.sqlite").display()
+    );
+    let store = Store::connect(&url).await.unwrap();
+    let raw = sqlx::AnyPool::connect(&url).await.unwrap();
+    let f = setup(&store).await;
+    for label in ["first", "second"] {
+        store
+            .create_memory(&f.auth, candidate(&f.project_scope, &f.policy, label))
+            .await
+            .unwrap();
+    }
+    sqlx::query("CREATE TRIGGER reject_schedule BEFORE INSERT ON scheduled_work BEGIN SELECT RAISE(ABORT, 'ledger unavailable'); END")
+        .execute(&raw).await.unwrap();
+    assert!(store.schedule_consolidation(&f.auth, 10).await.is_err());
+    assert!(
+        store
+            .queued_jobs(&f.auth, &[Process::Consolidation], 10)
+            .await
+            .unwrap()
+            .is_empty(),
+        "a failed scheduling transaction must not leave an unrecorded job"
+    );
+    sqlx::query("DROP TRIGGER reject_schedule")
+        .execute(&raw)
+        .await
+        .unwrap();
+    assert_eq!(store.schedule_consolidation(&f.auth, 10).await.unwrap(), 1);
+    raw.close().await;
+    store.close().await;
 }
 
 #[tokio::test]

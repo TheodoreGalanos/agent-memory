@@ -57,6 +57,8 @@ export function planPackets(questions: PlannedQuestion[], options: { maxQuestion
       depends_on: question.dependsOn,
     };
     if (compatible) {
+      for (const [index, field] of compatible.fields.entries())
+        field.coverage = [...new Set([...field.coverage, ...question.fields[index].coverage])];
       compatible.questions.push(entry);
       continue;
     }

@@ -64,6 +64,7 @@ export async function runSupervisor(options: SupervisorOptions, context: Context
   const { context: work, cancel: cancelWork } = withCancel(BACKGROUND_CONTEXT);
   let drainTimer: ReturnType<typeof setTimeout> | undefined;
   const onShutdown = () => {
+    if (drainTimer) return;
     drainTimer = setTimeout(cancelWork, options.drainMs ?? 0);
     drainTimer.unref();
   };
@@ -75,43 +76,66 @@ export async function runSupervisor(options: SupervisorOptions, context: Context
     typeof options.concurrency === "number"
       ? running.size < options.concurrency
       : [...running.values()].filter((c) => c === cls).length < (options.concurrency[cls] ?? 0);
-  const sleep = (ms: number) =>
-    new Promise<void>((done) => {
-      const signal = context.abortSignal;
-      const onAbort = () => { clearTimeout(timer); done(); };
-      const timer = setTimeout(() => { signal?.removeEventListener("abort", onAbort); done(); }, ms);
-      signal?.addEventListener("abort", onAbort, { once: true });
-    });
-  while (!context.abortSignal?.aborted) {
-    if (options.until && running.size === 0 && (await options.until())) break;
-    let claimedAny = false;
-    for (const cls of classes) {
-      const eligible = processes.filter((p) => CLASS_OF[p] === cls);
-      while (hasCapacity(cls) && !context.abortSignal?.aborted) {
-        const response = await options.host.request(
-          { action: "claim_next", processes: eligible, lease_seconds: options.leaseSeconds },
-          context.abortSignal,
-        );
-        if (response.kind === "idle") break;
-        if (response.kind !== "work") throw new Error(`Host returned ${response.kind} to claim_next`);
-        claimedAny = true;
-        const claimed: Work = { assignment: response.assignment, credential: response.credential };
-        const job = claimed.assignment.job;
-        const handler = registry.get(job.spec.brief.process);
-        if (!handler) throw new Error(`Host returned ${job.spec.brief.process} work this pool did not claim`);
-        log(`claimed ${job.spec.brief.process} job ${job.id} (attempt ${job.attempt})`);
-        const task: Promise<void> = runAssignment(claimed, handler, deps, work).finally(() => running.delete(task));
-        running.set(task, cls);
+  try {
+    while (!context.abortSignal?.aborted) {
+      if (options.until && running.size === 0 && (await options.until())) break;
+      let claimedAny = false;
+      for (const cls of classes) {
+        const eligible = processes.filter((p) => CLASS_OF[p] === cls);
+        while (hasCapacity(cls) && !context.abortSignal?.aborted) {
+          const response = await options.host.request(
+            { action: "claim_next", processes: eligible, lease_seconds: options.leaseSeconds },
+            context.abortSignal,
+          ).catch((error: unknown) => {
+            if (context.abortSignal?.aborted) return undefined;
+            throw error;
+          });
+          if (!response) break;
+          if (response.kind === "idle") break;
+          if (response.kind !== "work") throw new Error(`Host returned ${response.kind} to claim_next`);
+          claimedAny = true;
+          const claimed: Work = { assignment: response.assignment, credential: response.credential };
+          const job = claimed.assignment.job;
+          const handler = registry.get(job.spec.brief.process);
+          if (!handler) throw new Error(`Host returned ${job.spec.brief.process} work this pool did not claim`);
+          log(`claimed ${job.spec.brief.process} job ${job.id} (attempt ${job.attempt})`);
+          const task: Promise<void> = runAssignment(claimed, handler, deps, work)
+            .catch((error: unknown) => log(`job ${job.id} cleanup failed: ${error instanceof Error ? error.message : String(error)}`))
+            .finally(() => running.delete(task));
+          running.set(task, cls);
+        }
+      }
+      if (!claimedAny) {
+        if (running.size === 0) log("idle");
+        await waitForWork(running.keys(), options.pollMs, context.abortSignal);
       }
     }
-    if (!claimedAny) {
-      if (running.size === 0) log("idle");
-      await Promise.race([sleep(options.pollMs), ...running.keys()]);
+  } finally {
+    // Claim failures and shutdown share the same drain path. Always close sessions and leases
+    // before returning or propagating an error to the process entrypoint.
+    onShutdown();
+    if (running.size) log(`draining ${running.size} running job(s)`);
+    try {
+      await Promise.allSettled(running.keys());
+    } finally {
+      context.abortSignal?.removeEventListener("abort", onShutdown);
+      clearTimeout(drainTimer);
+      cancelWork();
     }
   }
-  if (running.size) log(`draining ${running.size} running job(s)`);
-  await Promise.allSettled(running.keys());
-  context.abortSignal?.removeEventListener("abort", onShutdown);
-  clearTimeout(drainTimer);
-  cancelWork();
+}
+
+/** Wake for completed work, the next poll, or shutdown; dispose the losing timer/listener. */
+async function waitForWork(tasks: Iterable<Promise<void>>, ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) return;
+  let wake!: () => void;
+  const waiting = new Promise<void>((resolve) => { wake = resolve; });
+  const timer = setTimeout(wake, ms);
+  signal?.addEventListener("abort", wake, { once: true });
+  try {
+    await Promise.race([waiting, ...tasks]);
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", wake);
+  }
 }

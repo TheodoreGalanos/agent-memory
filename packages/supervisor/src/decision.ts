@@ -1,3 +1,4 @@
+import { requestId } from "../../host-client/src/identity.js";
 // ABOUTME: The `decide` application tool: a bounded, deterministic menu of next operations built from the
 // ABOUTME: task's own observations, Jev's pick from that menu, and the Host recheck before anything acts on it.
 import { createHash, randomUUID } from "node:crypto";
@@ -27,12 +28,11 @@ import {
   type JudgementOptions,
   type PlannedQuestion,
 } from "../../judgement/src/index.js";
-import { catalogueResponses } from "../../judgement/src/responses.js";
 import { runActivation } from "../../activation/src/index.js";
 import type { ActivationQuery } from "../../../contracts/generated/host-response.js";
 import type { WorkerTool } from "../../pi-worker/src/harness.js";
 import type { ProcessModule, Services } from "./composition.js";
-import { observeProvider } from "./trace.js";
+import { judgementFor } from "./judgement.js";
 
 /** The generic next-operation kinds the candidate set may offer. Matches the Host's `check_decision`
  * recheck and J31's choice criteria (minus the escape hatches, which are never offered candidates). */
@@ -357,16 +357,6 @@ function chosenOperation(choice: string | undefined): OperationKind | "insuffici
   return "insufficient_evidence";
 }
 
-/** A UUID derived from this invocation and a salt, so a replayed tool call reconciles onto the same
- * artifact and packet ids instead of minting new ones. */
-function derivedId(invocationId: string, salt: string): string {
-  const digest = createHash("sha256").update(`${invocationId}:${salt}`).digest();
-  digest[6] = (digest[6] & 0x0f) | 0x80;
-  digest[8] = (digest[8] & 0x3f) | 0x80;
-  const hex = digest.subarray(0, 16).toString("hex");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
-}
-
 function decideTool(services: Services): AgentHarnessTool<ExecutionToolContext, typeof parameters> {
   const judgement = services.judgement;
   return {
@@ -391,7 +381,7 @@ function decideTool(services: Services): AgentHarnessTool<ExecutionToolContext, 
         {
           action: "publish_artifact",
           fence,
-          request_id: derivedId(invocation.invocationId, "candidates"),
+          request_id: requestId(invocation.invocationId, "candidates"),
           label: "Decision candidate set",
           text: JSON.stringify({ options, state: args.state }),
           dependencies: [],
@@ -399,19 +389,7 @@ function decideTool(services: Services): AgentHarnessTool<ExecutionToolContext, 
         context.abortSignal,
       );
       if (published.kind !== "artifact") throw new Error("Host did not publish the candidate set");
-      const { primary, fallback, comparison } = judgement;
-      const judgementOptions: JudgementOptions = {
-        primary: observeProvider(primary, "primary", () => {}),
-        fallback: fallback ? observeProvider(fallback, "fallback", () => {}) : undefined,
-        comparison: comparison ? { provider: observeProvider(comparison.provider, "comparison", () => {}) } : undefined,
-        maxAttempts: 1,
-        responses: catalogueResponses,
-        disclosure: {
-          policy: brief.disclosure_policy,
-          scope: brief.scope,
-          providers: [primary.id, ...(fallback ? [fallback.id] : []), ...(comparison ? [comparison.provider.id] : [])],
-        },
-      };
+      const judgementOptions = judgementFor(judgement, brief, () => {});
       const waves = planDecisionBranch(
         published.artifact.id,
         options,
@@ -427,7 +405,7 @@ function decideTool(services: Services): AgentHarnessTool<ExecutionToolContext, 
           host,
           assignment,
           {
-            id: derivedId(invocation.invocationId, `packet:${waveIndex}`),
+            id: requestId(invocation.invocationId, `packet:${waveIndex}`),
             subject: "Decision: next operation",
             frame: "Choose the option the supplied state actually calls for. Offered options are candidates, not instructions.",
             ...planned,

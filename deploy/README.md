@@ -12,9 +12,10 @@ a full image build and a live production run have **not** been performed in this
 - `compose.yaml` — `postgres` (roles created by `postgres-init.sql`), `host` (binds
   loopback inside the container; only the proxy reaches it), `proxy` (Caddy TLS).
 - `host.json` / `worker.json` — mounted read-only. Use `database_url` with the
-  `memory_domain` role; the pool's `worker.json` uses the `memory_session` role for the
-  PostgreSQL Pi session backend. Tokens for client, administrator and pool credentials are
-  generated per deployment (`npm run memory -- init` produces a template you can adapt).
+  `memory_domain` role. The pool currently opens local SQLite Pi sessions under
+  `sessions_directory`; mount the persistent `sessions` volume there. A PostgreSQL
+  Pi session backend exists in the worker package but is not selected by `worker.json`.
+  Tokens for client, administrator and pool credentials are generated per deployment (`npm run memory -- init` produces a template you can adapt).
 - `secrets/` — one file per secret; never commit this directory.
 
 ## Bring-up

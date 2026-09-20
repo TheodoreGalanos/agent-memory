@@ -1,4 +1,4 @@
-// ABOUTME: Tests for the independent output validator: criteriaAdapter checks a settled result's own
+// ABOUTME: Tests for the structural output validator: criteriaAdapter checks a settled result's own
 // ABOUTME: coverage and findings against the brief's output criteria, and adapter selection by profile label.
 import { expect, it } from "vitest";
 import type { WorkBrief, WorkResult } from "../../../contracts/generated/assignment.js";
@@ -40,19 +40,6 @@ it("cannot assess a blocked task either way", () => {
   const b = brief(["Covered"]);
   const r = result({ status: "blocked" });
   expect(criteriaAdapter.validate(b, r, [])).toEqual({ verdict: "unknown", reasons: expect.arrayContaining([expect.stringContaining("blocked")]) });
-});
-
-it("observes tool_result and message experience events, bounded, and ignores everything else", () => {
-  const events = [
-    { event_id: "1", observed_at: "now", kind: "tool_result", origin: "observed", evidential_status: "observation", content: { text: "Clearance 2.0 m" } },
-    { event_id: "2", observed_at: "now", kind: "tool_call", origin: "agent_generated", evidential_status: "inference", content: { tool: "read" } },
-    { event_id: "3", observed_at: "now", kind: "message", origin: "agent_generated", evidential_status: "inference", content: { role: "assistant", text: "Done" } },
-  ] as never[];
-  const observed = criteriaAdapter.observe(events);
-  expect(observed).toHaveLength(2);
-  expect(observed.join(" ")).toContain("tool_result");
-  expect(observed.join(" ")).toContain("message");
-  expect(observed.join(" ")).not.toContain("tool_call");
 });
 
 it("selects an installed adapter by the brief's profile label, and the default otherwise", () => {
