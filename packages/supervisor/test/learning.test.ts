@@ -10,7 +10,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/pi-agent-core";
 import { createModels, fauxProvider, fauxAssistantMessage, type TranscriptContext } from "@earendil-works/pi-ai";
 import { expect, it } from "vitest";
-import type { HostRequest, RecordDraft, MemoryPolicy } from "../../../contracts/generated/host-request.js";
+import type { HostRequest, RecordDraft, MemoryPolicy, Scope } from "../../../contracts/generated/host-request.js";
 import type { HostResponse } from "../../../contracts/generated/host-response.js";
 import type { JudgementPacket } from "../../../contracts/generated/judgement-packet.js";
 import type { ConsolidationWindow } from "../../../contracts/generated/consolidation-review.js";
@@ -54,12 +54,12 @@ const SETTLED = ["completed", "partial", "failed"];
 
 interface World {
   base: string; url: string; host: ReturnType<typeof spawn>; client: HostClient; admin: HostClient; pool: HostClient;
-  scope: Record<string, unknown>; policy: { reference: unknown }; budget: { id: string }; profile: { id: string; revision: number; label: string };
+  scope: Scope; policy: { reference: unknown }; budget: { id: string }; profile: { id: string; revision: number; label: string };
   submit: (process: LearningProcess, extra: Record<string, unknown>) => Promise<import("../../../contracts/generated/host-response.js").Job>;
   job: (id: string) => Promise<import("../../../contracts/generated/host-response.js").Job>;
   contribute: (record: Partial<RecordDraft> & Pick<RecordDraft, "content" | "label">, task_id?: string) => Promise<import("../../../contracts/generated/host-response.js").MemoryVersion>;
   createPolicy: (label: string, policy: MemoryPolicy) => Promise<{ id: string; revision: number; label: string }>;
-  publishArtifact: (label: string, data: unknown, task_id?: string) => Promise<{ id: string; task_id: string; scope: Record<string, unknown> }>;
+  publishArtifact: (label: string, data: unknown, task_id?: string) => Promise<{ id: string; task_id: string; scope: Scope }>;
   ingestCapture: (events: unknown[]) => Promise<{ source_id: string; revision: string }>;
   close: () => Promise<void>;
 }
@@ -308,3 +308,165 @@ it("an activation job settles a standalone retrieval through the pool", async ()
     await w.close();
   }
 }, 60_000);
+
+it("forms, consolidates, qualifies, adopts, retrieves and maintains memory across the pool without manual intervention", async () => {
+  const w = await world();
+  try {
+    const judgementFaux = fauxProvider(), judgementModels = createModels();
+    judgementModels.setProvider(judgementFaux.provider);
+    const taskFaux = fauxProvider(), taskModels = createModels();
+    taskModels.setProvider(taskFaux.provider);
+    const taskModel = taskService(taskModels, taskFaux);
+    const judgementOptions = (scope: Scope) => ({
+      primary: scriptedJudgement(judgementFaux, judgementModels),
+      maxAttempts: 1,
+      disclosure: { policy: "local-test-only", scope, providers: ["reference"] },
+    });
+
+    // Several related knowledge/episode records exist, formed automatically from ordinary task experience.
+    const members = await formCohort(w, judgementFaux, judgementModels);
+
+    // TODO(4c): scheduled by the Host once lane B lands — a cohort scheduler would select this cohort and
+    // submit the consolidation job itself; here it is submitted by hand in its place.
+    const learningTaskId = randomUUID();
+    const learningScope = { ...w.scope, task_id: learningTaskId };
+    const suite = {
+      evaluator_profile: w.profile,
+      cases: [
+        { id: "held-out-a", source_group: randomUUID(), conditions: ["Lease looks stuck"], task: { representative: true }, expected: { resumed: true } },
+        { id: "held-out-b", source_group: randomUUID(), conditions: ["Lease looks stuck, restated"], task: { representative: true }, expected: { resumed: true } },
+      ],
+    };
+    const suiteArtifact = await w.publishArtifact("Qualification suite", suite, learningTaskId);
+    const consolidationPolicy = await w.createPolicy("Unattended learning", {
+      retention_purpose: "test", allowed_uses: [], source_rules: [], evidence_requirements: [], applicability_rules: [], budget_class: "test", scheduling_priority: 0,
+      judgement_dispositions: [], notification_policy: "quiet", qualification_requirements: [],
+      consolidation: { min_independent_sources: 1, min_held_out_groups: 1, minimum_success_rate: 0, maximum_regression: 1, maximum_cost_microunits: 1_000_000, evaluator_profile: w.profile },
+    });
+    const consolidationJob = await w.submit("consolidation", {
+      task_id: learningTaskId, scope: learningScope, policy: consolidationPolicy,
+      inputs: { memories: members, sources: [], artifacts: [suiteArtifact.id] }, capabilities: { sources: [], queries: [], tools: ["read"] },
+    });
+    const claimed = expectKind(await w.admin.request({ action: "claim", job_id: consolidationJob.id, lease_seconds: 300 }), "assignment");
+    const consolidationAssignment = claimed.assignment, consolidationFence = fenceFor(consolidationAssignment);
+    await w.admin.request({ action: "start", fence: consolidationFence });
+    // The consolidation job stays open (never completed) through evaluation and adoption, since
+    // start_qualification and adopt_procedure both need its live fence — driven directly here rather
+    // than through consolidationModule, which settles a consolidation job as soon as it has a result.
+    let session = await openLocalSession(join(w.base, "sessions"), consolidationAssignment.job.session_id);
+    const consolidationInputValue = consolidationInput(consolidationAssignment);
+    scriptedTaskModel(taskFaux);
+    const synthesize = (window: ConsolidationWindow, ctx: Parameters<typeof synthesizeProposal>[2]) => synthesizeProposal(taskModel, window, ctx);
+    const result = await runConsolidation(
+      w.admin, consolidationAssignment, session.session, consolidationInputValue,
+      { ...judgementOptions(learningScope), synthesize }, context,
+    );
+    expect(result.record, JSON.stringify(result)).toBeTruthy();
+    const candidate = result.record!;
+
+    // Restart safety: a crash before the job completes resumes from the same session without re-judging,
+    // re-synthesizing or creating a second candidate.
+    await session.close();
+    session = await openLocalSession(join(w.base, "sessions"), consolidationAssignment.job.session_id);
+    const judgementCallsBefore = judgementFaux.state.callCount;
+    scriptedTaskModel(taskFaux);
+    const resumed = await runConsolidation(
+      w.admin, consolidationAssignment, session.session, consolidationInputValue,
+      { ...judgementOptions(learningScope), synthesize }, context,
+    );
+    expect(resumed.record?.reference).toEqual(candidate.reference);
+    expect(judgementFaux.state.callCount).toBe(judgementCallsBefore);
+
+    // TODO(4c): scheduled by the Host once lane B lands — a qualification scheduler would call
+    // start_qualification itself once a candidate procedure exists; here it is called by hand.
+    const started = expectKind(await w.admin.request({
+      action: "start_qualification", fence: consolidationFence, request_id: randomUUID(), review_id: result.review_id, suite_id: suiteArtifact.id,
+    }), "job");
+    // A qualification job runs its trials unattended through the real pool: claimed, executed and
+    // settled without any of this test driving its internals directly.
+    await runSupervisor({
+      host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 60, sessionsDirectory: join(w.base, "sessions"),
+      composition: compose({ taskModel }, "evaluation"),
+      log: () => {}, until: async () => SETTLED.includes((await w.job(started.job.id)).state),
+    }, context);
+    expect((await w.job(started.job.id)).state).toBe("completed");
+    const adopted = expectKind(await w.admin.request({ action: "adopt_procedure", fence: consolidationFence, evaluation_job: started.job.id }), "adoption_result");
+    expect(adopted.result.adopted, JSON.stringify(adopted.result)).toBe(true);
+
+    // The consolidation job settles now that adoption is complete, closing out its own record.
+    await w.admin.request({
+      action: "complete", fence: consolidationFence, request_id: randomUUID(),
+      result: {
+        schema_version: "1", status: "complete", examined_scope: learningScope, inputs: consolidationAssignment.job.spec.brief.inputs,
+        findings: [], coverage: { examined: result.coverage.examined, unexamined: [] }, unresolved_work: [], proposed_changes: [], child_outputs: [], known_effects: [],
+        usage: { status: "unknown", input_tokens: null, output_tokens: null, cost: null },
+      },
+    });
+    await session.close();
+
+    // A later task's activation retrieves the adopted method in the same task scope the method was
+    // adopted into — cross-task promotion to project scope is a maintenance/policy concern outside this
+    // pipeline's proof. Adoption revised the candidate (candidate -> evaluated), which leaves its original
+    // derived_from relations pointing at the pre-adoption revision; activation's group-completeness check
+    // treats that historical, now-superseded endpoint as missing evidence and defers the whole group even
+    // though the candidate itself was retrieved and judged relevant — so relevance is asserted from the
+    // judgement trace (J07 asked and answered "relevant") rather than final selection.
+    const activationJob = await w.submit("activation", {
+      task_id: learningTaskId, scope: learningScope, purpose: "How do I recover a job whose lease appears stuck?",
+      inputs: { memories: [], sources: [], artifacts: [] }, capabilities: { sources: [], queries: [], tools: [] },
+    });
+    const activationLogs: string[] = [];
+    await runSupervisor({
+      host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 60, sessionsDirectory: join(w.base, "sessions"),
+      composition: compose({ judgement: { primary: scriptedJudgement(judgementFaux, judgementModels), maximum } }, "activation"),
+      log: (l) => activationLogs.push(l), until: async () => SETTLED.includes((await w.job(activationJob.id)).state),
+    }, context);
+    const activationDone = await w.job(activationJob.id);
+    expect(["completed", "partial"], activationLogs.join("\n")).toContain(activationDone.state);
+    expect(activationLogs.some((l) => l.includes("J07") && l.includes("relevant")), activationLogs.join("\n")).toBe(true);
+
+    // A source revision triggers a maintenance job that re-checks the affected record.
+    // TODO(4c): scheduled by the Host once lane B lands — a maintenance scheduler would watch the
+    // memory_maintained/source-revision events and submit this job itself; here it is submitted by hand.
+    const maintenanceTaskId = randomUUID();
+    const before = await w.contribute(
+      { label: "Lease timeout default", content: { family: "knowledge", statement: "The default lease timeout is 120 seconds.", uncertainty: [], examined_coverage: [] } },
+      maintenanceTaskId,
+    );
+    const after = structuredClone(before.record);
+    after.label = "Corrected lease timeout default";
+    if (after.content.family === "knowledge") after.content.statement = "The default lease timeout is 90 seconds, per the corrected configuration.";
+    const manifest: MaintenanceManifest = { kind: "correction", id: randomUUID(), request: { before: before.reference, after, removed_sources: [], candidates: [], reason: "Corrected configuration default" } };
+    const manifestArtifact = await w.publishArtifact("Maintenance manifest", manifest, maintenanceTaskId);
+    const maintenanceJob = await w.submit("maintenance", {
+      task_id: manifestArtifact.task_id, scope: manifestArtifact.scope,
+      inputs: { memories: [before.reference], sources: [], artifacts: [manifestArtifact.id] }, capabilities: { sources: [], queries: [], tools: [] },
+    });
+    // Restart safety at the pool level: a worker that claims and then dies (no start, no result) loses
+    // its lease; the Host's recovery timer requeues the job and a second attempt completes it exactly
+    // once, rather than the correction (or its judgement) happening twice.
+    const deadClaim = expectKind(await w.pool.request({ action: "claim_next", processes: ["maintenance"], lease_seconds: 2 }), "work");
+    expect(deadClaim.assignment.job.id).toBe(maintenanceJob.id);
+    expect((await w.job(maintenanceJob.id)).state).toBe("leased");
+    const requeueStarted = Date.now();
+    while ((await w.job(maintenanceJob.id)).state !== "queued") {
+      if (Date.now() - requeueStarted > 30_000) throw new Error("recovery did not requeue the maintenance job");
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    const maintenanceLogs: string[] = [];
+    await runSupervisor({
+      host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 60, sessionsDirectory: join(w.base, "sessions"),
+      composition: compose({ judgement: { primary: scriptedJudgement(judgementFaux, judgementModels), maximum } }, "maintenance"),
+      log: (l) => maintenanceLogs.push(l), until: async () => SETTLED.includes((await w.job(maintenanceJob.id)).state),
+    }, context);
+    const maintenanceDone = await w.job(maintenanceJob.id);
+    expect(maintenanceDone.state, maintenanceLogs.join("\n")).toBe("completed");
+    expect(maintenanceDone.attempt).toBe(2);
+    const history = expectKind(await w.client.request({ action: "user", request: { action: "history", memory_id: before.reference.memory_id, after_revision: 0, limit: 10 } }), "user").result;
+    if (history.kind !== "history") throw new Error("Expected memory history");
+    // The correction happened exactly once even though the job was claimed twice: revision 2, not 3.
+    expect(history.records.map((r) => r.reference.revision).sort()).toEqual([1, 2]);
+  } finally {
+    await w.close();
+  }
+}, 180_000);
