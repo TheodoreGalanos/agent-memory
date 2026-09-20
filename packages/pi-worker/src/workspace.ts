@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { WorkBrief } from "../../../contracts/generated/work-command.js";
+import { permits, readable } from "../../host-client/src/scope.js";
 import type {
   WorkspaceState,
   WorkspaceEntry,
@@ -14,24 +15,6 @@ export const emptyInputs = (): WorkInputs => ({
   memories: [],
   artifacts: [],
 });
-
-export function permits(grant: Scope, requested: Scope): boolean {
-  return (
-    (["user_id", "project_id", "task_id"] as const).every(
-      (key) => !grant[key] || grant[key] === requested[key],
-    ) &&
-    (!grant.entity_ids.length ||
-      (requested.entity_ids.length > 0 &&
-        requested.entity_ids.every((id) => grant.entity_ids.includes(id)))) &&
-    (!grant.source_versions.length ||
-      (requested.source_versions.length > 0 &&
-        requested.source_versions.every((ref) =>
-          grant.source_versions.some(
-            (g) => g.source_id === ref.source_id && g.revision === ref.revision,
-          ),
-        )))
-  );
-}
 
 export interface WorkspaceAccess {
   /** Changes whenever the host's disclosure decision changes. No credentials. */
@@ -171,7 +154,7 @@ export function validateWorkspace(state: WorkspaceState): void {
   if (!state.entries.some((e) => e.kind === "goal" && e.status === "active"))
     throw new Error("Workspace needs an active goal");
   for (const entry of state.entries) {
-    if (!entry.id || !entry.text.trim() || !permits(state.scope, entry.scope))
+    if (!entry.id || !entry.text.trim() || !readable(state.scope, entry.scope))
       throw new Error("Invalid workspace entry or scope");
     if (entry.supporting_entries.some((id) => !entries.has(id)))
       throw new Error("Missing supporting entry");

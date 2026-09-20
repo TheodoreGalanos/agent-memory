@@ -1,5 +1,5 @@
 //! Host state transitions. Transactions finish before a worker performs I/O.
-mod budgets;
+pub(crate) mod budgets;
 mod effects;
 pub(crate) mod events;
 pub(crate) mod jobs;
@@ -53,6 +53,11 @@ fn decode_job(row: &AnyRow) -> Result<Job> {
             .transpose()?,
         result: row
             .try_get::<Option<String>, _>("result")?
+            .map(|s| serde_json::from_str(&s))
+            .transpose()?,
+        composition: row.try_get("composition")?,
+        validation: row
+            .try_get::<Option<String>, _>("validation")?
             .map(|s| serde_json::from_str(&s))
             .transpose()?,
     })

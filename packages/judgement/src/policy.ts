@@ -1,13 +1,19 @@
+// ABOUTME: Judgement policy: form-aware admission, evaluation status, process-owned response rules and the
+// ABOUTME: decision assembly that keeps structural outcomes distinct from label interpretation.
 import type {
   JudgementPacket,
   Scope,
 } from "../../../contracts/generated/judgement-packet.js";
-import type { SemanticAssessment } from "../../../contracts/generated/semantic-assessment.js";
+import type {
+  JudgementAnswer,
+  SemanticAssessment,
+} from "../../../contracts/generated/semantic-assessment.js";
+import type { JudgementDefinition } from "../../../contracts/generated/judgement-packet.js";
 import type {
   JudgementDecision,
   PolicyAction,
 } from "../../../contracts/generated/judgement-decision.js";
-import { permits } from "../../pi-worker/src/workspace.js";
+import { permits } from "../../host-client/src/scope.js";
 import { catalogue } from "./catalogue.js";
 
 export interface Qualification {
@@ -19,94 +25,109 @@ export interface Qualification {
   /** Chosen from held-out results for this definition, release and domain. */
   minimumProbability: number;
 }
+/** Whether an answer asserts its proposition with at least `minimumProbability`, in the terms of its own
+ * form: the selected choice's probability, the Noul probability (either way), or the chosen score level's
+ * probability. Confidence is distribution sharpness and never substitutes for these. */
+export function admissible(
+  answer: JudgementAnswer | undefined,
+  minimumProbability: number,
+): boolean {
+  if (!answer) return false;
+  if (answer.type === "noul")
+    return Math.max(answer.noul, 1 - answer.noul) >= minimumProbability;
+  if (answer.type === "choice")
+    return (
+      !["insufficient_evidence", "other"].includes(answer.choice) &&
+      (answer.probabilities?.[answer.choice] ?? -1) >= minimumProbability
+    );
+  return (
+    Number.isInteger(answer.score) &&
+    (answer.probabilities?.[String(answer.score)] ?? -1) >= minimumProbability
+  );
+}
+export type EvaluationStatus = "qualified" | "experimental";
+/** A family is qualified for this assessment when a held-out gate covers its definition revision, the
+ * assessed model release and the packet scope, and every answer meets the gate's probability. */
+export function evaluationStatus(
+  packet: JudgementPacket,
+  definition: JudgementDefinition,
+  assessment: SemanticAssessment,
+  qualifications: Qualification[],
+): EvaluationStatus {
+  const gate = qualifications.find(
+    (q) =>
+      q.family === definition.id &&
+      q.revision === definition.revision &&
+      q.modelRelease === assessment.model_release &&
+      permits(q.scope, packet.scope),
+  );
+  const usable =
+    assessment.status === "answered" &&
+    !!gate?.evaluationArtifact &&
+    gate.minimumProbability > 0 &&
+    gate.minimumProbability <= 1 &&
+    definition.questions.every((q) =>
+      admissible(
+        assessment.answers[`${definition.id}.${q.key}`],
+        gate.minimumProbability,
+      ),
+    );
+  return usable ? "qualified" : "experimental";
+}
 export function qualified(
   packet: JudgementPacket,
   assessment: SemanticAssessment,
   qualifications: Qualification[],
 ): boolean {
-  return (
-    assessment.status === "answered" &&
-    packet.questions.every(({ definition }) => {
-      const gate = qualifications.find(
-        (q) =>
-          q.family === definition.id &&
-          q.revision === definition.revision &&
-          q.modelRelease === assessment.model_release &&
-          permits(q.scope, packet.scope),
-      );
-      if (
-        !gate ||
-        !gate.evaluationArtifact ||
-        !(gate.minimumProbability > 0 && gate.minimumProbability <= 1)
-      )
-        return false;
-      return definition.questions.every((q) => {
-        const a = assessment.answers[`${definition.id}.${q.key}`];
-        // Choice admission uses the probability of the selected option, never the
-        // provider's distribution-sharpness confidence. Other forms need their own policy.
-        return (
-          a?.type === "choice" &&
-          !["insufficient_evidence", "other"].includes(a.choice) &&
-          (a.probabilities?.[a.choice] ?? -1) >= gate.minimumProbability
-        );
-      });
-    })
+  return packet.questions.every(
+    ({ definition }) =>
+      evaluationStatus(packet, definition, assessment, qualifications) ===
+      "qualified",
   );
 }
-const concern: Record<string, PolicyAction> = {
-  contradicts: "investigate",
-  both: "investigate",
-  affected: "investigate",
-  incompatible: "investigate",
-  inconsistent: "revise",
-  suspicious: "investigate",
-  challenged: "investigate",
-  mixed: "investigate",
-  unresolved: "investigate",
-  unknown: "retrieve_further",
-  overclaimed: "revise",
-  partial: "qualify",
-  none: "retrieve_further",
-  not_addressed: "retrieve_further",
-  unmet: "defer",
-  not_satisfied: "defer",
-  unchanged_failure: "revise",
-  requires_intent: "request_input",
-  evidence_can_resolve: "retrieve_further",
-  untested_generalisation: "qualify",
-  different: "qualify",
-  other: "investigate",
-};
-const negativeMatters = new Set([
-  "J01.faithfulness",
-  "J12.conditions",
-  "J12.uncertainty",
-  "J12.scope",
-  "J18.definitions",
-  "J18.versions",
-  "J18.scope",
-  "J18.outputs",
-  "J18.evidence",
-  "J19.conditions",
-  "J19.uncertainty",
-  "J19.conflicts",
-  "J19.obligations",
-  "J19.checks",
-  "J22.scope",
-  "J22.findings",
-  "J22.status",
-]);
-const positiveMatters = new Set([
-  "J06.contradiction",
-  "J11.counterexample",
-  "J11.duplicate",
-  "J20.conflicting",
-  "J20.shared_support",
-  "J29.interpretation",
-  "J29.evidence",
-  "J29.check",
-]);
-const priority: PolicyAction[] = [
+
+/** A process-owned rule mapping one family's answers (keyed by question key) to the action that
+ * process permits. The runtime interprets no labels itself. */
+export type ResponseRule = (
+  answers: Record<string, JudgementAnswer | undefined>,
+  definition: JudgementDefinition,
+) => PolicyAction;
+export type ResponseRules = Record<string, ResponseRule>;
+export function choiceResponse(
+  key: string,
+  actions: Record<string, PolicyAction>,
+  otherwise: PolicyAction,
+): ResponseRule {
+  return (answers) => {
+    const a = answers[key];
+    return a?.type === "choice" ? (actions[a.choice] ?? otherwise) : otherwise;
+  };
+}
+export function noulResponse(
+  key: string,
+  rule: { atLeast: number; then: PolicyAction; otherwise: PolicyAction },
+): ResponseRule {
+  return (answers) => {
+    const a = answers[key];
+    return a?.type === "noul" && a.noul >= rule.atLeast ? rule.then : rule.otherwise;
+  };
+}
+/** Actions by rubric level; a fractional score rounds to its nearest level. */
+export function scoreResponse(
+  key: string,
+  byLevel: PolicyAction[],
+  otherwise: PolicyAction,
+): ResponseRule {
+  return (answers) => {
+    const a = answers[key];
+    return a?.type === "score"
+      ? (byLevel[Math.round(a.score)] ?? otherwise)
+      : otherwise;
+  };
+}
+
+/** From most to least conservative: when a family's questions call for different actions, the earlier wins. */
+export const conservatism: PolicyAction[] = [
   "defer",
   "request_input",
   "retrieve_further",
@@ -115,12 +136,33 @@ const priority: PolicyAction[] = [
   "qualify",
   "retain",
 ];
+/** One family's rule from per-question choice maps; a family with no matching choice is left to qualify. */
+export function familyResponse(
+  questions: Record<string, Record<string, PolicyAction>>,
+): ResponseRule {
+  return (answers) => {
+    const called = Object.entries(questions).flatMap(([key, actions]) => {
+      const a = answers[key];
+      return a?.type === "choice" && actions[a.choice] ? [actions[a.choice]] : [];
+    });
+    return conservatism.find((action) => called.includes(action)) ?? "qualify";
+  };
+}
+
+const render = (a: JudgementAnswer | undefined) =>
+  a?.type === "choice" ? a.choice : a?.type === "noul" ? a.noul : a?.type === "score" ? a.score : "unavailable";
+
+/** Structural outcomes come first and stay distinct: no selected assessment, missing or insufficient
+ * evidence, and task-local checks. Only then does the owning process's rule speak; without one the
+ * assessment is left for that process to qualify. Evaluation status is reported, never gating. */
 export function decide(
   packet: JudgementPacket,
   id: string,
   assessments: SemanticAssessment[],
   selected: SemanticAssessment | undefined,
   mode: string,
+  responses: ResponseRules = {},
+  qualifications: Qualification[] = [],
 ): JudgementDecision {
   const inconsistencies: string[] = [];
   if (assessments.filter((a) => a.status === "answered").length > 1) {
@@ -143,37 +185,25 @@ export function decide(
       const missing = d.input_requirements.filter((r) =>
         packet.missing.includes(r),
       );
-      const answers = d.questions.map(
-        (q) => [q.key, selected?.answers[`${d.id}.${q.key}`]] as const,
+      const answers = Object.fromEntries(
+        d.questions.map((q) => [q.key, selected?.answers[`${d.id}.${q.key}`]]),
       );
-      const insufficient = answers.some(
-        ([, a]) => a?.type === "choice" && a.choice === "insufficient_evidence",
+      const insufficient = Object.values(answers).some(
+        (a) => a?.type === "choice" && a.choice === "insufficient_evidence",
       );
-      const actions: PolicyAction[] = [];
-      for (const [key, a] of answers) {
-        if (a?.type !== "choice") {
-          actions.push("investigate");
-          continue;
-        }
-        if (negativeMatters.has(`${d.id}.${key}`) && a.choice === "no")
-          actions.push(d.id === "J18" ? "retrieve_further" : "revise");
-        if (positiveMatters.has(`${d.id}.${key}`) && a.choice === "yes")
-          actions.push("investigate");
-        if (concern[a.choice]) actions.push(concern[a.choice]);
-      }
       const action: PolicyAction = !selected
         ? "defer"
         : missing.length || insufficient
           ? "retrieve_further"
           : packet.local_check_id
             ? "investigate"
-            : (priority.find((a) => actions.includes(a)) ?? "qualify");
-      const findings = answers
-        .map(
-          ([key, a]) =>
-            `${key}=${a?.type === "choice" ? a.choice : a?.type === "noul" ? a.noul : a?.type === "score" ? a.score : "unavailable"}`,
-        )
+            : (responses[d.id]?.(answers, d) ?? "qualify");
+      const findings = Object.entries(answers)
+        .map(([key, a]) => `${key}=${render(a)}`)
         .join("; ");
+      const status = selected
+        ? evaluationStatus(packet, d, selected, qualifications)
+        : undefined;
       return [
         d.id,
         {
@@ -183,6 +213,11 @@ export function decide(
           constraints: [
             "Assessment only; the owning process must validate any proposed effect.",
             "Required deterministic checks, receipts and authority remain mandatory.",
+            ...(status
+              ? [
+                  `Evaluation status: ${status}${status === "experimental" ? ` (no held-out qualification covers ${d.id} r${d.revision} for ${selected?.model_release ?? selected?.requested_model})` : ""}.`,
+                ]
+              : []),
           ],
           required_evidence: missing.length
             ? missing

@@ -74,30 +74,20 @@ export type ProcedureForm =
       outputs: string[];
     };
 export type Process = "formation" | "activation" | "consolidation" | "maintenance" | "investigation" | "evaluation";
-export type WireVersion = "1";
-export type IntentionTrigger =
+/**
+ * One typed payload per kind of trigger the scheduler can carry directly on a `WorkBrief`,
+ * for data a scheduled job's handler needs but that cannot be derived from `inputs` alone and
+ * that the scheduler (which holds no job fence and so cannot publish an artifact) cannot attach
+ * any other way.
+ */
+export type ScheduledInputs =
   | {
-      at: string;
-      kind: "time";
+      kind: "maintenance_correction";
+      request: MaintenanceRequest;
     }
   | {
-      event_kind: string;
-      kind: "event";
-      resource_id: string;
-    }
-  | {
-      after_revision: string;
-      kind: "source_revision";
-      source_id: string;
-    }
-  | {
-      job_id: string;
-      kind: "result";
-    }
-  | {
-      definition: JudgementDefinition;
-      kind: "semantic";
-      matched_choice: string;
+      kind: "maintenance_source";
+      request: MaintenanceRequest;
     };
 export type Availability = "routine" | "historical" | "retired" | "quarantined";
 export type PolicyAction =
@@ -127,6 +117,31 @@ export type ValidTime =
       from?: string | null;
       kind: "interval";
       to?: string | null;
+    };
+export type WireVersion = "1";
+export type IntentionTrigger =
+  | {
+      at: string;
+      kind: "time";
+    }
+  | {
+      event_kind: string;
+      kind: "event";
+      resource_id: string;
+    }
+  | {
+      after_revision: string;
+      kind: "source_revision";
+      source_id: string;
+    }
+  | {
+      job_id: string;
+      kind: "result";
+    }
+  | {
+      definition: JudgementDefinition;
+      kind: "semantic";
+      matched_choice: string;
     };
 
 export interface ConsolidationReview {
@@ -239,6 +254,15 @@ export interface WorkBrief {
   profile: ConfigRef;
   purpose: string;
   retention_policy: string;
+  /**
+   * Structured trigger data the Host's own scheduler attached when a job's inputs alone
+   * cannot carry it (never smuggled through `purpose` or another string). Absent for jobs a
+   * session submitted itself; the scheduler sets exactly the variant matching its trigger.
+   * Boxed like every other heavy nested payload in this crate (see `coordination.rs`), so an
+   * absent trigger costs `WorkBrief` (cloned through every scheduling and validation path)
+   * only a pointer.
+   */
+  scheduled?: ScheduledInputs | null;
   schema_version: WireVersion;
   scope: Scope;
   task_id: string;
@@ -264,6 +288,40 @@ export interface WorkLimits {
   max_provider_attempts: number;
   max_tokens: number;
   root_budget_id: string;
+}
+export interface MaintenanceRequest {
+  after?: RecordDraft | null;
+  before: MemoryRef;
+  /**
+   * Bounded retrieval shortlist for indirect dependencies; J16 decides relevance.
+   */
+  candidates: MemoryRef[];
+  reason: string;
+  /**
+   * Explicit removed source snapshots; the Host verifies their unavailable state.
+   */
+  removed_sources: SourceRef[];
+}
+export interface RecordDraft {
+  availability: Availability;
+  content: MemoryContent;
+  decision: PolicyDecision;
+  derived_from: MemoryRef[];
+  evidential_status: EvidentialStatus;
+  label: string;
+  origin: Origin;
+  qualification: Qualification;
+  scope: Scope;
+  source_locators: string[];
+  valid_time: ValidTime;
+}
+export interface PolicyDecision {
+  action: PolicyAction;
+  constraints: string[];
+  expires_at?: string | null;
+  policy: ConfigRef;
+  reason: string;
+  required_evidence: string[];
 }
 /**
  * Absent dimensions are unrestricted. An assigned restriction cannot be removed
@@ -297,27 +355,6 @@ export interface MemoryVersion {
   recorded_until?: number | null;
   reference: MemoryRef;
   version_id: string;
-}
-export interface RecordDraft {
-  availability: Availability;
-  content: MemoryContent;
-  decision: PolicyDecision;
-  derived_from: MemoryRef[];
-  evidential_status: EvidentialStatus;
-  label: string;
-  origin: Origin;
-  qualification: Qualification;
-  scope: Scope;
-  source_locators: string[];
-  valid_time: ValidTime;
-}
-export interface PolicyDecision {
-  action: PolicyAction;
-  constraints: string[];
-  expires_at?: string | null;
-  policy: ConfigRef;
-  reason: string;
-  required_evidence: string[];
 }
 export interface CommitPosition {
   recorded_at: string;

@@ -11,10 +11,10 @@ import type {
   IntentionOccurrence,
   MemoryVersion,
 } from "../../../contracts/generated/intention-occurrence.js";
-import { HostClient } from "../../pi-worker/src/host-client.js";
+import { HostClient } from "../../host-client/src/client.js";
 import { openLocalSession } from "../../pi-worker/src/local-session.js";
 import { workspaceFromBrief } from "../../pi-worker/src/workspace.js";
-import { fenceFor } from "../../judgement/src/packet.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 import type { JudgementProvider } from "../../judgement/src/index.js";
 import { runMaintenance, runIntentionCheck } from "../src/index.js";
 import { reconcileActiveWork } from "../src/workspace.js";
@@ -89,7 +89,7 @@ it.skipIf(!process.env.MEMORY_MAINTENANCE_FIXTURE)(
       },
     };
     const options = {
-      reference: provider,
+      primary: provider,
       maxAttempts: 1,
       disclosure: {
         policy: assignment.job.spec.brief.disclosure_policy,

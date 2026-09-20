@@ -74,6 +74,10 @@ export type HostResponse =
       window: FormationWindow;
     }
   | {
+      kind: "experience_window";
+      window: ExperienceWindow;
+    }
+  | {
       kind: "formation_result";
       result: FormationResult;
     }
@@ -94,6 +98,11 @@ export type HostResponse =
       kind: "task_check";
     }
   | {
+      accepted: boolean;
+      kind: "decision_check";
+      reasons: string[];
+    }
+  | {
       kind: "artifact_data";
       text: string;
     }
@@ -108,6 +117,10 @@ export type HostResponse =
   | {
       kind: "source";
       source: SourceVersion;
+    }
+  | {
+      kind: "scheduled_work";
+      mark?: ScheduledWorkMark | null;
     }
   | {
       credential: IssuedWorkerCredential;
@@ -295,6 +308,21 @@ export type ProcedureForm =
       outputs: string[];
     };
 export type Process = "formation" | "activation" | "consolidation" | "maintenance" | "investigation" | "evaluation";
+/**
+ * One typed payload per kind of trigger the scheduler can carry directly on a `WorkBrief`,
+ * for data a scheduled job's handler needs but that cannot be derived from `inputs` alone and
+ * that the scheduler (which holds no job fence and so cannot publish an artifact) cannot attach
+ * any other way.
+ */
+export type ScheduledInputs =
+  | {
+      kind: "maintenance_correction";
+      request: MaintenanceRequest;
+    }
+  | {
+      kind: "maintenance_source";
+      request: MaintenanceRequest;
+    };
 export type WireVersion = "1";
 export type IntentionTrigger =
   | {
@@ -356,6 +384,7 @@ export type EffectStatus = "confirmed" | "not_performed" | "unknown";
 export type WorkStatus = "complete" | "partial" | "blocked";
 export type UsageStatus = "known" | "partial" | "unknown";
 export type JobState = "queued" | "leased" | "running" | "waiting" | "completed" | "partial" | "failed" | "cancelled";
+export type ValidationVerdict = "passed" | "failed" | "unknown";
 export type EvidenceExposure = "parent_read" | "delegated_finding" | "not_read";
 export type WorkspaceKind =
   "goal" | "constraint" | "observation" | "hypothesis" | "plan" | "obligation" | "dependency" | "artifact" | "memory";
@@ -571,6 +600,15 @@ export interface WorkBrief {
   profile: ConfigRef;
   purpose: string;
   retention_policy: string;
+  /**
+   * Structured trigger data the Host's own scheduler attached when a job's inputs alone
+   * cannot carry it (never smuggled through `purpose` or another string). Absent for jobs a
+   * session submitted itself; the scheduler sets exactly the variant matching its trigger.
+   * Boxed like every other heavy nested payload in this crate (see `coordination.rs`), so an
+   * absent trigger costs `WorkBrief` (cloned through every scheduling and validation path)
+   * only a pointer.
+   */
+  scheduled?: ScheduledInputs | null;
   schema_version: WireVersion;
   scope: Scope;
   task_id: string;
@@ -592,6 +630,19 @@ export interface WorkLimits {
   max_provider_attempts: number;
   max_tokens: number;
   root_budget_id: string;
+}
+export interface MaintenanceRequest {
+  after?: RecordDraft | null;
+  before: MemoryRef;
+  /**
+   * Bounded retrieval shortlist for indirect dependencies; J16 decides relevance.
+   */
+  candidates: MemoryRef[];
+  reason: string;
+  /**
+   * Explicit removed source snapshots; the Host verifies their unavailable state.
+   */
+  removed_sources: SourceRef[];
 }
 export interface PolicyDecision {
   action: PolicyAction;
@@ -647,6 +698,10 @@ export interface DecisionRequest {
 export interface Job {
   attempt: number;
   cancel_requested: boolean;
+  /**
+   * Identity of the pool composition that started the current attempt, as the pool reported it.
+   */
+  composition?: string | null;
   deadline: string;
   depth: number;
   id: string;
@@ -657,6 +712,10 @@ export interface Job {
   session_id: string;
   spec: SubmitJob;
   state: JobState;
+  /**
+   * An independent output-validator's verdict on the settled result, recorded before it commits.
+   */
+  validation?: Validation | null;
   wait_reason?: string | null;
 }
 export interface WorkResult {
@@ -702,6 +761,10 @@ export interface SubmitJob {
   max_attempts: number;
   parent_id?: string | null;
   retain_until: string;
+}
+export interface Validation {
+  reasons: string[];
+  verdict: ValidationVerdict;
 }
 export interface RenderManifest {
   access_revision: string;
@@ -829,8 +892,17 @@ export interface MemoryPolicy {
 }
 export interface ConsolidationPolicy {
   evaluator_profile: ConfigRef;
+  /**
+   * Upper bound on how many candidates one scheduled cohort covers.
+   */
+  max_cohort_size?: number;
   maximum_cost_microunits: number;
   maximum_regression: number;
+  /**
+   * Retained, not-yet-consolidated candidates needed under this policy before the host
+   * schedules a consolidation cohort. Missing in older data; defaults preserve prior behavior.
+   */
+  min_cohort_size?: number;
   min_held_out_groups: number;
   min_independent_sources: number;
   minimum_success_rate: number;
@@ -889,19 +961,6 @@ export interface SupportReview {
 export interface ConflictReview {
   claims: MemoryVersion[];
   relation: RelationVersion;
-}
-export interface MaintenanceRequest {
-  after?: RecordDraft | null;
-  before: MemoryRef;
-  /**
-   * Bounded retrieval shortlist for indirect dependencies; J16 decides relevance.
-   */
-  candidates: MemoryRef[];
-  reason: string;
-  /**
-   * Explicit removed source snapshots; the Host verifies their unavailable state.
-   */
-  removed_sources: SourceRef[];
 }
 export interface MaintenanceResult {
   changed: MemoryVersion[];
@@ -1118,6 +1177,15 @@ export interface FormationWindow {
   after: number;
   cutoff: string;
   entries: FormationEntry[];
+  /**
+   * Spans of an experience window that judgement found to hold no durable content; they count as
+   * examined when this window commits.
+   */
+  examined_without_candidate?: string[];
+  /**
+   * The experience window this candidate window was constructed from, if any.
+   */
+  experience_window?: string | null;
   id: string;
   job_id: string;
   operation: string;
@@ -1175,6 +1243,43 @@ export interface DeferredContribution {
   reason: string;
   required: boolean;
 }
+/**
+ * A bounded, host-admitted window over a published task experience, before any candidate exists.
+ */
+export interface ExperienceWindow {
+  after: number;
+  context: ExperienceContext;
+  cutoff: string;
+  id: string;
+  job_id: string;
+  operation: string;
+  policy: ConfigRef;
+  remaining: boolean;
+  scope: Scope;
+  source: SourceRef;
+  spans: ExperienceSpan[];
+  through: number;
+}
+/**
+ * The task's framing for judging spans of its experience: what it set out to do and how it ended.
+ */
+export interface ExperienceContext {
+  objective: string;
+  result_status?: string | null;
+}
+/**
+ * A bounded run of experience events judged together: a tool call with its result, or one message.
+ */
+export interface ExperienceSpan {
+  end: number;
+  events: ToolEvent[];
+  index: number;
+  kind: string;
+  /**
+   * One-based event positions in the source, inclusive.
+   */
+  start: number;
+}
 export interface FormationResult {
   common_source_groups: SupportGroup[];
   coverage: Coverage;
@@ -1188,6 +1293,10 @@ export interface FormationResult {
     [k: string]: JudgementUsage;
   };
   records: MemoryVersion[];
+  /**
+   * Whether the source holds events after this window; the caller continues or persists that work.
+   */
+  remaining?: boolean;
   unresolved: string[];
   usage: Usage;
   window_id: string;
@@ -1304,6 +1413,19 @@ export interface SourceVersion {
   reference: SourceRef;
   scope: Scope;
   snapshot_artifact?: string | null;
+}
+/**
+ * One row of the `scheduled_work` ledger: what a sweep decided about a single trigger, so a
+ * repeated sweep is idempotent and an operator can see why something was, or was not, scheduled.
+ */
+export interface ScheduledWorkMark {
+  causal_origin_job_id?: string | null;
+  dedupe_key: string;
+  job_id?: string | null;
+  scheduled_at: string;
+  trigger_id: string;
+  trigger_kind: string;
+  unschedulable?: string | null;
 }
 /**
  * A runtime worker credential. The token is shown only in the issuing response.

@@ -13,7 +13,7 @@ use crate::{
 use chrono::{DateTime, Duration, Utc};
 use memory_domain::{
     contracts::{Authority, Command, Process, WorkResult, WorkStatus},
-    coordination::{Assignment, Fence, Job, JobState, SubmitJob},
+    coordination::{Assignment, Fence, Job, JobState, SubmitJob, Validation, ValidationVerdict},
 };
 use sqlx::{AnyConnection, Row};
 use uuid::Uuid;
@@ -76,28 +76,49 @@ impl Store {
         processes: &[Process],
         limit: usize,
     ) -> Result<Vec<Uuid>> {
+        if processes.is_empty() || limit == 0 {
+            return Ok(vec![]);
+        }
         let mut connection = self.pool.acquire().await?;
         let now = Utc::now().timestamp_millis();
         let (filter, values) = predicate(authority);
         let sql = format!(
-            "SELECT j.id, j.spec FROM jobs j JOIN resource_scopes s ON s.tenant_id=j.tenant_id AND s.id=j.id WHERE {filter} AND j.state='queued' AND j.cancel_requested=0 AND j.deadline>$__NOW AND (j.ready_at IS NULL OR j.ready_at<=$__NOW) ORDER BY j.id LIMIT 500"
+            "SELECT j.id, j.spec FROM jobs j JOIN resource_scopes s ON s.tenant_id=j.tenant_id AND s.id=j.id WHERE {filter} AND j.state='queued' AND j.cancel_requested=0 AND j.deadline>$__NOW AND (j.ready_at IS NULL OR j.ready_at<=$__NOW) AND j.id>$__AFTER ORDER BY j.id LIMIT 500"
         );
         let index = values.len() + 1;
-        let sql = sql.replace("$__NOW", &format!("${index}"));
-        let mut query = sqlx::query(&sql);
-        for value in values {
-            query = query.bind(value);
-        }
-        query = query.bind(now);
+        let sql = sql
+            .replace("$__NOW", &format!("${index}"))
+            .replace("$__AFTER", &format!("${}", index + 1));
         let mut candidates = Vec::new();
-        for row in query.fetch_all(&mut *connection).await? {
-            let spec: SubmitJob = serde_json::from_str(row.try_get("spec")?)?;
-            if processes.contains(&spec.brief.process) && authority.scope.permits(&spec.brief.scope)
-            {
-                candidates.push((
-                    crate::database::id(row.try_get("id")?)?,
-                    spec.brief.scope.project_id,
-                ));
+        let mut after = String::new();
+        // Bound eligible candidates, not unrelated queued work from disabled modules.
+        while candidates.len() < 500 {
+            let mut query = sqlx::query(&sql);
+            for value in &values {
+                query = query.bind(value);
+            }
+            let rows = query
+                .bind(now)
+                .bind(&after)
+                .fetch_all(&mut *connection)
+                .await?;
+            if rows.is_empty() {
+                break;
+            }
+            for row in rows {
+                after = row.try_get("id")?;
+                let spec: SubmitJob = serde_json::from_str(row.try_get("spec")?)?;
+                if processes.contains(&spec.brief.process)
+                    && authority.scope.permits(&spec.brief.scope)
+                {
+                    candidates.push((
+                        crate::database::id(row.try_get("id")?)?,
+                        spec.brief.scope.project_id,
+                    ));
+                    if candidates.len() == 500 {
+                        break;
+                    }
+                }
             }
         }
         // Fair claiming: projects with fewer leased or running jobs come first; age breaks ties.
@@ -229,7 +250,17 @@ impl Store {
         ))
     }
 
-    pub async fn start_job(&self, authority: &Authority, permit: &Fence) -> Result<Job> {
+    pub async fn start_job(
+        &self,
+        authority: &Authority,
+        permit: &Fence,
+        composition: Option<&str>,
+    ) -> Result<Job> {
+        if composition.is_some_and(|c| c.trim().is_empty() || c.chars().count() > 200) {
+            return Err(Error::Invalid(
+                "Composition identity must be 1 to 200 characters".into(),
+            ));
+        }
         let (mut tx, position) = self.begin_write().await?;
         let mut current = fence(&mut tx, authority, permit, position.recorded_at).await?;
         crate::interaction::execution_gate(&mut tx, authority, &current).await?;
@@ -237,7 +268,42 @@ impl Store {
             return Err(Error::Conflict);
         }
         current.state = JobState::Running;
-        sqlx::query("UPDATE jobs SET state='running' WHERE tenant_id=$1 AND id=$2")
+        current.composition = composition.map(str::to_owned);
+        sqlx::query("UPDATE jobs SET state='running',composition=$1 WHERE tenant_id=$2 AND id=$3")
+            .bind(&current.composition)
+            .bind(authority.tenant_id.to_string())
+            .bind(current.id.to_string())
+            .execute(&mut *tx)
+            .await?;
+        tx.commit().await?;
+        Ok(current)
+    }
+
+    pub async fn record_validation(
+        &self,
+        authority: &Authority,
+        permit: &Fence,
+        verdict: ValidationVerdict,
+        reasons: Vec<String>,
+    ) -> Result<Job> {
+        if reasons.len() > 50
+            || reasons
+                .iter()
+                .any(|reason| reason.trim().is_empty() || reason.chars().count() > 2000)
+        {
+            return Err(Error::Invalid(
+                "Validation reasons must be 1 to 50 short, non-empty strings".into(),
+            ));
+        }
+        let (mut tx, position) = self.begin_write().await?;
+        let mut current = fence(&mut tx, authority, permit, position.recorded_at).await?;
+        if current.cancel_requested {
+            return Err(Error::Conflict);
+        }
+        let validation = Validation { verdict, reasons };
+        current.validation = Some(validation.clone());
+        sqlx::query("UPDATE jobs SET validation=$1 WHERE tenant_id=$2 AND id=$3")
+            .bind(serde_json::to_string(&validation)?)
             .bind(authority.tenant_id.to_string())
             .bind(current.id.to_string())
             .execute(&mut *tx)

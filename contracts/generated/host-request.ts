@@ -161,6 +161,11 @@ export type HostRequest =
       reference: MemoryRef;
     }
   | {
+      action: "propose_candidates";
+      fence: Fence;
+      request: CandidateCommit;
+    }
+  | {
       action: "formation_window";
       fence: Fence;
       id: string;
@@ -205,6 +210,12 @@ export type HostRequest =
   | {
       action: "register_task_check";
       check: TaskLocalCheck;
+      fence: Fence;
+    }
+  | {
+      action: "check_decision";
+      candidate_set_id: string;
+      choice: DecisionChoice;
       fence: Fence;
     }
   | {
@@ -277,6 +288,20 @@ export type HostRequest =
       job_id: string;
     }
   | {
+      action: "publish_experience";
+      events: ToolEvent[];
+      fence: Fence;
+    }
+  | {
+      action: "experience";
+      job_id: string;
+    }
+  | {
+      action: "scheduled_work";
+      trigger_id: string;
+      trigger_kind: string;
+    }
+  | {
       action: "ingest_source";
       content: unknown;
       source: SourceVersion;
@@ -288,6 +313,10 @@ export type HostRequest =
     }
   | {
       action: "start";
+      /**
+       * Composition identity of the pool accepting the work; recorded on the job.
+       */
+      composition?: string | null;
       fence: Fence;
     }
   | {
@@ -312,6 +341,12 @@ export type HostRequest =
   | {
       action: "acknowledge_cancellation";
       fence: Fence;
+    }
+  | {
+      action: "record_validation";
+      fence: Fence;
+      reasons: string[];
+      verdict: ValidationVerdict;
     }
   | {
       action: "complete";
@@ -594,6 +629,21 @@ export type ProcedureForm =
       outputs: string[];
     };
 export type Process = "formation" | "activation" | "consolidation" | "maintenance" | "investigation" | "evaluation";
+/**
+ * One typed payload per kind of trigger the scheduler can carry directly on a `WorkBrief`,
+ * for data a scheduled job's handler needs but that cannot be derived from `inputs` alone and
+ * that the scheduler (which holds no job fence and so cannot publish an artifact) cannot attach
+ * any other way.
+ */
+export type ScheduledInputs =
+  | {
+      kind: "maintenance_correction";
+      request: MaintenanceRequest;
+    }
+  | {
+      kind: "maintenance_source";
+      request: MaintenanceRequest;
+    };
 export type WireVersion = "1";
 export type IntentionTrigger =
   | {
@@ -681,6 +731,7 @@ export type IntentionCheckKind =
   | {
       kind: "completion";
     };
+export type Retention = "required" | "optional" | "temporary";
 export type JudgementAnswer =
   | {
       choice: string;
@@ -706,7 +757,23 @@ export type JudgementAnswer =
       type: "score";
     };
 export type AssessmentStatus = "answered" | "invalid_response" | "unavailable";
+/**
+ * What a chosen operation would act on, checked against the current store before it executes.
+ */
+export type DecisionTarget =
+  | {
+      kind: "none";
+    }
+  | {
+      kind: "memory";
+      reference: MemoryRef;
+    }
+  | {
+      artifact_id: string;
+      kind: "artifact";
+    };
 export type SourceKind = "document" | "table" | "model" | "tool_events";
+export type ValidationVerdict = "passed" | "failed" | "unknown";
 export type EffectStatus = "confirmed" | "not_performed" | "unknown";
 export type WorkStatus = "complete" | "partial" | "blocked";
 export type UsageStatus = "known" | "partial" | "unknown";
@@ -823,6 +890,15 @@ export interface WorkBrief {
   profile: ConfigRef;
   purpose: string;
   retention_policy: string;
+  /**
+   * Structured trigger data the Host's own scheduler attached when a job's inputs alone
+   * cannot carry it (never smuggled through `purpose` or another string). Absent for jobs a
+   * session submitted itself; the scheduler sets exactly the variant matching its trigger.
+   * Boxed like every other heavy nested payload in this crate (see `coordination.rs`), so an
+   * absent trigger costs `WorkBrief` (cloned through every scheduling and validation path)
+   * only a pointer.
+   */
+  scheduled?: ScheduledInputs | null;
   schema_version: WireVersion;
   scope: Scope;
   task_id: string;
@@ -848,6 +924,19 @@ export interface WorkLimits {
   max_provider_attempts: number;
   max_tokens: number;
   root_budget_id: string;
+}
+export interface MaintenanceRequest {
+  after?: RecordDraft | null;
+  before: MemoryRef;
+  /**
+   * Bounded retrieval shortlist for indirect dependencies; J16 decides relevance.
+   */
+  candidates: MemoryRef[];
+  reason: string;
+  /**
+   * Explicit removed source snapshots; the Host verifies their unavailable state.
+   */
+  removed_sources: SourceRef[];
 }
 /**
  * Absent dimensions are unrestricted. An assigned restriction cannot be removed
@@ -889,8 +978,17 @@ export interface MemoryPolicy {
 }
 export interface ConsolidationPolicy {
   evaluator_profile: ConfigRef;
+  /**
+   * Upper bound on how many candidates one scheduled cohort covers.
+   */
+  max_cohort_size?: number;
   maximum_cost_microunits: number;
   maximum_regression: number;
+  /**
+   * Retained, not-yet-consolidated candidates needed under this policy before the host
+   * schedules a consolidation cohort. Missing in older data; defaults preserve prior behavior.
+   */
+  min_cohort_size?: number;
   min_held_out_groups: number;
   min_independent_sources: number;
   minimum_success_rate: number;
@@ -1023,19 +1121,6 @@ export interface PurgeObligation {
   container: string;
   kind: RetentionBoundary;
 }
-export interface MaintenanceRequest {
-  after?: RecordDraft | null;
-  before: MemoryRef;
-  /**
-   * Bounded retrieval shortlist for indirect dependencies; J16 decides relevance.
-   */
-  candidates: MemoryRef[];
-  reason: string;
-  /**
-   * Explicit removed source snapshots; the Host verifies their unavailable state.
-   */
-  removed_sources: SourceRef[];
-}
 export interface MaintenanceCommit {
   decisions: {
     [k: string]: string;
@@ -1130,6 +1215,59 @@ export interface ActivationSelection {
   };
   window_id: string;
 }
+/**
+ * Turns an experience window into a candidate window: proposals for spans with a role, and the role
+ * decisions for spans judged to hold nothing durable.
+ */
+export interface CandidateCommit {
+  candidate_window_id: string;
+  examined: ExaminedSpan[];
+  proposals: CandidateProposal[];
+  window_id: string;
+}
+/**
+ * A span whose role was judged without producing a candidate; the decision records why.
+ */
+export interface ExaminedSpan {
+  decision: string;
+  span: number;
+}
+/**
+ * One candidate constructed from a span: the role decision that selected its family, the attribution it
+ * adopts from the span, and the input copied or transformed from the span's own material.
+ */
+export interface CandidateProposal {
+  decision: string;
+  evidential_status: EvidentialStatus;
+  input: FormationInput;
+  origin: Origin;
+  span: number;
+}
+/**
+ * Supplied by the source connector or explicit contribution UI, not inferred
+ * from text claiming to be a user or an observation.
+ */
+export interface FormationInput {
+  actor_id?: string | null;
+  based_on?: string[];
+  boundary_explicit: boolean;
+  conditions: string[];
+  content: MemoryContent;
+  corrects: string[];
+  coverage: Coverage;
+  episode: string;
+  evidence: unknown;
+  explicit_contribution: boolean;
+  explicitly_selected: boolean;
+  objective: string;
+  retention: Retention;
+  source_locators: string[];
+  uncertainty: string[];
+}
+export interface Coverage {
+  examined: string[];
+  unexamined: string[];
+}
 export interface FormationCommit {
   /**
    * One selected judgement decision per candidate event.
@@ -1222,6 +1360,13 @@ export interface TaskLocalCheck {
   scope: Scope;
   task_id: string;
 }
+/**
+ * Jev's pick from the bounded candidate set the `decide` tool offered, sent back for the Host's recheck.
+ */
+export interface DecisionChoice {
+  operation: string;
+  target?: DecisionTarget | null;
+}
 export interface Budget {
   deadline: string;
   final_result_reserve: Resources;
@@ -1239,6 +1384,14 @@ export interface Resources {
   sandbox_cpu_ms: number;
   sandbox_time_ms: number;
   tokens: number;
+}
+export interface ToolEvent {
+  content: unknown;
+  event_id: string;
+  evidential_status: EvidentialStatus;
+  kind: string;
+  observed_at: string;
+  origin: Origin;
 }
 export interface SourceVersion {
   acquired_at: string;
@@ -1264,10 +1417,6 @@ export interface WorkResult {
   status: WorkStatus;
   unresolved_work: string[];
   usage: Usage;
-}
-export interface Coverage {
-  examined: string[];
-  unexamined: string[];
 }
 export interface Finding {
   applicability: Scope;

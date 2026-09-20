@@ -12,14 +12,14 @@ import type {
   ConsolidationProposal,
 } from "../../../contracts/generated/consolidation-review.js";
 import type { ConsolidationResult } from "../../../contracts/generated/consolidation-result.js";
-import type { HostCommands } from "../../pi-worker/src/host-client.js";
+import type { HostCommands } from "../../host-client/src/client.js";
 import {
   buildPacket,
   definition,
   runJudgement,
   type JudgementOptions,
 } from "../../judgement/src/index.js";
-import { fenceFor } from "../../judgement/src/packet.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 
 interface State {
   selection: CohortSelection;

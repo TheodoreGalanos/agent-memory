@@ -9,6 +9,28 @@ pub struct Store {
     pub(crate) postgres: bool,
 }
 
+/// Every schema migration in order; the current schema version is their count.
+const MIGRATIONS: &[&str] = &[
+    include_str!("../migrations/001_records.sql"),
+    include_str!("../migrations/002_sources.sql"),
+    include_str!("../migrations/003_coordinator.sql"),
+    include_str!("../migrations/004_scoped_operations.sql"),
+    include_str!("../migrations/005_judgements.sql"),
+    include_str!("../migrations/006_formation.sql"),
+    include_str!("../migrations/007_activation.sql"),
+    include_str!("../migrations/008_consolidation.sql"),
+    include_str!("../migrations/009_maintenance.sql"),
+    include_str!("../migrations/010_retention.sql"),
+    include_str!("../migrations/011_interaction.sql"),
+    include_str!("../migrations/012_composition.sql"),
+    include_str!("../migrations/013_experience.sql"),
+    include_str!("../migrations/014_experience_windows.sql"),
+    include_str!("../migrations/015_validation.sql"),
+    include_str!("../migrations/016_scheduling.sql"),
+];
+/// The schema version a freshly migrated store reports.
+pub const SCHEMA_VERSION: u32 = MIGRATIONS.len() as u32;
+
 impl Store {
     pub fn is_postgres(&self) -> bool {
         self.postgres
@@ -130,19 +152,7 @@ impl Store {
                 .fetch_one(&mut *tx)
                 .await?
                 .try_get("version")?;
-        let migrations = [
-            include_str!("../migrations/001_records.sql"),
-            include_str!("../migrations/002_sources.sql"),
-            include_str!("../migrations/003_coordinator.sql"),
-            include_str!("../migrations/004_scoped_operations.sql"),
-            include_str!("../migrations/005_judgements.sql"),
-            include_str!("../migrations/006_formation.sql"),
-            include_str!("../migrations/007_activation.sql"),
-            include_str!("../migrations/008_consolidation.sql"),
-            include_str!("../migrations/009_maintenance.sql"),
-            include_str!("../migrations/010_retention.sql"),
-            include_str!("../migrations/011_interaction.sql"),
-        ];
+        let migrations = MIGRATIONS;
         if current > migrations.len() as i64 {
             return Err(Error::Invalid(
                 "Database schema is newer than this worker".into(),

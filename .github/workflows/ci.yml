@@ -1,0 +1,136 @@
+# ABOUTME: Continuous integration for the checks that need no paid credentials: Rust, Node/TypeScript
+# ABOUTME: and Python, plus a check that committed generated contracts still match their Rust source.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# Every live/paid test (formation, consolidation, judgement, worker, ASP...) is written to
+# skip itself (vitest `it.skipIf`) unless a MEMORY_*_FIXTURE or MEMORY_LIVE_*/MEMORY_TEST_*
+# environment variable is set. CI intentionally never sets any of them, so those suites are
+# exercised for their skip behaviour only; the integrator runs the live/paid suites elsewhere.
+env:
+  NODE_VERSION: "22.19.0"
+
+jobs:
+  rust:
+    name: Rust (fmt, clippy, cargo test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      # `.upstream/pi` is the vendored Pi source (fetched from the public codeload.github.com
+      # tarball endpoint by scripts/fetch-pi.mjs); cache it so repeat runs skip the download.
+      - name: Cache Pi upstream source
+        uses: actions/cache@v4
+        with:
+          path: .upstream
+          key: upstream-pi-${{ hashFiles('contracts/compatibility.json') }}
+      - name: Fetch Pi and install Node dependencies
+        run: npm run setup
+      # crates/memory-host/tests/{formation,activation,consolidation,maintenance,judgement}.rs
+      # shell out to `npx vitest run packages/*/test/host-runtime.test.ts` with a fixture file,
+      # so cargo test needs the pinned Pi packages actually built first.
+      - name: Build the pinned Pi packages
+        run: npm run build:pi
+      - run: cargo fmt --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: cargo test --workspace (SQLite only; PostgreSQL suites are #[ignore]d and skip themselves)
+        run: cargo test --workspace
+
+  contracts-fresh:
+    name: Generated contracts match crates/memory-domain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Cache Pi upstream source
+        uses: actions/cache@v4
+        with:
+          path: .upstream
+          key: upstream-pi-${{ hashFiles('contracts/compatibility.json') }}
+      # npm ci needs every workspace path (including .upstream/pi/packages/*) to exist first.
+      - run: npm run setup
+      - run: npm run generate
+      - name: Fail if regenerating produced a diff
+        run: git diff --exit-code contracts/generated
+
+  node:
+    name: Node (build, typecheck, vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Cache Pi upstream source
+        uses: actions/cache@v4
+        with:
+          path: .upstream
+          key: upstream-pi-${{ hashFiles('contracts/compatibility.json') }}
+      - name: Fetch Pi and install Node dependencies
+        run: npm run setup
+      # Builds generated contracts, the memory-host binary (packages/supervisor/test/*.test.ts
+      # spawns target/debug/memory-host directly), the Pi packages, and typechecks pi-worker.
+      - name: Build (generate, cargo build -p memory-host, build:pi, tsc)
+        run: npm run build
+      - name: vitest run (live/paid suites self-skip; no MEMORY_* env vars are set here)
+        run: npx vitest run
+
+  python:
+    name: Python (ruff, harbor-bridge unit tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: pip install ruff
+      - run: ruff check --config ruff.toml .
+      # test_daytona.py's Daytona-only case, and the SSH/Docker-backed suites, self-skip
+      # (unittest.skipUnless) when their optional dependency or environment is absent.
+      - run: npm run test:bridge
+
+  postgres-store:
+    name: PostgreSQL store parity (self-managed ephemeral cluster, no secrets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Cache Pi upstream source
+        uses: actions/cache@v4
+        with:
+          path: .upstream
+          key: upstream-pi-${{ hashFiles('contracts/compatibility.json') }}
+      - run: npm run setup
+      - run: npm run build:pi
+      # scripts/test-store.py manages its own disposable PostgreSQL cluster with initdb/pg_ctl
+      # (trust auth, a throwaway Unix socket directory); no compose "postgres" service and no
+      # secrets are needed, only the server binaries.
+      - name: Install PostgreSQL server binaries (initdb, pg_ctl, pg_config)
+        run: sudo apt-get update && sudo apt-get install -y postgresql postgresql-contrib libpq-dev
+      - run: npm run test:store

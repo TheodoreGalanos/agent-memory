@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import fixture from "../../../evals/property-location/inputs/before-correction.json" with { type: "json" };
 import type { Assignment } from "../../../contracts/generated/assignment.js";
-import type { HostCommands } from "../../pi-worker/src/host-client.js";
+import type { HostCommands } from "../../host-client/src/client.js";
 import type { HostResponse } from "../../../contracts/generated/host-response.js";
 import { workspaceFromBrief } from "../../pi-worker/src/workspace.js";
 import { reconcileActiveWork } from "../src/workspace.js";

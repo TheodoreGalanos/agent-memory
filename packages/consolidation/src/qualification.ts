@@ -19,9 +19,9 @@ import type {
   QualificationTrial,
   RecognitionObservation,
 } from "../../../contracts/generated/qualification-report.js";
-import type { HostCommands } from "../../pi-worker/src/host-client.js";
-import { inspectJson } from "../../pi-worker/src/scoped-operation.js";
-import { fenceFor } from "../../judgement/src/packet.js";
+import type { HostCommands } from "../../host-client/src/client.js";
+import { inspectJson } from "../../host-client/src/artifact.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 import type { InterpreterClient } from "../../pi-worker/src/interpreter-client.js";
 
 export interface QualificationExecution {

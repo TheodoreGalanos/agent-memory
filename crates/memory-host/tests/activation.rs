@@ -238,7 +238,7 @@ async fn activation_through_http_pi_and_workspace() {
         owner_id: auth.actor_id,
         epoch: assigned.epoch,
     };
-    store.start_job(&auth, &permit).await.unwrap();
+    store.start_job(&auth, &permit, None).await.unwrap();
     let root = directory.path().join("artifacts");
     let token = "test-token".repeat(5);
     let admin_token = "test-admin-token".repeat(4);

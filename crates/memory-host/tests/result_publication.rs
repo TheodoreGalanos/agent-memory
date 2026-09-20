@@ -107,7 +107,7 @@ async fn publishes_result_before_completion_and_reuses_its_receipt() {
         owner_id: auth.actor_id,
         epoch: assigned.epoch,
     };
-    store.start_job(&auth, &permit).await.unwrap();
+    store.start_job(&auth, &permit, None).await.unwrap();
     let root = directory.path().join("artifacts");
     let token = "test-token".repeat(5);
     let host = Host::new(

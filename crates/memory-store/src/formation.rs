@@ -86,6 +86,49 @@ impl Store {
         tx.commit().await?;
         Ok(())
     }
+    pub async fn experience_window(
+        &self,
+        auth: &Authority,
+        permit: &Fence,
+        id: Uuid,
+    ) -> Result<Option<ExperienceWindow>> {
+        self.assigned_job(auth, permit).await?;
+        let row = sqlx::query(
+            "SELECT data FROM experience_windows WHERE tenant_id=$1 AND id=$2 AND job_id=$3",
+        )
+        .bind(auth.tenant_id.to_string())
+        .bind(id.to_string())
+        .bind(permit.job_id.to_string())
+        .fetch_optional(&self.pool)
+        .await?;
+        row.map(|r| serde_json::from_str(r.get("data")).map_err(Error::from))
+            .transpose()
+    }
+    pub async fn save_experience_window(
+        &self,
+        auth: &Authority,
+        permit: &Fence,
+        window: &ExperienceWindow,
+    ) -> Result<()> {
+        let (mut tx, at) = self.begin_write().await?;
+        let job = fence(&mut tx, auth, permit, at.recorded_at).await?;
+        if job.cancel_requested
+            || job.deadline <= at.recorded_at
+            || window.job_id != job.id
+            || window.policy != job.spec.brief.policy
+        {
+            return Err(Error::Conflict);
+        }
+        sqlx::query("INSERT INTO experience_windows(tenant_id,id,job_id,data) VALUES($1,$2,$3,$4)")
+            .bind(auth.tenant_id.to_string())
+            .bind(window.id.to_string())
+            .bind(job.id.to_string())
+            .bind(serde_json::to_string(window)?)
+            .execute(&mut *tx)
+            .await?;
+        tx.commit().await?;
+        Ok(())
+    }
     pub async fn formation_result(
         &self,
         auth: &Authority,
@@ -139,6 +182,17 @@ impl Store {
         }
         let narrow = Authority {
             scope: window.scope.clone(),
+            ..auth.clone()
+        };
+        // Records land at the policy's destination: the formation job executed under a task, but the
+        // memory's task dimension is the policy's (none for a project policy), so later tasks under
+        // that policy retrieve it. Source and locator reads stay task-narrow.
+        let policy = crate::policies::current_policy(&mut tx, &narrow, &window.policy).await?;
+        let destination = Authority {
+            scope: Scope {
+                task_id: policy.scope.task_id,
+                ..window.scope.clone()
+            },
             ..auth.clone()
         };
         let source = crate::sources::source_version(&mut tx, &narrow, &window.source).await?;
@@ -223,18 +277,25 @@ impl Store {
                     }
                 }
                 crate::intentions::check_plan(&mut tx, auth, &job, &draft).await?;
+                let draft = RecordDraft {
+                    scope: Scope {
+                        task_id: destination.scope.task_id,
+                        ..draft.scope
+                    },
+                    ..draft
+                };
                 let version = crate::memories::apply_changes(
                     &mut tx,
-                    &narrow,
+                    &destination,
                     vec![MemoryChange::Create(draft)],
                     at,
                 )
                 .await?
                 .remove(0);
                 for target in corrected {
-                    crate::relations::insert_relation(&mut tx, &narrow, RelationDraft {
+                    crate::relations::insert_relation(&mut tx, &destination, RelationDraft {
                         from: version.reference.clone(), to: target, kind: RelationKind::Challenges,
-                        scope: window.scope.clone(), basis: "Explicit correction in captured event; original status and version retained".into(),
+                        scope: destination.scope.clone(), basis: "Explicit correction in captured event; original status and version retained".into(),
                         evidential_status: entry.event.evidential_status, acceptance: Acceptance::Candidate, valid_time: ValidTime::Unknown,
                     }, at).await?;
                 }

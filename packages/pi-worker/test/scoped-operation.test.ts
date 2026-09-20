@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/pi-agent-core";
 import { it, expect, vi } from "vitest";
 import type { Job } from "../../../contracts/generated/assignment.js";
-import { inspectJson, preserveChildEvidence } from "../src/scoped-operation.js";
+import { preserveChildEvidence } from "../src/scoped-operation.js";
+import { inspectJson } from "../../host-client/src/artifact.js";
 import { input, scriptedResult } from "./fixtures.js";
 
 function fixture() {

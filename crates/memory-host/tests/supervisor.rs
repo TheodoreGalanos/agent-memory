@@ -36,7 +36,18 @@ async fn pool_children_receive_their_identity_and_are_restarted_until_shutdown()
         children,
         stopped,
     ));
-    tokio::time::sleep(Duration::from_millis(600)).await;
+    wait_for_file(&log, |text| {
+        text.lines()
+            .filter(|line| line.starts_with("interactive "))
+            .count()
+            >= 2
+            && text
+                .lines()
+                .filter(|line| line.starts_with("deferred,interactive "))
+                .count()
+                >= 2
+    })
+    .await;
     stop.send(true).unwrap();
     tokio::time::timeout(Duration::from_secs(5), pool)
         .await
@@ -92,7 +103,7 @@ async fn shutdown_terminates_a_running_child() {
         }],
         stopped,
     ));
-    tokio::time::sleep(Duration::from_millis(400)).await;
+    wait_for_file(&pid_file, |text| text.trim().parse::<i32>().is_ok()).await;
     let pid: i32 = std::fs::read_to_string(&pid_file)
         .unwrap()
         .trim()
@@ -109,4 +120,21 @@ async fn shutdown_terminates_a_running_child() {
         .unwrap()
         .success();
     assert!(!alive, "child {pid} should have been terminated");
+}
+
+/// Child startup is asynchronous; wait for its evidence instead of assuming a subsecond spawn.
+async fn wait_for_file(path: &std::path::Path, ready: impl Fn(&str) -> bool) {
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            match tokio::fs::read_to_string(path).await {
+                Ok(text) if ready(&text) => return,
+                Ok(_) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => panic!("Cannot read child evidence: {error}"),
+            }
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+    })
+    .await
+    .expect("child did not publish startup evidence within 10 seconds");
 }

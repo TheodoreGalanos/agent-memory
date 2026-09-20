@@ -10,7 +10,7 @@ import type {
   SearchCursor,
   MemoryRef,
 } from "../../../contracts/generated/host-response.js";
-import type { HostCommands } from "../../pi-worker/src/host-client.js";
+import type { HostCommands } from "../../host-client/src/client.js";
 
 export interface TextEmbeddings {
   document(text: string, signal?: AbortSignal): Promise<Embedding>;

@@ -2,7 +2,11 @@ import { randomUUID } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/pi-agent-core";
+import {
+  BACKGROUND_CONTEXT as context,
+  type AgentHarnessTool,
+  type ExecutionToolContext,
+} from "@earendil-works/pi-agent-core";
 import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
 import {
   createAssistantMessageEventStream,
@@ -10,12 +14,14 @@ import {
   fauxProvider,
   fauxAssistantMessage,
   fauxToolCall,
+  Type,
 } from "@earendil-works/pi-ai";
 import { expect, it, vi } from "vitest";
 import type { Assignment } from "../../../contracts/generated/assignment.js";
 import type { HostRequest } from "../../../contracts/generated/host-request.js";
 import type { HostResponse } from "../../../contracts/generated/host-response.js";
 import { attachAssignedWorker } from "../src/assigned-worker.js";
+import { keepLease } from "../src/lease.js";
 import { openLocalSession } from "../src/local-session.js";
 import { input, scriptedResult } from "./fixtures.js";
 
@@ -63,6 +69,15 @@ async function fixture() {
         };
       if (command.action === "renew" || command.action === "inspect_assignment")
         return { kind: "assignment", assignment };
+      if (command.action === "publish_experience")
+        return {
+          kind: "source",
+          source: {
+            reference: { source_id: assignment.job.id, revision: String(assignment.job.attempt) },
+            label: "Experience", scope: brief.scope, kind: "tool_events", owner: "pool",
+            acquired_at: new Date().toISOString(), acquisition_method: "pi-session", precedence: null, snapshot_artifact: randomUUID(),
+          },
+        };
       if (command.action === "reserve")
         return {
           kind: "reservation",
@@ -498,4 +513,149 @@ it("denies restricted work when the profile has no approved provider retention",
       expect(f.calls.some(c => c.action === "reserve")).toBe(false);
     } finally { await worker.close(); }
   } finally { await f.close(); }
+});
+
+it("drives under a supplied lease keeper instead of starting its own heartbeat", async () => {
+  const f = await fixture();
+  try {
+    f.faux.setResponses([
+      fauxAssistantMessage(JSON.stringify(scriptedResult("before-correction"))),
+    ]);
+    const lifecycle = {
+      renew: vi.fn(async () => {}),
+      finish: vi.fn(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 1_100));
+      }),
+    };
+    // A one-second lease renews about every third of a second.
+    const lease = keepLease(f.host, f.assignment, 1, context);
+    const worker = await attachAssignedWorker(
+      f.assignment,
+      f.host,
+      f.profile,
+      { ...f.options, lease },
+      context,
+      lifecycle,
+    );
+    try {
+      expect(await worker.run()).toMatchObject({ kind: "settled" });
+      const renewals = f.calls.filter((c) => c.action === "renew");
+      // Every renewal carries the keeper's lease length; none carries the worker's former 30 seconds.
+      expect(renewals.length).toBeGreaterThanOrEqual(3);
+      expect(renewals.every((c) => c.lease_seconds === 1)).toBe(true);
+      // The protected endpoint is renewed while the model runs, not during export.
+      expect(lifecycle.renew).not.toHaveBeenCalled();
+      // The worker never stops a keeper it does not own.
+      const before = renewals.length;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      expect(f.calls.filter((c) => c.action === "renew").length).toBeGreaterThan(before);
+    } finally {
+      await worker.close();
+      await lease.stop();
+    }
+  } finally {
+    await f.close();
+  }
+});
+
+it("stops its own lease keeper when the run ends", async () => {
+  const f = await fixture();
+  try {
+    f.faux.setResponses([
+      fauxAssistantMessage(JSON.stringify(scriptedResult("before-correction"))),
+    ]);
+    const worker = await f.attach();
+    try {
+      expect(await worker.run()).toMatchObject({ kind: "settled" });
+      const before = f.calls.filter((c) => c.action === "renew").length;
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      expect(f.calls.filter((c) => c.action === "renew").length).toBe(before);
+    } finally {
+      await worker.close();
+    }
+  } finally {
+    await f.close();
+  }
+});
+
+it("routes an application tool through the host effect boundary like a native tool", async () => {
+  const f = await fixture();
+  try {
+    const lookup: AgentHarnessTool<ExecutionToolContext> = {
+      name: "lookup",
+      label: "Lookup",
+      description: "Returns a fixed application value.",
+      parameters: Type.Object({ key: Type.String() }),
+      replay: "never",
+      async execute(_id, args) {
+        return { content: [{ type: "text", text: `value-for-${(args as { key: string }).key}` }], details: args };
+      },
+    };
+    f.assignment.job.spec.brief.capabilities.tools = ["read", "lookup"];
+    f.faux.setResponses([
+      fauxAssistantMessage(fauxToolCall("lookup", { key: "alpha" }), { stopReason: "toolUse" }),
+      fauxAssistantMessage(JSON.stringify(scriptedResult("before-correction"))),
+    ]);
+    const worker = await attachAssignedWorker(f.assignment, f.host, f.profile, { ...f.options, tools: ["read", lookup] });
+    try {
+      expect(await worker.run()).toMatchObject({ kind: "settled" });
+      // Application effects reconcile on replay; only native reads are observations.
+      expect(f.calls.find((c) => c.action === "prepare_effect")).toMatchObject({
+        request: { kind: "lookup", replay: "reconcile", arguments: { key: "alpha" } },
+      });
+      expect(f.calls.find((c) => c.action === "report_effect")).toMatchObject({ state: "succeeded" });
+    } finally {
+      await worker.close();
+    }
+  } finally {
+    await f.close();
+  }
+});
+
+it("refuses an application tool outside the assignment capability set", async () => {
+  const f = await fixture();
+  try {
+    const extra: AgentHarnessTool<ExecutionToolContext> = {
+      name: "extra",
+      label: "Extra",
+      description: "Not granted by the brief.",
+      parameters: Type.Object({}),
+      replay: "never",
+      async execute() {
+        return { content: [{ type: "text", text: "" }], details: null };
+      },
+    };
+    await expect(
+      attachAssignedWorker(f.assignment, f.host, f.profile, { ...f.options, tools: ["read", extra] }),
+    ).rejects.toThrow(/capability/);
+  } finally {
+    await f.close();
+  }
+});
+
+it("publishes the task experience before committing the result", async () => {
+  const f = await fixture();
+  try {
+    await writeFile(join(f.directory, "evidence.txt"), "Source C");
+    f.faux.setResponses([
+      fauxAssistantMessage(fauxToolCall("read", { path: "evidence.txt" }), { stopReason: "toolUse" }),
+      fauxAssistantMessage(JSON.stringify(scriptedResult("before-correction"))),
+    ]);
+    const worker = await f.attach();
+    try {
+      expect(await worker.run()).toMatchObject({ kind: "settled" });
+      const published = f.calls.findIndex((c) => c.action === "publish_experience");
+      const completed = f.calls.findIndex((c) => c.action === "complete");
+      expect(published).toBeGreaterThan(-1);
+      expect(published).toBeLessThan(completed);
+      const events = (f.calls[published] as { events: { kind: string; content: unknown }[] }).events;
+      expect(events.map((e) => e.kind)).toContain("tool_result");
+      expect(events.at(-1)?.kind).toBe("result");
+      expect(JSON.stringify(events)).toContain("Source C");
+    } finally {
+      await worker.close();
+    }
+  } finally {
+    await f.close();
+  }
 });

@@ -12,9 +12,9 @@ import type {
   ConsolidationWindow,
   MemoryRef,
 } from "../../../contracts/generated/consolidation-review.js";
-import { HostClient } from "../../pi-worker/src/host-client.js";
+import { HostClient } from "../../host-client/src/client.js";
 import { openLocalSession } from "../../pi-worker/src/local-session.js";
-import { fenceFor } from "../../judgement/src/packet.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 import {
   GenerativeProvider,
   JevProvider,
@@ -70,7 +70,7 @@ it.skipIf(
   process.env.MEMORY_LIVE_CONSOLIDATION !== "1" ||
     !process.env.MEMORY_CONSOLIDATION_FIXTURE,
 )(
-  "live synthesis, shadow judging and held-out advisory transfer",
+  "live synthesis, Jev-primary judging with Azure comparison, and held-out advisory transfer",
   async () => {
     const reportPath = process.env.MEMORY_CONSOLIDATION_LIVE_REPORT;
     if (!reportPath) throw new Error("An unused report path is required");
@@ -103,7 +103,7 @@ it.skipIf(
         note: "Public price proxies; actual Azure contract pricing and Jev alias pricing may differ. Not an invoice.",
       },
       coverage:
-        "Live Azure synthesis and advisory transfer; Azure reference and Jev shadow J11/J12. Executable code and recognition quality are outside this diagnostic.",
+        "Live Azure synthesis and advisory transfer; Jev primary with Azure comparison on J11/J12. Executable code and recognition quality are outside this diagnostic.",
       calls: [],
       failure: null,
     };
@@ -267,11 +267,9 @@ it.skipIf(
         }
       },
     });
+    // Jev is the operational route; the Azure model is recorded as comparison work.
     const options = {
-      reference: observe(
-        new GenerativeProvider("azure-reference", models, model, maximum, 2048),
-      ),
-      jev: observe(
+      primary: observe(
         new JevProvider(
           "jev",
           "jev-latest",
@@ -279,7 +277,11 @@ it.skipIf(
           () => process.env.JEV_API_KEY!,
         ),
       ),
-      mode: "shadow" as const,
+      comparison: {
+        provider: observe(
+          new GenerativeProvider("azure-reference", models, model, maximum, 2048),
+        ),
+      },
       maxAttempts: 1,
       disclosure: {
         policy: f.assignment.job.spec.brief.disclosure_policy,

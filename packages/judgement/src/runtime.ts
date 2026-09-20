@@ -1,3 +1,5 @@
+// ABOUTME: Assigned-job judgement runtime: admits one packet's evaluation under the worker's lease, routes it
+// ABOUTME: primary → fallback with per-attempt limits, records assessments and the decision, then comparison work.
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { setTimeout as delay } from "node:timers/promises";
@@ -13,30 +15,41 @@ import type {
 } from "../../../contracts/generated/judgement-packet.js";
 import type { SemanticAssessment } from "../../../contracts/generated/semantic-assessment.js";
 import type { JudgementDecision } from "../../../contracts/generated/judgement-decision.js";
-import type { HostCommands } from "../../pi-worker/src/host-client.js";
-import { permits } from "../../pi-worker/src/workspace.js";
-import { fenceFor } from "./packet.js";
+import type { HostCommands } from "../../host-client/src/client.js";
+import { permits } from "../../host-client/src/scope.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 import {
   decide,
   qualified,
   inconsistencies,
   type ConsistencyRule,
   type Qualification,
+  type ResponseRules,
 } from "./policy.js";
 import { validateResponse } from "./validation.js";
 import type { JudgementProvider, ProviderReply } from "./providers.js";
 
+/** How the decision is routed: the primary provider (Jev in deployments) is the operational source of
+ * every assessment; an optional fallback is consulted only when the primary yields no usable answer; an
+ * optional comparison provider is separately budgeted evaluation work recorded after the decision. */
 export interface JudgementOptions {
-  reference: JudgementProvider;
-  jev?: JudgementProvider;
-  mode?: "reference" | "shadow" | "qualified";
+  primary: JudgementProvider;
+  fallback?: JudgementProvider;
+  comparison?: { provider: JudgementProvider };
+  /** Held-out qualification gates; they label evaluation status and never gate selection. */
   qualifications?: Qualification[];
   consistencyRules?: ConsistencyRule[];
+  /** Response rules owned by the calling process, keyed by family. */
+  responses?: ResponseRules;
   /** Trusted operator configuration; not obtained from model output. */
   disclosure: { policy: string; scope: Scope; providers: string[] };
   maxAttempts?: number;
+  /** Time limit for one provider attempt, inside the packet deadline. Fallback attempts get their own. */
+  attemptTimeoutMs?: number;
   reuseAssessmentId?: string;
 }
+/** Which route produced the selected assessment; recorded on the decision. */
+export type DecisionMode = "primary" | "fallback" | "unresolved";
 interface Attempt {
   provider: string;
   id: string;
@@ -54,6 +67,20 @@ interface RunState {
   attempts: Attempt[];
   decisionId: string;
   decision?: JudgementDecision;
+  comparisonDone?: boolean;
+}
+
+/** The assessment a packet's recorded decision selected, from this session's persisted attempts;
+ * undefined when the run is unfinished or resolved nothing. */
+export async function selectedAssessment(
+  session: Session,
+  packetId: string,
+  context: Context,
+): Promise<SemanticAssessment | undefined> {
+  const state = (await session.getValue(value<RunState>("memory.judgement", packetId), context))?.value;
+  const selected = state?.decision?.selected_assessment;
+  if (!selected) return undefined;
+  return state!.attempts.find((a) => a.assessment?.id === selected)?.assessment;
 }
 
 /** Run under the assigned worker's lease keeper. Each network attempt has its
@@ -66,34 +93,37 @@ export async function runJudgement(
   options: JudgementOptions,
   context: Context,
 ): Promise<JudgementDecision> {
-  const fence = fenceFor(assignment),
-    mode = options.mode ?? (options.jev ? "shadow" : "reference");
+  const fence = fenceFor(assignment);
   const limit = options.maxAttempts ?? 3;
   if (!Number.isInteger(limit) || limit < 1 || limit > 3)
     throw new Error(
       "Judgement attempts must be between one and three per provider",
     );
-  if (mode !== "reference" && !options.jev)
-    throw new Error("Jev mode needs a Jev provider");
-  if (options.reference.id === options.jev?.id)
-    throw new Error("Reference and Jev need distinct provider identities");
+  const attemptTimeoutMs = options.attemptTimeoutMs ?? 30_000;
+  if (!(attemptTimeoutMs > 0))
+    throw new Error("Attempt time limit must be positive");
+  if (
+    options.fallback?.id === options.primary.id ||
+    options.comparison?.provider.id === options.primary.id
+  )
+    throw new Error("Primary, fallback and comparison need distinct provider identities");
+  const describe = (p: JudgementProvider) => ({
+    id: p.id,
+    model: p.model,
+    release: p.release ?? null,
+    maximum: p.maximum,
+  });
   const configuration = {
-    mode,
     limit,
+    attemptTimeoutMs,
     disclosure: options.disclosure,
     qualifications: options.qualifications ?? [],
     consistencyRules: options.consistencyRules ?? [],
-    providers: [options.reference, ...(options.jev ? [options.jev] : [])].map(
-      (p) => ({
-        id: p.id,
-        model: p.model,
-        release: p.release ?? null,
-        maximum: p.maximum,
-      }),
-    ),
+    primary: describe(options.primary),
+    fallback: options.fallback ? describe(options.fallback) : null,
+    comparison: options.comparison ? describe(options.comparison.provider) : null,
   };
-  const rules = options.consistencyRules ?? [];
-  for (const rule of rules) {
+  for (const rule of options.consistencyRules ?? []) {
     if (
       !rule.id.trim() ||
       rule.allOf.length < 2 ||
@@ -226,9 +256,14 @@ export async function runJudgement(
             attempt.started = true;
             await save();
             await check(provider);
+            // Each attempt has its own window inside the packet deadline, so a slow primary
+            // leaves time for the fallback.
             const signal = AbortSignal.any([
               AbortSignal.timeout(
-                Math.max(1, Date.parse(packet.deadline) - Date.now()),
+                Math.max(
+                  1,
+                  Math.min(attemptTimeoutMs, Date.parse(packet.deadline) - Date.now()),
+                ),
               ),
               ...(context.abortSignal ? [context.abortSignal] : []),
             ]);
@@ -378,40 +413,40 @@ export async function runJudgement(
     }
   }
   // Re-read access even when recovering an already recorded decision.
-  await check(options.reference);
+  await check(options.primary);
   if (saved.decision) {
-    if (mode === "qualified") await checkQualificationEvidence();
     const checked = await host.request(
       { action: "record_judgement_decision", fence, decision: saved.decision },
       context.abortSignal,
     );
     if (checked.kind !== "judgement_decision")
       throw new Error("Saved decision is no longer available");
+    await compare();
     return checked.decision;
   }
+  const rules = options.consistencyRules ?? [];
+  const usable = (a: SemanticAssessment) =>
+    a.status === "answered" && inconsistencies(a, rules).length === 0;
   const assessments: SemanticAssessment[] = [];
   let selected: SemanticAssessment | undefined;
-  if (mode !== "reference" && options.jev) {
-    const jev = await assess(options.jev);
-    assessments.push(jev);
-    if (
-      mode === "qualified" &&
-      qualified(packet, jev, options.qualifications ?? []) &&
-      inconsistencies(jev, rules).length === 0
-    ) {
-      await checkQualificationEvidence();
-      selected = jev;
+  let mode: DecisionMode = "unresolved";
+  const primary = await assess(options.primary);
+  assessments.push(primary);
+  if (usable(primary)) {
+    selected = primary;
+    mode = "primary";
+  } else if (options.fallback) {
+    const fallback = await assess(options.fallback);
+    assessments.push(fallback);
+    if (usable(fallback)) {
+      selected = fallback;
+      mode = "fallback";
     }
   }
-  if (!selected) {
-    const reference = await assess(options.reference);
-    assessments.push(reference);
-    if (
-      reference.status === "answered" &&
-      inconsistencies(reference, rules).length === 0
-    )
-      selected = reference;
-  }
+  // A qualified status claims held-out evidence exists; it must still be readable.
+  if (selected && qualified(packet, selected, options.qualifications ?? []))
+    await checkQualificationEvidence();
+  // Every recorded attempt, including rate-limited ones, stays on the decision's record.
   const all = [
     ...new Map(
       [
@@ -420,7 +455,15 @@ export async function runJudgement(
       ].map((a) => [a.id, a]),
     ).values(),
   ];
-  const decision = decide(packet, saved.decisionId, all, selected, mode);
+  const decision = decide(
+    packet,
+    saved.decisionId,
+    all,
+    selected,
+    mode,
+    options.responses,
+    options.qualifications,
+  );
   decision.inconsistencies.push(
     ...all.flatMap((a) =>
       inconsistencies(a, rules).map((rule) => `${a.provider}: ${rule}`),
@@ -434,5 +477,19 @@ export async function runJudgement(
     throw new Error("Host did not record policy decision");
   saved.decision = recorded.decision;
   await save();
+  await compare();
   return recorded.decision;
+
+  /** Comparison is evaluation work: recorded once, after the decision, on its own reservation.
+   * It cannot change the decision and its failure is not the process's failure. */
+  async function compare() {
+    if (!options.comparison || saved.comparisonDone) return;
+    try {
+      await assess(options.comparison.provider);
+    } catch {
+      /* The attempt and any assessment it reached are already persisted for inspection. */
+    }
+    saved.comparisonDone = true;
+    await save();
+  }
 }

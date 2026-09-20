@@ -32,6 +32,18 @@ pub struct SubmitJob {
     pub max_attempts: u16,
     pub retain_until: DateTime<Utc>,
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ValidationVerdict {
+    Passed,
+    Failed,
+    Unknown,
+}
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Validation {
+    pub verdict: ValidationVerdict,
+    pub reasons: Vec<String>,
+}
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Job {
     pub id: Uuid,
@@ -47,6 +59,10 @@ pub struct Job {
     pub wait_reason: Option<String>,
     pub ready_at: Option<DateTime<Utc>>,
     pub result: Option<WorkResult>,
+    /// Identity of the pool composition that started the current attempt, as the pool reported it.
+    pub composition: Option<String>,
+    /// An independent output-validator's verdict on the settled result, recorded before it commits.
+    pub validation: Option<Validation>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Assignment {
@@ -318,6 +334,13 @@ pub enum HostRequest {
         reference: crate::contracts::MemoryRef,
         embedding: crate::activation::Embedding,
     },
+    /// A worker turns an admitted experience window into a candidate window from its role decisions.
+    ProposeCandidates {
+        fence: Fence,
+        request: crate::formation::CandidateCommit,
+    },
+    /// A bounded window over a source for formation. A source of authored candidates yields a
+    /// `FormationWindow`; a published task experience yields an `ExperienceWindow` of spans first.
     FormationWindow {
         fence: Fence,
         id: Uuid,
@@ -356,6 +379,13 @@ pub enum HostRequest {
     RegisterTaskCheck {
         fence: Fence,
         check: Box<crate::judgement::TaskLocalCheck>,
+    },
+    /// Rechecks a Jev-picked next operation against the job, its target's current state and the
+    /// budget before the `decide` tool acts on it.
+    CheckDecision {
+        fence: Fence,
+        candidate_set_id: String,
+        choice: crate::decision::DecisionChoice,
     },
     InspectTaskCheck {
         fence: Fence,
@@ -418,6 +448,22 @@ pub enum HostRequest {
     IssueWorkerCredential {
         job_id: Uuid,
     },
+    /// A task's worker publishes the transcript of its current attempt as a tool-event source scoped
+    /// to the brief. Idempotent per attempt; formation later forms memories from it.
+    PublishExperience {
+        fence: Fence,
+        events: Vec<crate::sources::ToolEvent>,
+    },
+    /// The experience source a settled task published, by job.
+    Experience {
+        job_id: Uuid,
+    },
+    /// What the scheduling sweep recorded for one trigger: the job it submitted, an
+    /// unschedulable mark, or nothing yet.
+    ScheduledWork {
+        trigger_kind: String,
+        trigger_id: Uuid,
+    },
     /// A trusted connector publishes one source revision. A JSON string is stored as
     /// text; any other value is serialized JSON. The adapter follows `source.kind`.
     IngestSource {
@@ -430,6 +476,8 @@ pub enum HostRequest {
     },
     Start {
         fence: Fence,
+        /// Composition identity of the pool accepting the work; recorded on the job.
+        composition: Option<String>,
     },
     InspectAssignment {
         fence: Fence,
@@ -448,6 +496,12 @@ pub enum HostRequest {
     },
     AcknowledgeCancellation {
         fence: Fence,
+    },
+    /// An independent output-validator's verdict, recorded before the worker's `complete` commits.
+    RecordValidation {
+        fence: Fence,
+        verdict: ValidationVerdict,
+        reasons: Vec<String>,
     },
     Complete {
         request_id: Uuid,
@@ -570,6 +624,9 @@ pub enum HostResponse {
     FormationWindow {
         window: Box<crate::formation::FormationWindow>,
     },
+    ExperienceWindow {
+        window: Box<crate::formation::ExperienceWindow>,
+    },
     FormationResult {
         result: Box<crate::formation::FormationResult>,
     },
@@ -585,6 +642,10 @@ pub enum HostResponse {
     TaskCheck {
         check: Box<crate::judgement::TaskLocalCheck>,
     },
+    DecisionCheck {
+        accepted: bool,
+        reasons: Vec<String>,
+    },
     ArtifactData {
         text: String,
     },
@@ -596,6 +657,9 @@ pub enum HostResponse {
     },
     Source {
         source: Box<crate::sources::SourceVersion>,
+    },
+    ScheduledWork {
+        mark: Option<Box<crate::scheduling::ScheduledWorkMark>>,
     },
     WorkerCredential {
         credential: Box<IssuedWorkerCredential>,

@@ -687,6 +687,28 @@
       ]
     },
     {
+      "description": "A worker turns an admitted experience window into a candidate window from its role decisions.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "const": "propose_candidates"
+        },
+        "fence": {
+          "$ref": "#/$defs/Fence"
+        },
+        "request": {
+          "$ref": "#/$defs/CandidateCommit"
+        }
+      },
+      "required": [
+        "action",
+        "fence",
+        "request"
+      ]
+    },
+    {
+      "description": "A bounded window over a source for formation. A source of authored candidates yields a\n`FormationWindow`; a published task experience yields an `ExperienceWindow` of spans first.",
       "type": "object",
       "properties": {
         "action": {
@@ -877,6 +899,31 @@
         "action",
         "fence",
         "check"
+      ]
+    },
+    {
+      "description": "Rechecks a Jev-picked next operation against the job, its target's current state and the\nbudget before the `decide` tool acts on it.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "const": "check_decision"
+        },
+        "candidate_set_id": {
+          "type": "string"
+        },
+        "choice": {
+          "$ref": "#/$defs/DecisionChoice"
+        },
+        "fence": {
+          "$ref": "#/$defs/Fence"
+        }
+      },
+      "required": [
+        "action",
+        "fence",
+        "candidate_set_id",
+        "choice"
       ]
     },
     {
@@ -1190,6 +1237,70 @@
       ]
     },
     {
+      "description": "A task's worker publishes the transcript of its current attempt as a tool-event source scoped\nto the brief. Idempotent per attempt; formation later forms memories from it.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "const": "publish_experience"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ToolEvent"
+          }
+        },
+        "fence": {
+          "$ref": "#/$defs/Fence"
+        }
+      },
+      "required": [
+        "action",
+        "fence",
+        "events"
+      ]
+    },
+    {
+      "description": "The experience source a settled task published, by job.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "const": "experience"
+        },
+        "job_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "action",
+        "job_id"
+      ]
+    },
+    {
+      "description": "What the scheduling sweep recorded for one trigger: the job it submitted, an\nunschedulable mark, or nothing yet.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "const": "scheduled_work"
+        },
+        "trigger_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "trigger_kind": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "trigger_kind",
+        "trigger_id"
+      ]
+    },
+    {
       "description": "A trusted connector publishes one source revision. A JSON string is stored as\ntext; any other value is serialized JSON. The adapter follows `source.kind`.",
       "type": "object",
       "properties": {
@@ -1237,6 +1348,13 @@
         "action": {
           "type": "string",
           "const": "start"
+        },
+        "composition": {
+          "description": "Composition identity of the pool accepting the work; recorded on the job.",
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "fence": {
           "$ref": "#/$defs/Fence"
@@ -1341,6 +1459,34 @@
       "required": [
         "action",
         "fence"
+      ]
+    },
+    {
+      "description": "An independent output-validator's verdict, recorded before the worker's `complete` commits.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "const": "record_validation"
+        },
+        "fence": {
+          "$ref": "#/$defs/Fence"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "verdict": {
+          "$ref": "#/$defs/ValidationVerdict"
+        }
+      },
+      "required": [
+        "action",
+        "fence",
+        "verdict",
+        "reasons"
       ]
     },
     {
@@ -1933,6 +2079,68 @@
         "pricing_revision"
       ]
     },
+    "CandidateCommit": {
+      "description": "Turns an experience window into a candidate window: proposals for spans with a role, and the role\ndecisions for spans judged to hold nothing durable.",
+      "type": "object",
+      "properties": {
+        "candidate_window_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "examined": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ExaminedSpan"
+          }
+        },
+        "proposals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CandidateProposal"
+          }
+        },
+        "window_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "window_id",
+        "candidate_window_id",
+        "proposals",
+        "examined"
+      ]
+    },
+    "CandidateProposal": {
+      "description": "One candidate constructed from a span: the role decision that selected its family, the attribution it\nadopts from the span, and the input copied or transformed from the span's own material.",
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "evidential_status": {
+          "$ref": "#/$defs/EvidentialStatus"
+        },
+        "input": {
+          "$ref": "#/$defs/FormationInput"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "span": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "span",
+        "decision",
+        "origin",
+        "evidential_status",
+        "input"
+      ]
+    },
     "Capabilities": {
       "type": "object",
       "properties": {
@@ -2332,12 +2540,26 @@
         "evaluator_profile": {
           "$ref": "#/$defs/ConfigRef"
         },
+        "max_cohort_size": {
+          "description": "Upper bound on how many candidates one scheduled cohort covers.",
+          "type": "integer",
+          "default": 16,
+          "maximum": 65535,
+          "minimum": 0
+        },
         "maximum_cost_microunits": {
           "type": "integer",
           "minimum": 0
         },
         "maximum_regression": {
           "type": "number"
+        },
+        "min_cohort_size": {
+          "description": "Retained, not-yet-consolidated candidates needed under this policy before the host\nschedules a consolidation cohort. Missing in older data; defaults preserve prior behavior.",
+          "type": "integer",
+          "default": 3,
+          "maximum": 65535,
+          "minimum": 0
         },
         "min_held_out_groups": {
           "type": "integer",
@@ -2456,6 +2678,78 @@
       "enum": [
         "approve",
         "decline"
+      ]
+    },
+    "DecisionChoice": {
+      "description": "Jev's pick from the bounded candidate set the `decide` tool offered, sent back for the Host's recheck.",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DecisionTarget"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "operation"
+      ]
+    },
+    "DecisionTarget": {
+      "description": "What a chosen operation would act on, checked against the current store before it executes.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "none"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "memory"
+            },
+            "reference": {
+              "$ref": "#/$defs/MemoryRef"
+            }
+          },
+          "required": [
+            "kind",
+            "reference"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "artifact_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "kind": {
+              "type": "string",
+              "const": "artifact"
+            }
+          },
+          "required": [
+            "kind",
+            "artifact_id"
+          ]
+        }
       ]
     },
     "DeferredContext": {
@@ -2718,6 +3012,24 @@
         "simulation"
       ]
     },
+    "ExaminedSpan": {
+      "description": "A span whose role was judged without producing a candidate; the decision records why.",
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "span": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "span",
+        "decision"
+      ]
+    },
     "Fence": {
       "type": "object",
       "properties": {
@@ -2803,6 +3115,91 @@
       "required": [
         "window_id",
         "decisions"
+      ]
+    },
+    "FormationInput": {
+      "description": "Supplied by the source connector or explicit contribution UI, not inferred\nfrom text claiming to be a user or an observation.",
+      "type": "object",
+      "properties": {
+        "actor_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "based_on": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "boundary_explicit": {
+          "type": "boolean"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "content": {
+          "$ref": "#/$defs/MemoryContent"
+        },
+        "corrects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "episode": {
+          "type": "string"
+        },
+        "evidence": true,
+        "explicit_contribution": {
+          "type": "boolean"
+        },
+        "explicitly_selected": {
+          "type": "boolean"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "retention": {
+          "$ref": "#/$defs/Retention"
+        },
+        "source_locators": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "uncertainty": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "episode",
+        "objective",
+        "conditions",
+        "boundary_explicit",
+        "retention",
+        "explicitly_selected",
+        "explicit_contribution",
+        "content",
+        "evidence",
+        "source_locators",
+        "corrects",
+        "uncertainty",
+        "coverage"
       ]
     },
     "IntentionCheckKind": {
@@ -4583,6 +4980,14 @@
         "output_bytes"
       ]
     },
+    "Retention": {
+      "type": "string",
+      "enum": [
+        "required",
+        "optional",
+        "temporary"
+      ]
+    },
     "RetentionBoundary": {
       "type": "string",
       "enum": [
@@ -4592,6 +4997,45 @@
         "provider",
         "backup",
         "database_storage"
+      ]
+    },
+    "ScheduledInputs": {
+      "description": "One typed payload per kind of trigger the scheduler can carry directly on a `WorkBrief`,\nfor data a scheduled job's handler needs but that cannot be derived from `inputs` alone and\nthat the scheduler (which holds no job fence and so cannot publish an artifact) cannot attach\nany other way.",
+      "oneOf": [
+        {
+          "description": "A memory correction notice's propagation to its dependents: derived entirely from the\nnotice and the affected records, so the maintenance handler needs no manifest artifact.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "maintenance_correction"
+            },
+            "request": {
+              "$ref": "#/$defs/MaintenanceRequest"
+            }
+          },
+          "required": [
+            "kind",
+            "request"
+          ]
+        },
+        {
+          "description": "A source revision's propagation to the records that depend on it.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "maintenance_source"
+            },
+            "request": {
+              "$ref": "#/$defs/MaintenanceRequest"
+            }
+          },
+          "required": [
+            "kind",
+            "request"
+          ]
+        }
       ]
     },
     "Scope": {
@@ -4967,6 +5411,36 @@
         "completion_requirements",
         "expires_at",
         "retired"
+      ]
+    },
+    "ToolEvent": {
+      "type": "object",
+      "properties": {
+        "content": true,
+        "event_id": {
+          "type": "string"
+        },
+        "evidential_status": {
+          "$ref": "#/$defs/EvidentialStatus"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        }
+      },
+      "required": [
+        "event_id",
+        "observed_at",
+        "kind",
+        "origin",
+        "evidential_status",
+        "content"
       ]
     },
     "Usage": {
@@ -5592,6 +6066,14 @@
         }
       ]
     },
+    "ValidationVerdict": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "failed",
+        "unknown"
+      ]
+    },
     "WireVersion": {
       "type": "string",
       "enum": [
@@ -5659,6 +6141,18 @@
         },
         "retention_policy": {
           "type": "string"
+        },
+        "scheduled": {
+          "description": "Structured trigger data the Host's own scheduler attached when a job's inputs alone\ncannot carry it (never smuggled through `purpose` or another string). Absent for jobs a\nsession submitted itself; the scheduler sets exactly the variant matching its trigger.\nBoxed like every other heavy nested payload in this crate (see `coordination.rs`), so an\nabsent trigger costs `WorkBrief` (cloned through every scheduling and validation path)\nonly a pointer.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScheduledInputs"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "schema_version": {
           "$ref": "#/$defs/WireVersion"

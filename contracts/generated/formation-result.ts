@@ -105,6 +105,21 @@ export type ProcedureForm =
       outputs: string[];
     };
 export type Process = "formation" | "activation" | "consolidation" | "maintenance" | "investigation" | "evaluation";
+/**
+ * One typed payload per kind of trigger the scheduler can carry directly on a `WorkBrief`,
+ * for data a scheduled job's handler needs but that cannot be derived from `inputs` alone and
+ * that the scheduler (which holds no job fence and so cannot publish an artifact) cannot attach
+ * any other way.
+ */
+export type ScheduledInputs =
+  | {
+      kind: "maintenance_correction";
+      request: MaintenanceRequest;
+    }
+  | {
+      kind: "maintenance_source";
+      request: MaintenanceRequest;
+    };
 export type WireVersion = "1";
 export type IntentionTrigger =
   | {
@@ -173,6 +188,10 @@ export interface FormationResult {
     [k: string]: JudgementUsage;
   };
   records: MemoryVersion[];
+  /**
+   * Whether the source holds events after this window; the caller continues or persists that work.
+   */
+  remaining?: boolean;
   unresolved: string[];
   usage: Usage;
   window_id: string;
@@ -310,6 +329,15 @@ export interface WorkBrief {
   profile: ConfigRef;
   purpose: string;
   retention_policy: string;
+  /**
+   * Structured trigger data the Host's own scheduler attached when a job's inputs alone
+   * cannot carry it (never smuggled through `purpose` or another string). Absent for jobs a
+   * session submitted itself; the scheduler sets exactly the variant matching its trigger.
+   * Boxed like every other heavy nested payload in this crate (see `coordination.rs`), so an
+   * absent trigger costs `WorkBrief` (cloned through every scheduling and validation path)
+   * only a pointer.
+   */
+  scheduled?: ScheduledInputs | null;
   schema_version: WireVersion;
   scope: Scope;
   task_id: string;
@@ -331,6 +359,19 @@ export interface WorkLimits {
   max_provider_attempts: number;
   max_tokens: number;
   root_budget_id: string;
+}
+export interface MaintenanceRequest {
+  after?: RecordDraft | null;
+  before: MemoryRef;
+  /**
+   * Bounded retrieval shortlist for indirect dependencies; J16 decides relevance.
+   */
+  candidates: MemoryRef[];
+  reason: string;
+  /**
+   * Explicit removed source snapshots; the Host verifies their unavailable state.
+   */
+  removed_sources: SourceRef[];
 }
 /**
  * Absent dimensions are unrestricted. An assigned restriction cannot be removed

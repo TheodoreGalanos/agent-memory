@@ -11,9 +11,10 @@ import type {
   WorkResult,
 } from "../../../contracts/generated/assignment.js";
 import type { InvestigationPlan } from "../../../contracts/generated/investigation-plan.js";
-import type { Fence } from "../../../contracts/generated/host-request.js";
-import type { HostCommands } from "./host-client.js";
-import { permits, type WorkspaceState } from "./workspace.js";
+import type { HostCommands } from "../../host-client/src/client.js";
+import { inspectJson } from "../../host-client/src/artifact.js";
+import type { WorkspaceState } from "./workspace.js";
+import { permits } from "../../host-client/src/scope.js";
 import type { WorkBrief } from "../../../contracts/generated/assignment.js";
 
 interface InvestigationState {
@@ -25,43 +26,6 @@ interface InvestigationState {
 }
 export type { InvestigationPlan };
 
-/** Bounded inspection of an assigned JSON artifact. No executable queries. */
-export async function inspectJson(
-  host: HostCommands,
-  fence: Fence,
-  artifactId: string,
-  pointer: string,
-  context: Context,
-): Promise<unknown> {
-  if (pointer !== "" && !pointer.startsWith("/"))
-    throw new Error("Expected a JSON pointer");
-  const response = await host.request(
-    {
-      action: "read_input",
-      fence,
-      artifact_id: artifactId,
-      offset: 0,
-      limit: 65536,
-    },
-    context.abortSignal,
-  );
-  if (response.kind !== "artifact_data")
-    throw new Error("Host did not return an assigned artifact");
-  let selected: unknown = JSON.parse(response.text);
-  for (const encoded of pointer ? pointer.slice(1).split("/") : []) {
-    if (/~(?:[^01]|$)/.test(encoded))
-      throw new Error("Invalid JSON pointer escape");
-    const key = encoded.replace(/~1/g, "/").replace(/~0/g, "~");
-    if (
-      !selected ||
-      typeof selected !== "object" ||
-      !Object.hasOwn(selected, key)
-    )
-      throw new Error(`Required definition is missing at ${pointer}`);
-    selected = (selected as Record<string, unknown>)[key];
-  }
-  return selected;
-}
 const terminal = (job: Job) =>
   ["completed", "partial", "failed", "cancelled"].includes(job.state);
 

@@ -401,5 +401,42 @@
     },
     "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
     "expected_action": "investigate"
+  },
+  {
+    "family": "J30",
+    "subject": "A tool result reporting a measured 2 metre clearance during a task about the beam clearance.",
+    "fields": {
+      "span": {
+        "kind": "exchange",
+        "events": [
+          { "kind": "tool_call", "content": { "tool": "read", "arguments": { "path": "site-notes.txt" } } },
+          { "kind": "tool_result", "content": { "tool": "read", "text": "Site observation 12 May: clearance under beam B3 measured at 2.0 m." } }
+        ]
+      },
+      "context": { "objective": "Establish the clearance under beam B3 for the crane route.", "result_status": "complete" }
+    },
+    "answers": { "role": "knowledge" },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "qualify"
+  },
+  {
+    "family": "J31",
+    "subject": "A task mid-investigation with one candidate procedure activated and no unresolved conflicts.",
+    "fields": {
+      "options": [
+        { "operation": "continue", "target": null, "preconditions": [], "cost_class": "none" },
+        { "operation": "inspect_further", "target": "site-notes.txt", "preconditions": [], "cost_class": "low" },
+        { "operation": "return_unresolved", "target": null, "preconditions": [], "cost_class": "none" }
+      ],
+      "state": {
+        "workspace": "Clearance under beam B3 is measured at 2.0 m; no open questions remain.",
+        "recent_tool_results": ["read site-notes.txt: clearance 2.0 m"],
+        "activated": [],
+        "unresolved_work": []
+      }
+    },
+    "answers": { "next": "continue" },
+    "purpose": "Authored example with scripted answers for contract and disposition tests. Not a measurement of model accuracy.",
+    "expected_action": "qualify"
   }
 ]

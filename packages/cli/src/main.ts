@@ -75,7 +75,7 @@ async function main() {
       host.credentials.push({ token: randomBytes(32).toString("hex"), tenant_id: administrator.tenant_id, actor_id: randomUUID(), scope: administrator.scope, role: { kind: "pool", classes: ["interactive", "deferred"] }, expires_at: administrator.expires_at });
     host.worker_pool = { command: process.execPath, args: ["--import", join(root, "scripts/ts-loader.mjs"), join(root, "packages/supervisor/src/main.ts"), join(directory, "worker.json")], working_directory: root, restart_delay_seconds: 5 };
     const worker = { env_file: join(root, ".env"), sessions_directory: join(directory, "pool"), concurrency: { interactive: 1, deferred: 1 }, poll_ms: 1000, lease_seconds: 120,
-      task_model: { provider: "azure-openai-responses", model: "gpt-5.4-mini" }, reference_model: { provider: "azure-openai-responses", model: "gpt-4.1-mini" }, jev: { model: "jev-latest" }, judgement_mode: "shadow" };
+      task_model: { provider: "azure-openai-responses", model: "gpt-5.4-mini" }, judgement: { primary: { kind: "jev", model: "jev-latest" } } };
     await writeFile(join(directory, "worker.json"), JSON.stringify(worker, null, 2) + "\n", { mode: 0o600, flag: "wx" });
     await writeFile(hostPath, JSON.stringify(host, null, 2) + "\n", { mode: 0o600 });
     console.log(JSON.stringify({ host: hostPath, worker: join(directory, "worker.json"), note: "Restart the Host to start the worker pool" }, null, 2));

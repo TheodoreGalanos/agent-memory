@@ -188,7 +188,7 @@ async fn durable_jobs(store: &Store) {
         Err(Error::Conflict)
     ));
     let permit = permit(&assignment);
-    store.start_job(&auth, &permit).await.unwrap();
+    store.start_job(&auth, &permit, None).await.unwrap();
     let commit = Command {
         request_id: Uuid::now_v7(),
         command_version: WireVersion::V1,
@@ -266,7 +266,7 @@ async fn durable_jobs(store: &Store) {
         job.id
     );
     assert!(matches!(
-        store.start_job(&auth, &permit).await,
+        store.start_job(&auth, &permit, None).await,
         Err(Error::Conflict)
     ));
     assert_eq!(
@@ -537,7 +537,7 @@ async fn expired_owner_and_unknown_effect(store: &Store) {
     assert!(second.epoch > first.epoch);
     assert_eq!(second.job.operation_id, first.job.operation_id);
     assert!(matches!(
-        store.start_job(&auth, &permit(&first)).await,
+        store.start_job(&auth, &permit(&first), None).await,
         Err(Error::Conflict)
     ));
     assert_eq!(
@@ -568,9 +568,46 @@ async fn expired_owner_and_unknown_effect(store: &Store) {
         .unwrap();
 }
 
+/// The pool records which composition accepted the work; the job keeps it for inspection.
+async fn composition_recorded_on_start(store: &Store) {
+    let (auth, command) = setup(store).await;
+    let job = store.submit_job(&auth, command).await.unwrap();
+    assert_eq!(job.composition, None);
+    let assignment = store.claim_job(&auth, job.id, 30).await.unwrap();
+    let permit = permit(&assignment);
+    assert!(matches!(
+        store
+            .start_job(&auth, &permit, Some(&"x".repeat(201)))
+            .await,
+        Err(Error::Invalid(_))
+    ));
+    assert!(matches!(
+        store.start_job(&auth, &permit, Some("")).await,
+        Err(Error::Invalid(_))
+    ));
+    let started = store
+        .start_job(&auth, &permit, Some("investigation@1+formation@1#abc123"))
+        .await
+        .unwrap();
+    assert_eq!(
+        started.composition.as_deref(),
+        Some("investigation@1+formation@1#abc123")
+    );
+    assert_eq!(
+        store
+            .job(&auth, job.id)
+            .await
+            .unwrap()
+            .composition
+            .as_deref(),
+        Some("investigation@1+formation@1#abc123")
+    );
+}
+
 async fn suite(url: &str) {
     let store = Store::connect(url).await.unwrap();
     durable_jobs(&store).await;
+    composition_recorded_on_start(&store).await;
     scoped_children(&store).await;
     budgets_and_children(&store).await;
     expired_owner_and_unknown_effect(&store).await;

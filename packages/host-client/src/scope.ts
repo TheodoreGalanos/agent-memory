@@ -1,0 +1,39 @@
+// ABOUTME: Scope predicate shared by Pi workspace access checks and judgement disclosure rules:
+// ABOUTME: a grant permits a request only when every dimension the grant constrains is satisfied.
+import type { Scope } from "../../../contracts/generated/workspace-state.js";
+
+export function permits(grant: Scope, requested: Scope): boolean {
+  return (
+    (["user_id", "project_id", "task_id"] as const).every(
+      (key) => !grant[key] || grant[key] === requested[key],
+    ) &&
+    (!grant.entity_ids.length ||
+      (requested.entity_ids.length > 0 &&
+        requested.entity_ids.every((id) => grant.entity_ids.includes(id)))) &&
+    (!grant.source_versions.length ||
+      (requested.source_versions.length > 0 &&
+        requested.source_versions.every((ref) =>
+          grant.source_versions.some(
+            (g) => g.source_id === ref.source_id && g.revision === ref.revision,
+          ),
+        )))
+  );
+}
+
+/** Whether a holder of `grant` may read a resource at `resource`: like the Host's read predicate, a
+ * resource left open on a dimension (project-level memory, no task) is readable by any task within it. */
+export function readable(grant: Scope, resource: Scope): boolean {
+  return (
+    (["user_id", "project_id", "task_id"] as const).every(
+      (key) => !grant[key] || !resource[key] || grant[key] === resource[key],
+    ) &&
+    (!grant.entity_ids.length ||
+      resource.entity_ids.every((id) => grant.entity_ids.includes(id))) &&
+    (!grant.source_versions.length ||
+      resource.source_versions.every((ref) =>
+        grant.source_versions.some(
+          (g) => g.source_id === ref.source_id && g.revision === ref.revision,
+        ),
+      ))
+  );
+}

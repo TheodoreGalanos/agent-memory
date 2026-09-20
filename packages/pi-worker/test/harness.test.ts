@@ -2,23 +2,28 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BACKGROUND_CONTEXT as context } from "@earendil-works/pi-agent-core";
+import {
+  BACKGROUND_CONTEXT as context,
+  type AgentHarnessTool,
+  type ExecutionToolContext,
+} from "@earendil-works/pi-agent-core";
 import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
 import {
   createModels,
   fauxAssistantMessage,
   fauxProvider,
   fauxToolCall,
+  Type,
 } from "@earendil-works/pi-ai";
 import {
   createNodeSqliteFactory,
   SqliteSessionRepo,
 } from "@earendil-works/pi-session-backend-sqlite-node";
 import { describe, expect, it } from "vitest";
-import { createWorkerHarness } from "../src/harness.js";
+import { createWorkerHarness, type WorkerTool } from "../src/harness.js";
 import { checkpoints, input, scriptedResult } from "./fixtures.js";
 
-async function fixture(tools: ("read" | "bash")[] = ["read"]) {
+async function fixture(tools: WorkerTool[] = ["read"]) {
   const directory = await mkdtemp(join(tmpdir(), "memory-harness-"));
   const repo = new SqliteSessionRepo({
     directory: join(directory, "sessions"),
@@ -35,7 +40,14 @@ async function fixture(tools: ("read" | "bash")[] = ["read"]) {
     env: new NodeExecutionEnv({ cwd: directory }),
     tools,
   };
-  const created = await createWorkerHarness(options, context);
+  let created: Awaited<ReturnType<typeof createWorkerHarness>>;
+  try {
+    created = await createWorkerHarness(options, context);
+  } catch (error) {
+    await repo.close(context);
+    await rm(directory, { recursive: true, force: true });
+    throw error;
+  }
   // The evaluator owns the other files. The checkpoint worker can read only
   // the evidence copy placed in this test's execution directory.
   created.harness.hooks.on("before_tool", ({ toolName, args }) => {
@@ -248,5 +260,43 @@ describe("compiled Pi harness with a scripted provider (T03)", () => {
     } finally {
       await f.cleanup();
     }
+  });
+});
+
+describe("application tools alongside native execution tools", () => {
+  const lookup: AgentHarnessTool<ExecutionToolContext> = {
+    name: "lookup",
+    label: "Lookup",
+    description: "Returns a fixed application value.",
+    parameters: Type.Object({ key: Type.String() }),
+    replay: "never",
+    async execute(_id, args) {
+      return { content: [{ type: "text", text: `value-for-${(args as { key: string }).key}` }], details: args };
+    },
+  };
+
+  it("runs an application tool through the same harness as native tools", async () => {
+    const f = await fixture(["read", lookup]);
+    try {
+      f.faux.setResponses([
+        fauxAssistantMessage(fauxToolCall("lookup", { key: "alpha" }), { stopReason: "toolUse" }),
+        (transcript) => {
+          const tool = transcript.messages.find((m) => m.role === "toolResult");
+          expect(JSON.stringify(tool)).toContain("value-for-alpha");
+          return fauxAssistantMessage("Looked up.");
+        },
+      ]);
+      const lane = await f.harness.lane("main", context);
+      expect(await lane.prompt("Look up alpha.", undefined, context)).toMatchObject({ ok: true, value: { status: "completed" } });
+    } finally {
+      await f.cleanup();
+    }
+  });
+
+  it("rejects duplicate tool names and application tools that shadow a native tool", async () => {
+    const shadow = { ...lookup, name: "read" };
+    await expect(fixture([lookup, lookup])).rejects.toThrow(/lookup/);
+    await expect(fixture([shadow])).rejects.toThrow(/native/);
+    await expect(fixture(["read", shadow])).rejects.toThrow(/read/);
   });
 });

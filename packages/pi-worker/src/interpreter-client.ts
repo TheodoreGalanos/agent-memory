@@ -1,7 +1,7 @@
 import type { Context } from "@earendil-works/pi-agent-core";
 import type { Assignment } from "../../../contracts/generated/assignment.js";
-import type { HostCommands } from "./host-client.js";
-import { inspectJson } from "./scoped-operation.js";
+import type { HostCommands } from "../../host-client/src/client.js";
+import { inspectJson } from "../../host-client/src/artifact.js";
 
 export interface InterpreterReply {
   status: "ok" | "failed" | "unknown" | "lost";

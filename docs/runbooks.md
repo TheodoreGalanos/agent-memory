@@ -34,7 +34,7 @@ continue the source cursor past the deferred events). For dispatch-level outages
 provider with `set_control {kind: provider}` so new admissions wait, and re-enable afterwards.
 **Test.** `supervisor.test.ts` — "a judgement provider outage defers the candidates…".
 
-## 3. Sandbox disconnect — *exercised in WP05/WP07*
+## 3. Sandbox disconnect — *exercised*
 
 **Symptom.** Python/ASP tool calls fail; effect requests show `outcome_unknown`.
 **Procedure.** The Harbor bridge reconciles orphans and restarts on its own timer; unknown effects
@@ -42,18 +42,18 @@ block `complete` until `reconcile_effect` records the real outcome. See
 `services/harbor-bridge/README.md`.
 **Test.** `npm run test:docker` (real Docker), `crates/memory-host/tests/sandbox_lifecycle.rs`.
 
-## 4. Source revocation — *exercised in WP12/WP13*
+## 4. Source revocation — *exercised*
 
 **Symptom.** `changes` shows `memory_maintained`/revocation events; workers report `blocked`
 results naming the revised input revision.
 **Procedure.** Corrections and revocations publish change notices; unfinished dependent work is
 marked for recheck. A pool worker whose brief grants a superseded memory revision settles the job
-`blocked` with the reason — resubmit with the current reference. Deletion follows the WP13 flow
+`blocked` with the reason — resubmit with the current reference. Deletion follows the deletion flow
 (`begin_deletion`, acknowledgements, `purge_deletion`).
 **Test.** `supervisor.test.ts` (stale input → `blocked`), `crates/memory-store/tests/retention.rs`,
 `crates/memory-host/tests/retention.rs`.
 
-## 5. Stuck intention — *exercised in WP12*
+## 5. Stuck intention — *exercised*
 
 **Symptom.** `inspect_intentions` shows an occurrence `pending` past its expected trigger.
 **Procedure.** Confirm readiness inputs exist (plan, ready artifacts/memories); the Host timer
@@ -61,7 +61,7 @@ sweeps intentions every second. Use `cancel_intention` or `confirm_intention` ex
 treat silence as completion.
 **Test.** `crates/memory-store/tests/maintenance.rs`, `crates/memory-host/tests/maintenance.rs`.
 
-## 6. Unknown effect — *exercised in WP03/WP13*
+## 6. Unknown effect — *exercised*
 
 **Symptom.** `inspect_effect` shows `outcome_unknown`; `complete` is refused with a conflict.
 **Procedure.** Query the effect's owner or receipt; record the truth with `reconcile_effect`
@@ -98,7 +98,7 @@ released by recovery. Compare `committed` with the provider invoice at the end o
 **Test.** Reservation/settlement paths in `crates/memory-host/tests/judgement.rs`; the live
 walkthrough documents the ledger before and after formation.
 
-## 10. Failed purge — *exercised in WP13*
+## 10. Failed purge — *exercised*
 
 **Symptom.** `inspect_deletion` reports obligations pending (provider retention, backups, storage).
 **Procedure.** Acknowledge each external obligation only with evidence (`acknowledge_purge`);
@@ -126,13 +126,27 @@ postgresql://…`: every table is copied in foreign-key order under unchanged id
 clock is carried across, counts are verified, and a non-empty target is refused. Then point a
 production `host.json` at the target, start the Host, compare `browse`/`history` on both, and only
 then redirect clients. Pi sessions in local SQLite files are not migrated; finish or cancel their
-jobs before migrating (clean continuation, WP13).
+jobs before migrating (clean continuation).
 **Test.** `crates/memory-store/tests/migrate.rs` (runs under `npm run test:store`).
 
 ## 13. Upgrades and canaries — *documented*
 
 Pin model, question and profile identity in reports (`judgement_usage`, `RenderManifest.profile`).
-Before a wider rollout, run the fixture suites (`npm run check`, `npm run test:store`) and the
-Part 1 walkthrough on the new build; then let one pool child with a narrow `classes` grant claim
-selected work while the old build keeps the rest. Sessions incompatible with a worker upgrade are
-drained by cancelling their jobs and resubmitting.
+Before a wider rollout, run the fixture suites (`npm run check`, `npm run test:store`), the
+[user guide](../docs/user-guide.md) walkthrough, and the composition matrix and headless
+continuous scenario (`npx vitest run packages/supervisor/test/compositions.test.ts
+packages/supervisor/test/continuous.test.ts` — see the [runtime guide](../docs/runtime.md#running-it))
+on the new build; then let one pool child with a narrow `classes` grant claim selected work while
+the old build keeps the rest. Sessions incompatible with a worker upgrade are drained by
+cancelling their jobs and resubmitting.
+
+## 14. worker.json shape
+
+`worker.json` names the enabled `processes`, a `task_model` (or the test-only
+`{"provider":"faux","replies_file":…}`), a `judgement` block (`primary`, optional `fallback` and
+`comparison` routes — `{"kind":"jev"|"generative", …}`, or the test-only
+`{"kind":"scripted","answers_file":…}`), an optional `execution` service (`node` or `asp`), and
+`concurrency`/`poll_ms`/`lease_seconds`/`drain_ms`. `composeApplication` validates the result
+against the installed services before the pool credential claims anything — a required service
+missing for an enabled process, or two modules claiming the same process, is rejected at startup,
+not discovered mid-run. See the [runtime guide](../docs/runtime.md#composition-services-modules-workerjson).

@@ -1,7 +1,7 @@
 import { it, expect, vi } from "vitest";
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/pi-agent-core";
 import type { Assignment } from "../../../contracts/generated/assignment.js";
-import type { HostCommands } from "../../pi-worker/src/host-client.js";
+import type { HostCommands } from "../../host-client/src/client.js";
 import { input } from "../../pi-worker/test/fixtures.js";
 import { packet } from "./fixtures.js";
 import { buildPacket, type PacketInput } from "../src/packet.js";

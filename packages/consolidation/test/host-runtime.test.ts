@@ -13,8 +13,8 @@ import type {
 } from "../../../contracts/generated/consolidation-review.js";
 import type { JudgementProvider } from "../../judgement/src/index.js";
 import { definition } from "../../judgement/src/index.js";
-import { fenceFor } from "../../judgement/src/packet.js";
-import { HostClient } from "../../pi-worker/src/host-client.js";
+import { fenceFor } from "../../host-client/src/fence.js";
+import { HostClient } from "../../host-client/src/client.js";
 import {
   InterpreterClient,
   type InterpreterReply,
@@ -164,7 +164,7 @@ it.skipIf(!process.env.MEMORY_CONSOLIDATION_FIXTURE)(
       members: f.cases.slice(0, 2),
     };
     const options = {
-      reference: provider,
+      primary: provider,
       maxAttempts: 1,
       disclosure: {
         policy: brief.disclosure_policy,

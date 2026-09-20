@@ -117,7 +117,7 @@ async fn harbor_sandbox_lifecycle() {
         owner_id: auth.actor_id,
         epoch: assigned.epoch,
     };
-    store.start_job(&auth, &permit).await.unwrap();
+    store.start_job(&auth, &permit, None).await.unwrap();
     let token = "sandbox-test-token".repeat(4);
     let worker_token = "sandbox-worker-token".repeat(4);
     let host = Host::new(

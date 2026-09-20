@@ -1,5 +1,6 @@
 pub mod contracts;
 pub mod coordination;
+pub mod decision;
 pub mod formation;
 pub mod judgement;
 pub mod records;
@@ -17,3 +18,5 @@ pub mod maintenance;
 pub mod retention;
 
 pub mod interaction;
+
+pub mod scheduling;

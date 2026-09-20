@@ -3,7 +3,9 @@ mod access;
 pub mod artifacts;
 pub mod coordinator;
 mod database;
+pub use database::SCHEMA_VERSION;
 mod entities;
+pub mod experience;
 mod formation;
 mod judgements;
 mod memories;
@@ -50,3 +52,5 @@ pub mod maintenance;
 pub mod retention;
 
 pub mod interaction;
+
+pub mod scheduling;

@@ -5,7 +5,7 @@ import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { it, expect } from "vitest";
-import { HostClient } from "../src/host-client.js";
+import { HostClient } from "../src/client.js";
 
 it("serves authenticated typed commands through the Rust HTTP host", async () => {
   const root = await mkdtemp(join(tmpdir(), "memory-http-"));

@@ -4,7 +4,7 @@ import {
   investigationWorkspace,
   preserveChildEvidence,
 } from "./scoped-operation.js";
-import { briefAccess, workspaceFromBrief } from "./workspace.js";
+import { briefAccess, workspaceFromBrief, type WorkspaceAccess } from "./workspace.js";
 import { randomUUID } from "node:crypto";
 import {
   BACKGROUND_CONTEXT,
@@ -19,12 +19,16 @@ import type {
   Assignment,
   WorkResult,
 } from "../../../contracts/generated/assignment.js";
+import type { ToolEvent } from "../../../contracts/generated/formation-window.js";
 import type {
   Fence,
   Resources,
 } from "../../../contracts/generated/host-request.js";
-import type { HostCommands } from "./host-client.js";
-import { createWorkerHarness, type WorkerOptions } from "./harness.js";
+import type { HostCommands } from "../../host-client/src/client.js";
+import { experienceEvents } from "./experience.js";
+import { createWorkerHarness, toolName, type WorkerOptions } from "./harness.js";
+import { keepLease, type AssignmentLease } from "./lease.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 
 export interface WorkerProfile {
   id: string;
@@ -48,12 +52,32 @@ interface SavedResult {
   result: WorkResult;
 }
 
-/** One assignment, one attached Pi session, and one host-mapped operation. */
+/** One assignment, one attached Pi session, and one host-mapped operation. A supplied `lease`
+ * keeper is followed while driving; otherwise the worker keeps its own lease for each run.
+ * `composition` names the pool composition accepting the work and is recorded with `start`. */
+export interface AttachedWorkerOptions {
+  /** The worker supplies the brief-derived workspace fields; callers may seed or narrow the rest. */
+  workspace?: Partial<WorkerOptions["workspace"] & object>;
+  lease?: AssignmentLease;
+  composition?: string;
+  /** Trusted pool code may widen the brief's read grant, for example to memories activation
+   * selected for this task. Never derived from model output. */
+  grant?: (base: WorkspaceAccess) => WorkspaceAccess;
+  /** Runs once the result is ready and its experience is published, but before `complete` commits
+   * it, while the fence still holds. Used to record an independent validator's verdict durably and to
+   * append checks' unresolved findings; a returned result replaces the one committed. */
+  beforeComplete?: (
+    result: WorkResult,
+    experience: ToolEvent[],
+    context: Context,
+  ) => Promise<WorkResult | void>;
+}
+
 export async function attachAssignedWorker(
   assignment: Assignment,
   host: HostCommands,
   profile: WorkerProfile,
-  options: WorkerOptions,
+  options: Omit<WorkerOptions, "workspace"> & AttachedWorkerOptions,
   parent: Context = BACKGROUND_CONTEXT,
   lifecycle?: ExecutionLifecycle,
 ) {
@@ -65,7 +89,7 @@ export async function attachAssignedWorker(
     throw new Error("Assignment session mismatch");
   if (
     options.tools.some(
-      (name) => !job.spec.brief.capabilities.tools.includes(name),
+      (tool) => !job.spec.brief.capabilities.tools.includes(toolName(tool)),
     )
   )
     throw new Error("Tool is outside the assignment capability set");
@@ -75,17 +99,15 @@ export async function attachAssignedWorker(
     profile.providerReservation.provider_calls !== 1
   )
     throw new Error("Invalid provider limits");
-  const fence: Fence = {
-    job_id: job.id,
-    owner_id: assignment.owner_id,
-    epoch: assignment.epoch,
-  };
+  const fence: Fence = fenceFor(assignment);
   const { context, cancel } = withCancel(parent);
   let expiresAt = Date.parse(assignment.expires_at);
   let cancelled = job.cancel_requested;
   let lost: Error | undefined;
   let closed = false;
   let driving = false;
+  /** The keeper currently renewing this assignment: supplied for the worker's lifetime, or owned per run. */
+  let lease: AssignmentLease | undefined = options.lease;
   let expiryTimer: ReturnType<typeof setTimeout>;
   function armExpiry() {
     clearTimeout(expiryTimer);
@@ -132,6 +154,7 @@ export async function attachAssignedWorker(
   const created = await createWorkerHarness(
     {
       ...options,
+      toolContextExtra: { host, assignment, session: options.session, ...options.toolContextExtra },
       workspace: {
         ...options.workspace,
         initial:
@@ -178,8 +201,9 @@ export async function attachAssignedWorker(
             checked.assignment.job.cancel_requested
           )
             throw new Error("Workspace assignment is no longer active");
-          const grant = briefAccess(checked.assignment.job.spec.brief);
-          const narrower = await options.workspace?.readAccess();
+          const base = briefAccess(checked.assignment.job.spec.brief);
+          const grant = options.grant ? options.grant(base) : base;
+          const narrower = await options.workspace?.readAccess?.();
           return narrower
             ? {
                 revision: JSON.stringify([grant.revision, narrower.revision]),
@@ -376,21 +400,36 @@ export async function attachAssignedWorker(
     return undefined;
   });
 
-  async function renew(updateEndpoint = true) {
+  /** Follows a keeper while driving: renewed ownership rearms expiry and renews the protected
+   * endpoint; a cancel request aborts the Pi operation. During export the endpoint stays fenced. */
+  function follow(keeper: AssignmentLease, exporting: () => boolean) {
+    const off = [
+      keeper.onRenew(async (renewed) => {
+        expiresAt = Date.parse(renewed.expires_at);
+        armExpiry();
+        cancelled = renewed.job.cancel_requested;
+        if (!exporting()) await lifecycle?.renew(renewed);
+      }),
+      keeper.onCancel(async () => {
+        cancelled = true;
+        if (!exporting()) await lane.requestAbort(job.operation_id, context);
+      }),
+    ];
+    const onLost = () => {
+      lost = keeper.lost ?? new Error("Assignment renewal failed");
+      cancel();
+    };
+    keeper.context.abortSignal?.addEventListener("abort", onLost, { once: true });
+    return () => {
+      for (const unsubscribe of off) unsubscribe();
+      keeper.context.abortSignal?.removeEventListener("abort", onLost);
+    };
+  }
+  async function renew() {
     active();
+    if (!lease) throw new Error("Assignment is not being driven");
     try {
-      const response = await host.request(
-        { action: "renew", fence, lease_seconds: 30 },
-        context.abortSignal,
-      );
-      if (response.kind !== "assignment")
-        throw new Error("Host did not renew assignment");
-      expiresAt = Date.parse(response.assignment.expires_at);
-      armExpiry();
-      if (updateEndpoint) await lifecycle?.renew(response.assignment);
-      cancelled = response.assignment.job.cancel_requested;
-      if (cancelled && updateEndpoint)
-        await lane.requestAbort(job.operation_id, context);
+      await lease.renew();
     } catch (error) {
       lost =
         error instanceof Error ? error : new Error("Assignment renewal failed");
@@ -469,35 +508,18 @@ export async function attachAssignedWorker(
     async run() {
       if (driving) throw new Error("Assignment is already being driven");
       driving = true;
-      let heartbeat: ReturnType<typeof setTimeout> | undefined;
-      let renewal: Promise<void> = Promise.resolve();
-      let stopped = false;
+      const own = !options.lease;
+      const keeper = options.lease ?? keepLease(host, assignment, 30, parent);
+      lease = keeper;
       let finishing = false;
-      const schedule = () => {
-        if (stopped) return;
-        heartbeat = setTimeout(() => {
-          renewal = renew(!finishing)
-            .then(schedule)
-            .catch(() => {});
-        }, 5_000);
-      };
+      const unfollow = follow(keeper, () => finishing);
       const finishExecution = async (cancelled: boolean) => {
         // Exports can outlast a lease. Keep host ownership alive while the
         // endpoint is fenced; renewing that endpoint would reopen execution.
         finishing = true;
-        if (heartbeat) clearTimeout(heartbeat);
-        await renewal;
-        if (heartbeat) clearTimeout(heartbeat);
-        try {
-          if (lifecycle) {
-            await renew(false);
-            schedule();
-            await lifecycle.finish(cancelled);
-          }
-        } finally {
-          stopped = true;
-          if (heartbeat) clearTimeout(heartbeat);
-          await renewal;
+        if (lifecycle) {
+          await renew();
+          await lifecycle.finish(cancelled);
         }
       };
       try {
@@ -534,8 +556,10 @@ export async function attachAssignedWorker(
           );
           return { kind: "cancelled" as const };
         }
-        await host.request({ action: "start", fence }, context.abortSignal);
-        schedule();
+        await host.request(
+          { action: "start", fence, composition: options.composition ?? null },
+          context.abortSignal,
+        );
         await flushUsage();
         let investigation:
           Awaited<ReturnType<typeof prepareInvestigation>> | undefined;
@@ -674,6 +698,26 @@ export async function attachAssignedWorker(
         }
         await finishExecution(false);
         active();
+        // A task's experience is published before its result commits, while the fence still holds:
+        // formation later works from what actually happened, not from authored candidates.
+        if (job.spec.brief.process === "investigation") {
+          const experience = experienceEvents(await lane.findEntries(undefined, context), {
+            result: saved.result,
+          });
+          const published = await host.request(
+            { action: "publish_experience", fence, events: experience },
+            context.abortSignal,
+          );
+          if (published.kind !== "source")
+            throw new Error("Host did not record the task experience");
+          if (options.beforeComplete) {
+            const amended = await options.beforeComplete(saved.result, experience, context);
+            if (amended) {
+              saved = { ...saved, result: amended };
+              await options.session.setValue(resultAddress, saved, context);
+            }
+          }
+        }
         const committed = await host.request(
           {
             action: "complete",
@@ -687,9 +731,11 @@ export async function attachAssignedWorker(
           throw new Error("Host did not return the committed result");
         return { kind: "settled" as const, job: committed.job };
       } finally {
-        stopped = true;
-        if (heartbeat) clearTimeout(heartbeat);
-        await renewal;
+        unfollow();
+        if (own) {
+          lease = undefined;
+          await keeper.stop();
+        }
         driving = false;
       }
     },

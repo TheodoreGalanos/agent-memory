@@ -20,13 +20,13 @@ import type { JudgementPacket } from "../../../contracts/generated/judgement-pac
 import {
   HostClient,
   type HostCommands,
-} from "../../pi-worker/src/host-client.js";
+} from "../../host-client/src/client.js";
 import { openLocalSession } from "../../pi-worker/src/local-session.js";
 import {
   GenerativeProvider,
   type JudgementProvider,
 } from "../../judgement/src/index.js";
-import { fenceFor } from "../../judgement/src/packet.js";
+import { fenceFor } from "../../host-client/src/fence.js";
 import { maximum } from "../../judgement/test/fixtures.js";
 import { runFormation } from "../src/index.js";
 
@@ -98,7 +98,7 @@ it.skipIf(!process.env.MEMORY_FORMATION_FIXTURE)(
       },
     };
     const options = {
-      reference,
+      primary: reference,
       disclosure: {
         policy: brief.disclosure_policy,
         scope: brief.scope,
