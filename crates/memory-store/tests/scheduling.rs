@@ -1,7 +1,7 @@
-// ABOUTME: Store-level TDD coverage for the scheduling sweeps: consolidation, qualification and
-// ABOUTME: maintenance triggered by a correction or a new source revision (with causal-origin skip).
+// ABOUTME: Store-level TDD coverage for the scheduling sweeps: consolidation cohorts, procedure
+// ABOUTME: qualification, correction/source-revision maintenance and the intention settle-check.
 use chrono::{Duration, Utc};
-use memory_domain::{consolidation::*, contracts::*, coordination::*, records::*};
+use memory_domain::{consolidation::*, contracts::*, coordination::*, intentions::*, records::*};
 use memory_store::Store;
 use uuid::Uuid;
 
@@ -620,6 +620,141 @@ async fn maintenance_on_source_revision(store: &Store) {
     );
     assert_eq!(store.schedule_maintenance(&f.auth, 10).await.unwrap(), 0);
 }
+
+async fn intention_settles_after_job(store: &Store) {
+    let f = setup(store).await;
+    let directory = tempfile::tempdir().unwrap();
+    let artifacts =
+        memory_store::artifacts::ArtifactService::local(store.clone(), directory.path())
+            .await
+            .unwrap();
+    let intention_task_id = Uuid::now_v7();
+    let mut execution = base_brief(
+        &f.auth,
+        &f.policy,
+        f.project_scope.clone(),
+        intention_task_id,
+    );
+    execution.process = Process::Maintenance;
+    execution.limits.root_budget_id = f.budget_id;
+    let mut draft = candidate(&f.project_scope, &f.policy, "intention");
+    draft.content = MemoryContent::Intention {
+        purpose: "Verify the corrected property".into(),
+        owner_id: f.auth.actor_id,
+        trigger: "Due now".into(),
+        readiness: vec![],
+        completion: vec!["Checked execution is complete".into()],
+        expires_at: Some(Utc::now() + Duration::minutes(10)),
+        notification_policy: "quiet".into(),
+        recurrence: None,
+        plan: Some(Box::new(IntentionPlan {
+            trigger: IntentionTrigger::Time {
+                at: Utc::now() - Duration::seconds(1),
+            },
+            execution: Box::new(execution),
+            ready_memories: vec![],
+            ready_artifacts: vec![],
+            recurrence_seconds: None,
+            completion: CompletionRule {
+                result_pointer: "/status".into(),
+                equals: serde_json::json!("complete"),
+                required_effects: vec![],
+                semantic_conditions: vec![],
+                confirmation_owner: None,
+                delivery_grace_seconds: None,
+            },
+        })),
+    };
+    let memory = store.create_memory(&f.auth, draft).await.unwrap();
+    let occurrence = store
+        .intentions(&f.auth, memory.reference.memory_id)
+        .await
+        .unwrap()
+        .remove(0);
+    store
+        .arm_intention(&f.auth, occurrence.id, true, None)
+        .await
+        .unwrap();
+    let fired = store
+        .sweep_intentions(&f.auth, 100)
+        .await
+        .unwrap()
+        .occurrences
+        .into_iter()
+        .find(|o| o.id == occurrence.id)
+        .unwrap();
+    assert_eq!(fired.state, IntentionState::Fired);
+    let job_id = fired.job_id.expect("intention fired a job");
+    let assigned = store.claim_job(&f.auth, job_id, 120).await.unwrap();
+    let fence = Fence {
+        job_id: assigned.job.id,
+        owner_id: assigned.owner_id,
+        epoch: assigned.epoch,
+    };
+    store.start_job(&f.auth, &fence, None).await.unwrap();
+    let bytes = b"{\"checked\":true}";
+    let artifact = artifacts
+        .allocate_named(
+            &f.auth,
+            Uuid::now_v7(),
+            memory_domain::sources::ArtifactSpec {
+                label: "Checked result".into(),
+                scope: assigned.job.spec.brief.scope.clone(),
+                media_type: "application/json".into(),
+                expected_bytes: bytes.len() as u32,
+                origin: Origin::AgentGenerated,
+                retention_class: "test".into(),
+                dependencies: vec![],
+            },
+        )
+        .await
+        .unwrap();
+    artifacts
+        .upload(&f.auth, artifact.id, artifact.revision, &bytes[..])
+        .await
+        .unwrap();
+    let result = WorkResult {
+        schema_version: WireVersion::V1,
+        status: WorkStatus::Complete,
+        examined_scope: assigned.job.spec.brief.scope.clone(),
+        inputs: WorkInputs {
+            memories: vec![],
+            sources: vec![],
+            artifacts: vec![],
+        },
+        findings: vec![],
+        coverage: Coverage {
+            examined: vec!["Fixture".into()],
+            unexamined: vec![],
+        },
+        unresolved_work: vec![],
+        proposed_changes: vec![],
+        child_outputs: vec![],
+        result_artifact: Some(artifact.id),
+        known_effects: vec![],
+        usage: Usage {
+            status: UsageStatus::Known,
+            input_tokens: Some(0),
+            output_tokens: Some(0),
+            cost: None,
+        },
+    };
+    store
+        .complete_job(&f.auth, Uuid::now_v7(), &fence, result)
+        .await
+        .unwrap();
+    // No confirm/complete call from the test: the sweep alone must settle the occurrence.
+    let swept = store
+        .sweep_intentions(&f.auth, 100)
+        .await
+        .unwrap()
+        .occurrences
+        .into_iter()
+        .find(|o| o.id == occurrence.id)
+        .unwrap();
+    assert_eq!(swept.state, IntentionState::Completed);
+}
+
 async fn insert_consolidation_review(
     raw: &sqlx::AnyPool,
     auth: &Authority,
@@ -662,6 +797,7 @@ async fn suite(url: &str) {
     qualification_unschedulable_on_expired_budget(&store, &raw).await;
     maintenance_on_correction_and_causal_skip(&store, &raw).await;
     maintenance_on_source_revision(&store).await;
+    intention_settles_after_job(&store).await;
     raw.close().await;
     store.close().await;
 }
