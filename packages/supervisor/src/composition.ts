@@ -76,7 +76,8 @@ export function composeApplication(services: Services, modules: ProcessModule[])
     if (!id.trim() || !version.trim()) throw new Error("Every module needs an id and a version");
     if (ids.has(id)) throw new Error(`Module ${id} is declared more than once`);
     ids.add(id);
-    if (!operations.length) throw new Error(`Module ${id} declares no operations`);
+    const offered = module.tools?.(services) ?? [];
+    if (!operations.length && !offered.length) throw new Error(`Module ${id} declares no operations`);
     const missing = requires.filter((capability) => !installed.includes(capability));
     if (missing.length) throw new Error(`Module ${id} requires ${missing.join(", ")} but the service is not installed`);
     for (const operation of operations) {
@@ -84,7 +85,7 @@ export function composeApplication(services: Services, modules: ProcessModule[])
       if (other) throw new Error(`Process ${operation} is handled by both ${other} and ${id}`);
       owners.set(operation, id);
     }
-    for (const tool of module.tools?.(services) ?? []) {
+    for (const tool of offered) {
       const name = toolName(tool);
       if ((EXECUTION_TOOLS as readonly string[]).includes(name))
         throw new Error(`Module ${id} offers tool ${name}, which is a native execution tool`);

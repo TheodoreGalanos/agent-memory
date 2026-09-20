@@ -1,6 +1,7 @@
 //! Authenticated host commands. The transport cannot supply its own authority.
 mod activation;
 mod consolidation;
+mod decision;
 mod formation;
 pub mod http;
 mod intentions;
@@ -764,6 +765,10 @@ impl Host {
             R::RegisterTaskCheck { fence, check } => O::TaskCheck {
                 check: Box::new(self.store.register_task_check(auth, &fence, *check).await?),
             },
+            R::CheckDecision { fence, choice, .. } => {
+                let (accepted, reasons) = self.check_decision(auth, &fence, choice).await?;
+                O::DecisionCheck { accepted, reasons }
+            }
             R::InspectTaskCheck { fence, id } => O::TaskCheck {
                 check: Box::new(self.store.task_local_check(auth, &fence, id).await?),
             },
@@ -1239,6 +1244,7 @@ fn authorize(role: &Role, request: &HostRequest) -> Result<(), ContractError> {
             | R::RegisterTaskCheck { fence, .. }
             | R::InspectTaskCheck { fence, .. }
             | R::RetireTaskCheck { fence, .. }
+            | R::CheckDecision { fence, .. }
             | R::SpawnChild { fence, .. }
             | R::ChildJobs { fence, .. }
             | R::WaitChildren { fence, .. }

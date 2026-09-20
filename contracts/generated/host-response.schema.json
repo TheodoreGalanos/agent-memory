@@ -404,6 +404,29 @@
     {
       "type": "object",
       "properties": {
+        "accepted": {
+          "type": "boolean"
+        },
+        "kind": {
+          "type": "string",
+          "const": "decision_check"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "accepted",
+        "reasons"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
         "kind": {
           "type": "string",
           "const": "artifact_data"

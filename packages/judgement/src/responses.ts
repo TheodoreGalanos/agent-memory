@@ -117,6 +117,9 @@ export const catalogueResponseTable: Record<string, Record<string, Record<string
     evidence: { yes: "investigate" },
     check: { yes: "investigate" }
   },
+  J31: {
+    next: { other: "investigate" }
+  },
 };
 
 /** The rules the catalogue owners declare, ready to pass as `responses` to the runtime. */

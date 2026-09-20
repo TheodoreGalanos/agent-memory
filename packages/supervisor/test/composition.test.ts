@@ -57,6 +57,15 @@ it("rejects duplicate module ids, duplicate operations and handlers outside the 
   expect(() => composeApplication({}, [])).toThrow(/module/i);
 });
 
+it("rejects a module that declares no operations and offers no tools, but accepts one that offers only tools", () => {
+  const bare = module({ id: "a", declaration: { id: "a", version: "1", requires: [], operations: [] }, attach: () => [] });
+  expect(() => composeApplication({}, [bare])).toThrow(/a.*no operations/);
+  const toolOnly = module({ id: "a", declaration: { id: "a", version: "1", requires: [], operations: [] }, attach: () => [], tools: () => [tool("lookup")] });
+  const composed = composeApplication({}, [toolOnly]);
+  expect(composed.handlers).toEqual([]);
+  expect(composed.tools.map((t) => (typeof t === "string" ? t : t.name))).toEqual(["lookup"]);
+});
+
 it("rejects contributed tools that collide with each other or with native execution tools", () => {
   const a = module({ id: "a", tools: () => [tool("lookup")] });
   const b = module({ id: "b", declaration: { id: "b", version: "1", requires: [], operations: ["formation"] }, attach: () => [handler("formation")], tools: () => [tool("lookup")] });
