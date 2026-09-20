@@ -50,6 +50,7 @@ interface World {
   job: (id: string) => Promise<import("../../../contracts/generated/host-response.js").Job>;
   ingestCapture: () => Promise<{ source_id: string; revision: string }>;
   close: () => Promise<void>;
+  otherProject: () => Promise<{ submit: World["submit"]; job: World["job"] }>;
 }
 async function world(): Promise<World> {
   const base = await mkdtemp(join(tmpdir(), "memory-supervisor-"));
@@ -57,12 +58,13 @@ async function world(): Promise<World> {
   const tenant_id = randomUUID(), actor_id = randomUUID(), project_id = randomUUID();
   const scope = { user_id: null, project_id, task_id: null, entity_ids: [], source_versions: [] };
   const tokens = { client: randomBytes(32).toString("hex"), admin: randomBytes(32).toString("hex"), pool: randomBytes(32).toString("hex") };
+  const adminActor = randomUUID();
   const expires_at = minutes(60);
   await writeFile(join(base, "host.json"), JSON.stringify({
     listen: `127.0.0.1:${port}`, database_url: `sqlite://${join(base, "memory.db")}?mode=rwc`, artifact_root: join(base, "artifacts"),
     credentials: [
       { token: tokens.client, tenant_id, actor_id, scope, role: { kind: "client" }, expires_at },
-      { token: tokens.admin, tenant_id, actor_id: randomUUID(), scope: { ...scope, project_id: null }, role: { kind: "administrator" }, expires_at },
+      { token: tokens.admin, tenant_id, actor_id: adminActor, scope: { ...scope, project_id: null }, role: { kind: "administrator" }, expires_at },
       { token: tokens.pool, tenant_id, actor_id: randomUUID(), scope: { ...scope, project_id: null }, role: { kind: "pool", classes: ["interactive", "deferred"] }, expires_at },
     ],
   }), { mode: 0o600 });
@@ -97,6 +99,28 @@ async function world(): Promise<World> {
       return source;
     },
     async close() { host.kill("SIGINT"); await once(host, "exit"); await rm(base, { recursive: true, force: true }); },
+    /** A second project in the same tenant with its own policy and budget; the pool credential covers both. */
+    async otherProject() {
+      const otherScope = { ...scope, project_id: randomUUID() };
+      const otherPolicy = expectKind(await admin.request({ action: "user", request: { action: "mutate", request_id: randomUUID(), mutation: {
+        action: "create_policy", label: "Other project", scope: otherScope, effective: { kind: "unknown" },
+        policy: { retention_purpose: "test", allowed_uses: ["task_context"], source_rules: [], evidence_requirements: [], applicability_rules: [], budget_class: "test", scheduling_priority: 0, judgement_dispositions: [], notification_policy: "material", qualification_requirements: [] } } } }), "user").result;
+      if (otherPolicy.kind !== "policy") throw new Error("policy");
+      const otherBudget = { ...budget, id: randomUUID(), scope: otherScope };
+      await admin.request({ action: "create_budget", budget: otherBudget });
+      return {
+        async submit(process: "investigation" | "formation", extra: Record<string, unknown>) {
+          const task_id = randomUUID();
+          const brief = { ...fixture.payload, process, task_id, scope: { ...otherScope, task_id }, policy: otherPolicy.policy.reference, purpose: `${process} test`,
+            inputs: { memories: [], sources: [], artifacts: [] }, capabilities: { sources: [], queries: [], tools: [] }, known_conflicts: [], evidence_cutoff: new Date().toISOString(),
+            profile: { id: randomUUID(), revision: 1, label: `${process} profile` },
+            limits: { root_budget_id: otherBudget.id, max_provider_attempts: 8, max_tokens: 4_000_000, max_output_bytes: 1_000_000, max_child_depth: 0, max_child_concurrency: 0 }, ...extra };
+          const command = { ...fixture, request_id: randomUUID(), tenant_id, actor_id: adminActor, scope: brief.scope, budget_id: otherBudget.id, deadline: minutes(20), payload: { brief, parent_id: null, max_attempts: 2, retain_until: minutes(1440) } };
+          return expectKind(await admin.request({ action: "submit", command } as HostRequest), "job").job;
+        },
+        async job(id: string) { return expectKind(await admin.request({ action: "inspect_job", job_id: id }), "job").job; },
+      };
+    },
   };
 }
 /** Scripted answers: a candidate's own evidential status for J01, support for J02, and for J30 a role by
@@ -104,6 +128,9 @@ async function world(): Promise<World> {
 function scriptedChoice(packet: JudgementPacket, key: string): string {
   const span = packet.evidence.find((e) => e.name === "span")?.content as { kind: string; events: { content: { role?: string } }[] } | undefined;
   if (key === "J30.role") return span && (span.kind === "exchange" || span.events[0]?.content.role === "assistant") ? "knowledge" : "none";
+  // Activation: every retrieved candidate is directly relevant to the new task.
+  if (key.startsWith("J06.")) return key === "J06.contradiction" ? "no" : key === "J06.direct" ? "yes" : "no";
+  if (key.startsWith("J07.") || key.startsWith("J08.")) return key === "J07.assessment" ? "relevant" : "established";
   const entry = packet.evidence.find((e) => e.name === "candidate")!.content as unknown as FormationEntry;
   const choices: Record<string, string> = { "J01.assessment": entry.event.evidential_status, "J01.faithfulness": "yes", "J02.assessment": "supports", "J03.assessment": "boundary", "J04.assessment": "conditional_method", "J05.assessment": "commitment", "J27.assessment": "task_local" };
   return choices[key];
@@ -130,12 +157,13 @@ it("a pool claims, drives and settles investigation and formation jobs through a
   const tenant_id = randomUUID(), actor_id = randomUUID(), project_id = randomUUID();
   const scope = { user_id: null, project_id, task_id: null, entity_ids: [], source_versions: [] };
   const tokens = { client: randomBytes(32).toString("hex"), admin: randomBytes(32).toString("hex"), pool: randomBytes(32).toString("hex") };
+  const adminActor = randomUUID();
   const expires_at = minutes(60);
   await writeFile(join(base, "host.json"), JSON.stringify({
     listen: `127.0.0.1:${port}`, database_url: `sqlite://${join(base, "memory.db")}?mode=rwc`, artifact_root: join(base, "artifacts"),
     credentials: [
       { token: tokens.client, tenant_id, actor_id, scope, role: { kind: "client" }, expires_at },
-      { token: tokens.admin, tenant_id, actor_id: randomUUID(), scope: { ...scope, project_id: null }, role: { kind: "administrator" }, expires_at },
+      { token: tokens.admin, tenant_id, actor_id: adminActor, scope: { ...scope, project_id: null }, role: { kind: "administrator" }, expires_at },
       { token: tokens.pool, tenant_id, actor_id: randomUUID(), scope: { ...scope, project_id: null }, role: { kind: "pool", classes: ["interactive", "deferred"] }, expires_at },
     ],
   }), { mode: 0o600 });
@@ -199,7 +227,7 @@ it("a pool claims, drives and settles investigation and formation jobs through a
       return states.every((state) => ["completed", "partial", "failed"].includes(state));
     };
     const composition = compose({ taskModel: taskService(models, faux), judgement: { primary: reference, maximum } }, "investigation", "formation");
-    expect(composition.identity).toMatch(/^investigation@1\+formation@1#[0-9a-f]{12}$/);
+    expect(composition.identity).toMatch(/^investigation@2\+formation@1#[0-9a-f]{12}$/);
     await runSupervisor({
       host: new HostClient(url, tokens.pool), hostUrl: url, concurrency: { interactive: 1, deferred: 1 }, pollMs: 50, leaseSeconds: 60,
       sessionsDirectory: join(base, "sessions"),
@@ -378,7 +406,11 @@ it("a settled task's experience is formed automatically: the Host schedules form
     models.setProvider(faux.provider);
     const taskResult = { schema_version: "1", status: "complete", examined_scope: task.spec.brief.scope, inputs: task.spec.brief.inputs, findings: [], coverage: { examined: ["Read the site notes: clearance under beam B3 measured at 2.0 m"], unexamined: [] }, unresolved_work: [], proposed_changes: [], child_outputs: [], known_effects: [], usage: { status: "unknown", input_tokens: null, output_tokens: null, cost: null } };
     faux.setResponses([fauxAssistantMessage(JSON.stringify(taskResult))]);
-    const reference = scriptedReference(faux, models);
+    // Judgement scripts its own replies; sharing the task model's queue would clobber the task's reply
+    // now that activation runs before the model does.
+    const judgementFaux = fauxProvider(), judgementModels = createModels();
+    judgementModels.setProvider(judgementFaux.provider);
+    const reference = scriptedReference(judgementFaux, judgementModels);
     const run = async (jobId: string, ...processes: ("investigation" | "formation")[]) => runSupervisor({
       host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 60, sessionsDirectory: join(w.base, "sessions"),
       composition: compose({ taskModel: taskService(models, faux), judgement: { primary: reference, maximum } }, ...processes), log: (line) => log.push(line),
@@ -423,6 +455,46 @@ it("a settled task's experience is formed automatically: the Host schedules form
     expect(formed.evidential_status).toBe("inference");
     expect(formed.content.family === "knowledge" && formed.content.statement).toContain("clearance under beam B3");
     expect(formed.source_locators.length).toBeGreaterThan(0);
+
+    // Task B: a fresh task in the same project, given no memory IDs, asks about the same subject. The
+    // memory formed from task A reaches its model through activation at admission.
+    const taskB = await w.submit("investigation", { purpose: "What clearance is available under beam B3 for the crane route?" });
+    let seenByModel = "";
+    faux.setResponses([(transcript) => { seenByModel = JSON.stringify(transcript); return fauxAssistantMessage(JSON.stringify({ ...taskResult, examined_scope: taskB.spec.brief.scope, inputs: taskB.spec.brief.inputs })); }]);
+    await run(taskB.id, "investigation");
+    const doneB = await w.job(taskB.id);
+    expect(doneB.state, log.filter((l) => l.includes(taskB.id)).join("\n")).toBe("completed");
+    expect(seenByModel, log.filter((l) => l.includes(taskB.id) || l.includes("activation")).join("\n")).toContain("clearance under beam B3");
+    expect(seenByModel).toContain(formed.label);
+    expect(log.some((line) => line.includes(`job ${taskB.id} activation: 1 memory(ies) selected`))).toBe(true);
+  } finally {
+    await w.close();
+  }
+}, 180_000);
+
+it("a task in another project cannot retrieve memories formed for this one", async () => {
+  const w = await world();
+  try {
+    // A project-scoped memory exists; a task under a different project asks the same question.
+    const draft: RecordDraft = { label: "B3 clearance", scope: w.scope as unknown as RecordDraft["scope"], content: { family: "knowledge", statement: "Clearance under beam B3 measured at 2.0 m.", subject: null, predicate: null, uncertainty: [], examined_coverage: [] }, origin: "observed", evidential_status: "observation", availability: "routine", qualification: { status: "candidate" }, valid_time: { kind: "unknown" }, source_locators: [], derived_from: [], decision: { policy: w.policy.reference as RecordDraft["decision"]["policy"], action: "retain", reason: "test", constraints: [], required_evidence: [], expires_at: null } };
+    expectKind(await w.client.request({ action: "user", request: { action: "mutate", request_id: randomUUID(), mutation: { action: "contribute", record: draft } } }), "user");
+    const other = await w.otherProject();
+    const task = await other.submit("investigation", { purpose: "What clearance is available under beam B3 for the crane route?" });
+    const faux = fauxProvider(), models = createModels();
+    models.setProvider(faux.provider);
+    const judgementFaux = fauxProvider(), judgementModels = createModels();
+    judgementModels.setProvider(judgementFaux.provider);
+    let seenByModel = "";
+    faux.setResponses([(transcript) => { seenByModel = JSON.stringify(transcript); return fauxAssistantMessage(JSON.stringify({ schema_version: "1", status: "complete", examined_scope: task.spec.brief.scope, inputs: task.spec.brief.inputs, findings: [], coverage: { examined: ["Scripted"], unexamined: [] }, unresolved_work: [], proposed_changes: [], child_outputs: [], known_effects: [], usage: { status: "unknown", input_tokens: null, output_tokens: null, cost: null } })); }]);
+    const log: string[] = [];
+    await runSupervisor({
+      host: w.pool, hostUrl: w.url, concurrency: 1, pollMs: 50, leaseSeconds: 60, sessionsDirectory: join(w.base, "sessions"),
+      composition: compose({ taskModel: taskService(models, faux), judgement: { primary: scriptedReference(judgementFaux, judgementModels), maximum } }, "investigation"), log: (line) => log.push(line),
+      until: async () => SETTLED.includes((await other.job(task.id)).state),
+    }, context);
+    expect((await other.job(task.id)).state, log.join("\n")).toBe("completed");
+    expect(seenByModel).not.toContain("beam B3 measured");
+    expect(log.some((line) => line.includes(`job ${task.id} activation: 0 memory(ies) selected`))).toBe(true);
   } finally {
     await w.close();
   }

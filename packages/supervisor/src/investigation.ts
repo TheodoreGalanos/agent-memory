@@ -1,14 +1,20 @@
-// ABOUTME: Investigation process module for the pool: attaches the assigned Pi worker with the task model
-// ABOUTME: and the brief-granted application tools, delivers input memories, and drives Pi to a settled result.
+// ABOUTME: Investigation process module for the pool: retrieves relevant memories for the task at admission,
+// ABOUTME: attaches the assigned Pi worker with the task model and granted tools, and drives Pi to a settled result.
 import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
 import type { Model, Api, Models } from "@earendil-works/pi-ai";
 import type { Assignment } from "../../../contracts/generated/assignment.js";
+import type { ActivationQuery, ContextPackage } from "../../../contracts/generated/host-response.js";
+import { activationAccess, applyActivation, runActivation } from "../../activation/src/index.js";
+import type { JudgementOptions } from "../../judgement/src/runtime.js";
+import { catalogueResponses } from "../../judgement/src/responses.js";
 import { attachAssignedWorker, type WorkerProfile } from "../../pi-worker/src/assigned-worker.js";
 import { toolName, type WorkerTool } from "../../pi-worker/src/harness.js";
+import { workspaceFromBrief } from "../../pi-worker/src/workspace.js";
 import type { ProcessModule, Services } from "./composition.js";
 import type { ProcessHandler, ProcessRun } from "./runner.js";
 import { windowId } from "./formation.js";
 import { constrainToWorkResult, deliverInputMemories, taskSystemPrompt } from "./task.js";
+import { observeProvider } from "./trace.js";
 
 export interface InvestigationDeps {
   models: Models;
@@ -18,19 +24,44 @@ export interface InvestigationDeps {
   taskReservationCost?: number;
   /** Application tools other modules offer; only those the brief grants reach the model. */
   tools?: WorkerTool[];
+  /** When installed, relevant memories are retrieved for the task before the model runs. */
+  judgement?: Services["judgement"];
 }
 
 /** Investigation drives the task model; offered tools are attached when the brief grants them. */
 export const investigationModule: ProcessModule = {
-  declaration: { id: "investigation", version: "1", requires: ["taskModel"], operations: ["investigation"] },
+  declaration: { id: "investigation", version: "2", requires: ["taskModel"], optional: ["judgement"], operations: ["investigation"] },
   attach: (services: Services, offered) => {
     const task = services.taskModel!;
     return [investigationHandler({
       models: task.models, taskModel: task.model, maxPayloadBytes: task.maxPayloadBytes,
-      taskReservationCost: task.reservationCost, tools: offered,
+      taskReservationCost: task.reservationCost, tools: offered, judgement: services.judgement,
     })];
   },
 };
+
+/** The retrieval a new task asks for: its purpose as the question, its brief as task evidence, within its
+ * own scope and payload allowance. Memories the brief already grants count as existing context. */
+export function admissionQuery(assignment: Assignment, maxPayloadBytes: number): ActivationQuery {
+  const brief = assignment.job.spec.brief;
+  return {
+    scope: brief.scope,
+    question: brief.purpose.slice(0, 2048),
+    task_context: JSON.stringify({ purpose: brief.purpose, output_criteria: brief.output_criteria, inputs: brief.inputs }).slice(0, 8192),
+    entities: brief.scope.entity_ids.slice(0, 32),
+    exact: [],
+    families: [],
+    valid_at: null,
+    recorded_as_of: null,
+    fresh_after: null,
+    vector: null,
+    existing: brief.inputs.memories.slice(0, 100),
+    scan_limit: 200,
+    candidate_limit: 16,
+    traversal_limit: 16,
+    context_bytes: Math.min(60_000, Math.floor(maxPayloadBytes / 2)),
+  };
+}
 
 /** The worker profile an investigation attempt runs under, derived from the brief and the pool's limits. */
 export function investigationProfile(assignment: Assignment, deps: InvestigationDeps): WorkerProfile {
@@ -61,6 +92,35 @@ async function runInvestigation(run: ProcessRun, deps: InvestigationDeps) {
   const brief = assignment.job.spec.brief;
   const fence = lease.fence;
   const model = deps.taskModel;
+  // Retrieve what the project already knows before the model runs. Nothing retrieved, or context
+  // judged sufficient, is a valid outcome; an unavailable retrieval is reported and the task proceeds.
+  let activated: ContextPackage | undefined;
+  if (deps.judgement) {
+    const { primary, fallback, comparison } = deps.judgement;
+    const judgement: JudgementOptions = {
+      primary: observeProvider(primary, "primary", log),
+      fallback: fallback ? observeProvider(fallback, "fallback", log) : undefined,
+      comparison: comparison ? { provider: observeProvider(comparison.provider, "comparison", log) } : undefined,
+      maxAttempts: 1,
+      responses: catalogueResponses,
+      disclosure: {
+        policy: brief.disclosure_policy,
+        scope: brief.scope,
+        providers: [primary.id, ...(fallback ? [fallback.id] : []), ...(comparison ? [comparison.provider.id] : [])],
+      },
+    };
+    try {
+      activated = await runActivation(
+        host, assignment, session,
+        { id: windowId(assignment.job.id, { source_id: "activation", revision: String(assignment.job.attempt) }), query: admissionQuery(assignment, deps.maxPayloadBytes) },
+        judgement, context,
+      );
+      log(`job ${assignment.job.id} activation: ${activated.selected.length} memory(ies) selected, ${activated.deferred.length} deferred`);
+    } catch (error) {
+      log(`job ${assignment.job.id} activation unavailable: ${error instanceof Error ? error.message : String(error)}; running without retrieved memories`);
+    }
+  }
+  const initial = workspaceFromBrief(brief, assignment.job.deadline, assignment.job.spec.retain_until);
   // The worker follows the runner's lease keeper and owns Pi's cancellation protocol (abort the
   // operation, then acknowledge), so it runs under the lease context rather than the cancel-aborting run context.
   const worker = await attachAssignedWorker(assignment, host, investigationProfile(assignment, deps), {
@@ -72,8 +132,18 @@ async function runInvestigation(run: ProcessRun, deps: InvestigationDeps) {
     systemPrompt: taskSystemPrompt(brief),
     lease,
     composition: run.composition,
+    ...(activated
+      ? {
+          workspace: { initial: applyActivation(initial, activated) },
+          grant: (base) => activationAccess(base, activated!),
+        }
+      : {}),
   }, lease.context);
   try {
+    // Hook failures fail the provider call; name them so an operator sees why a task went partial.
+    worker.harness.events.on("handler_error", (event) => {
+      log(`job ${assignment.job.id} harness ${event.kind} error: ${event.error instanceof Error ? event.error.message : String(event.error)}`);
+    });
     if (model.api === "azure-openai-responses")
       worker.harness.hooks.on("before_payload", async ({ payload }) => ({ payload: constrainToWorkResult(payload) }));
     if (brief.inputs.memories.length) {

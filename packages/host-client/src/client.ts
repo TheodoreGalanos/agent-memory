@@ -61,7 +61,7 @@ export class HostClient implements HostCommands {
     const body = Buffer.concat(chunks).toString("utf8");
     // Error bodies may be plain text from the transport layer, not command JSON.
     if (!response.ok)
-      throw new Error(`Host command failed (${response.status}): ${body.slice(0, 500)}`);
+      throw new Error(`Host command ${command.action} failed (${response.status}): ${body.slice(0, 500)}`);
     const result: unknown = JSON.parse(body);
     if (!result || typeof result !== "object" || !("kind" in result))
       throw new Error("Host returned an invalid command response");

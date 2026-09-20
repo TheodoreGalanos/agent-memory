@@ -184,6 +184,17 @@ impl Store {
             scope: window.scope.clone(),
             ..auth.clone()
         };
+        // Records land at the policy's destination: the formation job executed under a task, but the
+        // memory's task dimension is the policy's (none for a project policy), so later tasks under
+        // that policy retrieve it. Source and locator reads stay task-narrow.
+        let policy = crate::policies::current_policy(&mut tx, &narrow, &window.policy).await?;
+        let destination = Authority {
+            scope: Scope {
+                task_id: policy.scope.task_id,
+                ..window.scope.clone()
+            },
+            ..auth.clone()
+        };
         let source = crate::sources::source_version(&mut tx, &narrow, &window.source).await?;
         crate::artifacts::ready_artifact(
             &mut tx,
@@ -266,18 +277,25 @@ impl Store {
                     }
                 }
                 crate::intentions::check_plan(&mut tx, auth, &job, &draft).await?;
+                let draft = RecordDraft {
+                    scope: Scope {
+                        task_id: destination.scope.task_id,
+                        ..draft.scope
+                    },
+                    ..draft
+                };
                 let version = crate::memories::apply_changes(
                     &mut tx,
-                    &narrow,
+                    &destination,
                     vec![MemoryChange::Create(draft)],
                     at,
                 )
                 .await?
                 .remove(0);
                 for target in corrected {
-                    crate::relations::insert_relation(&mut tx, &narrow, RelationDraft {
+                    crate::relations::insert_relation(&mut tx, &destination, RelationDraft {
                         from: version.reference.clone(), to: target, kind: RelationKind::Challenges,
-                        scope: window.scope.clone(), basis: "Explicit correction in captured event; original status and version retained".into(),
+                        scope: destination.scope.clone(), basis: "Explicit correction in captured event; original status and version retained".into(),
                         evidential_status: entry.event.evidential_status, acceptance: Acceptance::Candidate, valid_time: ValidTime::Unknown,
                     }, at).await?;
                 }

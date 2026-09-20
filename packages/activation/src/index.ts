@@ -81,8 +81,9 @@ export async function runActivation(
   options: JudgementOptions & { embeddings?: TextEmbeddings },
   context: Context,
 ): Promise<ContextPackage> {
-  if (assignment.job.spec.brief.process !== "activation")
-    throw new Error("Activation needs an activation assignment");
+  // A task retrieves its own context at admission; an activation job retrieves for others.
+  if (!["activation", "investigation"].includes(assignment.job.spec.brief.process))
+    throw new Error("Activation needs an activation or task assignment");
   const fence = fenceFor(assignment),
     key = value<ActivationState>("memory.activation", input.id);
   let state = (await session.getValue(key, context))?.value;

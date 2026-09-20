@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { WorkBrief } from "../../../contracts/generated/work-command.js";
-import { permits } from "../../host-client/src/scope.js";
+import { permits, readable } from "../../host-client/src/scope.js";
 import type {
   WorkspaceState,
   WorkspaceEntry,
@@ -154,7 +154,7 @@ export function validateWorkspace(state: WorkspaceState): void {
   if (!state.entries.some((e) => e.kind === "goal" && e.status === "active"))
     throw new Error("Workspace needs an active goal");
   for (const entry of state.entries) {
-    if (!entry.id || !entry.text.trim() || !permits(state.scope, entry.scope))
+    if (!entry.id || !entry.text.trim() || !readable(state.scope, entry.scope))
       throw new Error("Invalid workspace entry or scope");
     if (entry.supporting_entries.some((id) => !entries.has(id)))
       throw new Error("Missing supporting entry");

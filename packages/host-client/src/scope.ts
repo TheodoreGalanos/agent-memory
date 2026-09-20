@@ -19,3 +19,21 @@ export function permits(grant: Scope, requested: Scope): boolean {
         )))
   );
 }
+
+/** Whether a holder of `grant` may read a resource at `resource`: like the Host's read predicate, a
+ * resource left open on a dimension (project-level memory, no task) is readable by any task within it. */
+export function readable(grant: Scope, resource: Scope): boolean {
+  return (
+    (["user_id", "project_id", "task_id"] as const).every(
+      (key) => !grant[key] || !resource[key] || grant[key] === resource[key],
+    ) &&
+    (!grant.entity_ids.length ||
+      resource.entity_ids.every((id) => grant.entity_ids.includes(id))) &&
+    (!grant.source_versions.length ||
+      resource.source_versions.every((ref) =>
+        grant.source_versions.some(
+          (g) => g.source_id === ref.source_id && g.revision === ref.revision,
+        ),
+      ))
+  );
+}

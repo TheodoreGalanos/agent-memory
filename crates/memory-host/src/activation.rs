@@ -17,7 +17,10 @@ impl Host {
         let job = self.store.assigned_job(auth, fence).await?;
         if job.cancel_requested
             || job.deadline <= Utc::now()
-            || job.spec.brief.process != Process::Activation
+            || !matches!(
+                job.spec.brief.process,
+                Process::Activation | Process::Investigation
+            )
             || !job.spec.brief.scope.permits(&query.scope)
         {
             return Err(Error::Forbidden);
@@ -172,7 +175,10 @@ impl Host {
         let job = self.store.assigned_job(auth, fence).await?;
         if job.cancel_requested
             || job.deadline <= Utc::now()
-            || job.spec.brief.process != Process::Activation
+            || !matches!(
+                job.spec.brief.process,
+                Process::Activation | Process::Investigation
+            )
         {
             return Err(Error::Forbidden);
         }

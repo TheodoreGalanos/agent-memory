@@ -28,6 +28,8 @@ export interface ModuleDeclaration {
   version: string;
   /** Installed services this module cannot work without. */
   requires: Capability[];
+  /** Installed services this module uses when present and works without otherwise. */
+  optional?: Capability[];
   /** Processes this module handles; exactly one module per process. */
   operations: Process[];
 }

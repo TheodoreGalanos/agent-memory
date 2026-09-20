@@ -4,7 +4,7 @@ import {
   investigationWorkspace,
   preserveChildEvidence,
 } from "./scoped-operation.js";
-import { briefAccess, workspaceFromBrief } from "./workspace.js";
+import { briefAccess, workspaceFromBrief, type WorkspaceAccess } from "./workspace.js";
 import { randomUUID } from "node:crypto";
 import {
   BACKGROUND_CONTEXT,
@@ -54,11 +54,21 @@ interface SavedResult {
 /** One assignment, one attached Pi session, and one host-mapped operation. A supplied `lease`
  * keeper is followed while driving; otherwise the worker keeps its own lease for each run.
  * `composition` names the pool composition accepting the work and is recorded with `start`. */
+export interface AttachedWorkerOptions {
+  /** The worker supplies the brief-derived workspace fields; callers may seed or narrow the rest. */
+  workspace?: Partial<WorkerOptions["workspace"] & object>;
+  lease?: AssignmentLease;
+  composition?: string;
+  /** Trusted pool code may widen the brief's read grant, for example to memories activation
+   * selected for this task. Never derived from model output. */
+  grant?: (base: WorkspaceAccess) => WorkspaceAccess;
+}
+
 export async function attachAssignedWorker(
   assignment: Assignment,
   host: HostCommands,
   profile: WorkerProfile,
-  options: WorkerOptions & { lease?: AssignmentLease; composition?: string },
+  options: Omit<WorkerOptions, "workspace"> & AttachedWorkerOptions,
   parent: Context = BACKGROUND_CONTEXT,
   lifecycle?: ExecutionLifecycle,
 ) {
@@ -181,8 +191,9 @@ export async function attachAssignedWorker(
             checked.assignment.job.cancel_requested
           )
             throw new Error("Workspace assignment is no longer active");
-          const grant = briefAccess(checked.assignment.job.spec.brief);
-          const narrower = await options.workspace?.readAccess();
+          const base = briefAccess(checked.assignment.job.spec.brief);
+          const grant = options.grant ? options.grant(base) : base;
+          const narrower = await options.workspace?.readAccess?.();
           return narrower
             ? {
                 revision: JSON.stringify([grant.revision, narrower.revision]),
