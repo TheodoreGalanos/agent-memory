@@ -394,7 +394,12 @@ async fn activation_migration_indexes_existing_records() {
     }
     // Later migrations add tables and columns to pre-existing tables; a replay from 7 must not
     // find them already present. Keep this list in step with crates/memory-store/migrations.
-    for table in ["job_experiences", "experience_windows"] {
+    for table in [
+        "job_experiences",
+        "experience_windows",
+        "scheduled_work",
+        "consolidation_cohort_members",
+    ] {
         sqlx::query(&format!("DROP TABLE {table}"))
             .execute(&pool)
             .await

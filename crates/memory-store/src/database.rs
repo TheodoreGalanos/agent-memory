@@ -26,6 +26,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/013_experience.sql"),
     include_str!("../migrations/014_experience_windows.sql"),
     include_str!("../migrations/015_validation.sql"),
+    include_str!("../migrations/016_scheduling.sql"),
 ];
 /// The schema version a freshly migrated store reports.
 pub const SCHEMA_VERSION: u32 = MIGRATIONS.len() as u32;

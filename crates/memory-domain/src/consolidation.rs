@@ -6,6 +6,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
+fn default_min_cohort_size() -> u16 {
+    3
+}
+fn default_max_cohort_size() -> u16 {
+    16
+}
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ConsolidationPolicy {
     pub min_independent_sources: u16,
@@ -14,6 +20,13 @@ pub struct ConsolidationPolicy {
     pub maximum_regression: f64,
     pub maximum_cost_microunits: u32,
     pub evaluator_profile: ConfigRef,
+    /// Retained, not-yet-consolidated candidates needed under this policy before the host
+    /// schedules a consolidation cohort. Missing in older data; defaults preserve prior behavior.
+    #[serde(default = "default_min_cohort_size")]
+    pub min_cohort_size: u16,
+    /// Upper bound on how many candidates one scheduled cohort covers.
+    #[serde(default = "default_max_cohort_size")]
+    pub max_cohort_size: u16,
 }
 impl ConsolidationPolicy {
     pub fn validate(&self) -> Result<(), String> {
@@ -23,9 +36,12 @@ impl ConsolidationPolicy {
             || !(0.0..=1.0).contains(&self.minimum_success_rate)
             || !self.maximum_regression.is_finite()
             || !(0.0..=1.0).contains(&self.maximum_regression)
+            || self.min_cohort_size == 0
+            || self.max_cohort_size < self.min_cohort_size
+            || self.max_cohort_size > 64
         {
             return Err(
-                "Consolidation needs positive source/holdout counts and rates in [0,1]".into(),
+                "Consolidation needs positive source/holdout counts, rates in [0,1] and a sane cohort size range".into(),
             );
         }
         Ok(())

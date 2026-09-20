@@ -1254,6 +1254,28 @@
       ]
     },
     {
+      "description": "What the scheduling sweep recorded for one trigger: the job it submitted, an\nunschedulable mark, or nothing yet.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "const": "scheduled_work"
+        },
+        "trigger_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "trigger_kind": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "trigger_kind",
+        "trigger_id"
+      ]
+    },
+    {
       "description": "A trusted connector publishes one source revision. A JSON string is stored as\ntext; any other value is serialized JSON. The adapter follows `source.kind`.",
       "type": "object",
       "properties": {
@@ -2493,12 +2515,26 @@
         "evaluator_profile": {
           "$ref": "#/$defs/ConfigRef"
         },
+        "max_cohort_size": {
+          "description": "Upper bound on how many candidates one scheduled cohort covers.",
+          "type": "integer",
+          "default": 16,
+          "maximum": 65535,
+          "minimum": 0
+        },
         "maximum_cost_microunits": {
           "type": "integer",
           "minimum": 0
         },
         "maximum_regression": {
           "type": "number"
+        },
+        "min_cohort_size": {
+          "description": "Retained, not-yet-consolidated candidates needed under this policy before the host\nschedules a consolidation cohort. Missing in older data; defaults preserve prior behavior.",
+          "type": "integer",
+          "default": 3,
+          "maximum": 65535,
+          "minimum": 0
         },
         "min_held_out_groups": {
           "type": "integer",

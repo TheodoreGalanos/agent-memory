@@ -84,7 +84,7 @@ impl Store {
                     valid_time: memory.record.valid_time.clone(),
                     reason: memory.record.decision.reason.clone(),
                 };
-                sqlx::query("INSERT INTO memory_changes(tenant_id,id,cursor,resource_id,data) VALUES($1,$2,$3,$4,$5)").bind(auth.tenant_id.to_string()).bind(notice.id.to_string()).bind(i64::from(cursor)).bind(resource.to_string()).bind(serde_json::to_string(&notice)?).execute(&mut *tx).await?;
+                sqlx::query("INSERT INTO memory_changes(tenant_id,id,cursor,resource_id,data,causal_job_id) VALUES($1,$2,$3,$4,$5,NULL)").bind(auth.tenant_id.to_string()).bind(notice.id.to_string()).bind(i64::from(cursor)).bind(resource.to_string()).bind(serde_json::to_string(&notice)?).execute(&mut *tx).await?;
                 O::Memory {
                     memory: Box::new(memory),
                     relations: vec![],

@@ -785,7 +785,7 @@ impl Store {
                 valid_time,
                 reason: r.request.reason.clone(),
             };
-            sqlx::query("INSERT INTO memory_changes(tenant_id,id,cursor,resource_id,data) VALUES($1,$2,$3,$4,$5)").bind(a.tenant_id.to_string()).bind(notice.id.to_string()).bind(i64::from(cursor)).bind(current.reference.memory_id.to_string()).bind(serde_json::to_string(&notice)?).execute(&mut *tx).await?;
+            sqlx::query("INSERT INTO memory_changes(tenant_id,id,cursor,resource_id,data,causal_job_id) VALUES($1,$2,$3,$4,$5,$6)").bind(a.tenant_id.to_string()).bind(notice.id.to_string()).bind(i64::from(cursor)).bind(current.reference.memory_id.to_string()).bind(serde_json::to_string(&notice)?).bind(job.id.to_string()).execute(&mut *tx).await?;
             result.notices.push(notice);
         }
         sqlx::query("UPDATE maintenance_reviews SET result=$1 WHERE tenant_id=$2 AND id=$3")

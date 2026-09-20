@@ -694,6 +694,23 @@ impl Store {
         }
         tx.commit().await?;
         for o in &mut selected {
+            if o.state == IntentionState::Fired {
+                let settled = match o.job_id {
+                    Some(job_id) => job(&mut *self.pool.acquire().await?, a, job_id)
+                        .await
+                        .map(|j| j.state.terminal())
+                        .unwrap_or(false),
+                    None => false,
+                };
+                if settled {
+                    match self.complete_intention(a, o.id, false, None).await {
+                        Ok(updated) => *o = updated,
+                        Err(Error::Unavailable | Error::Conflict) => {}
+                        Err(e) => return Err(e),
+                    }
+                }
+                continue;
+            }
             if o.state != IntentionState::Armed {
                 continue;
             }

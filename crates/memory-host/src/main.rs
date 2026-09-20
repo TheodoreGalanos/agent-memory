@@ -140,6 +140,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 {
                     eprintln!("Formation scheduling failed; retrying on the next tick");
                 }
+                // Retained candidates that accumulate under a policy get a bounded consolidation cohort.
+                if tick % RECOVERY_TICKS == 0
+                    && timer_store
+                        .schedule_consolidation(authority, 10)
+                        .await
+                        .is_err()
+                {
+                    eprintln!("Consolidation scheduling failed; retrying on the next tick");
+                }
+                // A committed candidate procedure gets a bounded qualification job.
+                if tick % RECOVERY_TICKS == 0
+                    && timer_store
+                        .schedule_qualification(authority, 10)
+                        .await
+                        .is_err()
+                {
+                    eprintln!("Qualification scheduling failed; retrying on the next tick");
+                }
+                // A new source revision or memory correction gets a bounded maintenance job.
+                if tick % RECOVERY_TICKS == 0
+                    && timer_store
+                        .schedule_maintenance(authority, 10)
+                        .await
+                        .is_err()
+                {
+                    eprintln!("Maintenance scheduling failed; retrying on the next tick");
+                }
             }
         }
     });
