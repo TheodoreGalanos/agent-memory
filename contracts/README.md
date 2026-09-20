@@ -29,7 +29,7 @@ The response reason codes distinguish invalid input, authority, revision/command
 conflicts, deadlines, budgets, evidence gaps, unavailable dependencies, cancellation
 and unknown effects. `POST /v1/commands` consumes `HostRequest` and returns
 `HostResponse`. `HostClient` uses these generated types. `/openapi.json` describes
-the API and links its served JSON schemas; see the [runtime guide](../docs/implementation/runtime.md).
+the API and links its served JSON schemas; see the [runtime guide](../docs/runtime.md).
 
 `compatibility.json` pins reviewed upstream sources. `upstream/asp.schema.json` is
 the separately licensed ASP connection schema, not a project execution adapter.

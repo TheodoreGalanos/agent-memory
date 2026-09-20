@@ -140,8 +140,8 @@ US$5 allowance; that allowance is not an invoice or a measurement of actual spen
 
 Production deployment, distributed ownership,
 live model calls, provider billing reconciliation and continuous cleanup supervision
-remain outside this increment. The [plan](../../docs/implementation/plan.md) records
-the current acceptance status.
+remain outside this system's current scope. See the [runtime guide](../../docs/runtime.md)
+for how the bridge composes with the rest of the pool.
 
 
 ## Scoped interpreter
@@ -156,6 +156,6 @@ watchdog and provider teardown still apply to that process.
 checkpoint publication and restoration into a new interpreter. `npm run test:asp`
 checks repeated interpreter calls through real OpenSSH. Python tests exercise
 wall timeouts, lost heaps, uncertain receipts and serialization limits. See the
-[runtime guide](../../docs/implementation/runtime.md) for the caller API and
-recovery rules. The updated image has been tested locally; WP07 does not extend
+[runtime guide](../../docs/runtime.md) for the caller API and
+recovery rules. The updated image has been tested locally; this does not extend
 the earlier live Daytona qualification.

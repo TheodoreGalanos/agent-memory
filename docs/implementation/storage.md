@@ -1,4 +1,4 @@
-# Memory storage (WP02)
+# Memory storage
 
 `memory-store` provides the Rust repository used by the later host and process
 packages. It uses SQLx for SQLite and PostgreSQL, and object_store for artifact I/O.
@@ -14,7 +14,7 @@ busy timeout. Migrations preserve existing data and reject a newer schema.
 four memory families. `apply_memories` can close an earlier valid interval and
 insert a successor atomically. Each batch commits its records, policy decisions
 and declared derivation edges together. Arbitrary relation changes are separate
-repository calls; the host command transaction boundary arrives in WP03.
+repository calls, each wrapped in its own host command transaction boundary.
 
 Records retain their source locators, actual production inputs, policy revision
 and reason. Origin, evidence status, availability and qualification are separate
@@ -40,7 +40,7 @@ PostgreSQL uses up to five. There is no event log or content-hash identity schem
 ## Scope and relationships
 
 Every repository call takes a trusted `Authority`. This library does not authenticate
-it; WP03 must obtain it from the authenticated host, never from a worker's claimed
+it; the authenticated Host obtains it and passes it down, never a worker's claimed
 tenant or permissions. An omitted grant dimension is unrestricted within the tenant.
 
 Resource ownership uses user, project, task, entity and source-revision fields.
@@ -85,7 +85,8 @@ revocation, not physical purge.
 The object_store boundary accepts other implementations, but only its durable
 local filesystem backend has been exercised here. Cloud object storage, grace-period
 orphan cleanup and cross-store purge are not qualified. Failed source registration
-can leave an unreferenced artifact; retention administration arrives in WP13.
+can leave an unreferenced artifact; retention administration (`crates/memory-store/src/retention.rs`)
+can find and remove it.
 
 ## Source adapters
 
@@ -108,6 +109,23 @@ must fit the caller's output limit. Native PDF/BIM extraction, image-region read
 and external trajectory formats need adapters; the current importer does not claim
 to understand them. Image locators can be retained as metadata.
 
+## Coordination, experience and scheduling
+
+Later migrations extend the shared job ledger rather than adding separate tables. A job
+carries its resolved pool `composition` identity and a `validation` outcome alongside its
+result. `job_experiences` records which settled task published which source revision, and
+which formation job (if any) that publication triggered — the link the Host's own scheduler
+uses to form memory from a task's own recorded experience without a separate ingestion step.
+`experience_windows` retains the bounded evidence window a formation job actually read.
+
+`scheduled_work` is the ledger for every trigger-driven job the Host schedules on its own
+timer (cohort consolidation, qualification, maintenance): one row per `(trigger_kind,
+trigger_id)`, deduplicated by `dedupe_key` so a trigger observed twice does not double-submit,
+recording the job it produced (or why it could not be scheduled) and, where relevant, the
+job whose completion caused it. `consolidation_cohort_members` retains which memories a
+cohort-consolidation job was formed from, and `memory_changes` carries an optional
+`causal_job_id` linking a revision back to the scheduled job that produced it.
+
 ## Verification
 
 ```sh
@@ -129,11 +147,8 @@ restart between completion and publication, remove stored bytes, reject late
 completion, stream a multi-megabyte export and revoke an upstream dependency.
 Separate tests upgrade an earlier schema and reject a newer one.
 
-**Observed on 17 September 2026:** shared repository, migration and coordinator
-suites pass on SQLite and PostgreSQL 14.17. An earlier cluster startup failure was
-resolved by removing the single orphan shared-memory segment Theo approved, after
-checking that it had no attached processes. The test cluster was stopped and
-removed after verification. Cloud durability remains unqualified.
+The shared repository, migration and coordinator suites pass on SQLite and PostgreSQL. Cloud
+durability remains unqualified.
 
 Pi session storage has a separate schema and ownership contract. Its PostgreSQL
-conformance checks run in the same disposable cluster; see [runtime](runtime.md).
+conformance checks run in the same disposable cluster; see the [runtime guide](../runtime.md).
