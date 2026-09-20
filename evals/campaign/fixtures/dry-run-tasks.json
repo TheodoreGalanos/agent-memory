@@ -1,0 +1,32 @@
+[
+  {
+    "id": "beam-clearance-1",
+    "purpose": "What clearance is available under beam B3 for the crane route?",
+    "transfer": false,
+    "expected": {
+      "no_memory": { "status": "complete", "coverage": ["Answered from first principles"], "cost_microunits": 4000 },
+      "capture_only": { "status": "complete", "coverage": ["Answered from first principles"], "cost_microunits": 4000 },
+      "full": { "status": "complete", "coverage": ["Answered from first principles"], "cost_microunits": 4000 }
+    }
+  },
+  {
+    "id": "beam-clearance-2",
+    "purpose": "A second crew asks the same beam B3 clearance question later the same day.",
+    "transfer": true,
+    "expected": {
+      "no_memory": { "status": "complete", "coverage": ["Answered from first principles"], "cost_microunits": 4000 },
+      "capture_only": { "status": "complete", "coverage": ["Answered from first principles"], "cost_microunits": 4000 },
+      "full": { "status": "complete", "coverage": ["Answered from retrieved memory of beam B3's clearance"], "cost_microunits": 900 }
+    }
+  },
+  {
+    "id": "lease-timeout-default",
+    "purpose": "What is the default lease timeout for a stuck job?",
+    "transfer": true,
+    "expected": {
+      "no_memory": { "status": "partial", "coverage": [], "cost_microunits": 4000 },
+      "capture_only": { "status": "partial", "coverage": [], "cost_microunits": 4000 },
+      "full": { "status": "complete", "coverage": ["Answered from retrieved memory of the default lease timeout"], "cost_microunits": 900 }
+    }
+  }
+]
